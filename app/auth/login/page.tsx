@@ -1,11 +1,17 @@
-import { LoginForm } from "@/components/login-form";
+import { GoogleLoginButton } from "@/features/auth/components/google-login-button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-export default function Page() {
+export default function LoginPage() {
   return (
-    <div className="flex min-h-svh w-full items-center justify-center p-6 md:p-10">
-      <div className="w-full max-w-sm">
-        <LoginForm />
-      </div>
-    </div>
+    <main className="flex min-h-screen items-center justify-center px-6">
+      <Card className="w-full max-w-sm">
+        <CardHeader>
+          <CardTitle className="text-center text-2xl">KICK-X 로그인</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <GoogleLoginButton />
+        </CardContent>
+      </Card>
+    </main>
   );
 }
