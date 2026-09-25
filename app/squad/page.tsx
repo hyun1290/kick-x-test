@@ -1,7 +1,4 @@
-export default function SquadPage() {
-  return (
-    <main className="min-h-screen p-8">
-      <h1 className="text-3xl font-bold">선수단</h1>
-    </main>
-  );
+import { SquadScreen } from "@/components/kickx/squad";
+export default function Page() {
+  return <SquadScreen />;
 }
