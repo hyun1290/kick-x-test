@@ -1,25 +1,27 @@
 "use client";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { FormEvent, useState } from "react";
+import { useState } from "react";
 import {
   ArrowLeft,
   ArrowRight,
   Check,
   LogOut,
   Mail,
-  RotateCcw,
   Save,
   ShieldCheck,
-  Wallet,
 } from "lucide-react";
-import { money, teams } from "@/lib/kickx/data";
-import { useDemo } from "./provider";
+import { usePlatform } from "./provider";
 import { Logo } from "./shell";
-import { DemoNote, Modal, PageHeading, SectionTitle, TeamBadge } from "./ui";
+import {
+  DataEmpty,
+  DataNotice,
+  DisabledAction,
+  MemberNotice,
+  PageHeading,
+  SectionTitle,
+  TeamBadge,
+} from "./ui";
 export function LoginScreen() {
-  const { dispatch } = useDemo();
-  const router = useRouter();
   return (
     <div className="auth-layout">
       <section className="auth-visual">
@@ -37,18 +39,14 @@ export function LoginScreen() {
             나만의 선수 가치를 발견하는 경험으로.
           </p>
           <div className="auth-feature">
-            <span>
-              <Check size={15} />
-              가상 포인트 선수 거래
-            </span>
-            <span>
-              <Check size={15} />
-              나만의 스쿼드
-            </span>
-            <span>
-              <Check size={15} />
-              함께하는 축구
-            </span>
+            {["가상 포인트 선수 거래", "나만의 스쿼드", "함께하는 축구"].map(
+              (t) => (
+                <span key={t}>
+                  <Check size={15} />
+                  {t}
+                </span>
+              ),
+            )}
           </div>
         </div>
         <span className="auth-photo-caption">KICK-X · FOOTBALL MARKET</span>
@@ -69,28 +67,16 @@ export function LoginScreen() {
           <button disabled className="google-button">
             <span>G</span>Google로 계속하기
           </button>
-          <p className="auth-connection-note">
-            Google 로그인은 서비스 연결 후 사용할 수 있습니다.
-          </p>
+          <p className="auth-connection-note">로그인 서비스 준비 중입니다.</p>
           <div className="or-divider">
             <span>먼저 둘러보고 싶다면</span>
           </div>
-          <button
-            className="button primary full"
-            onClick={() => {
-              dispatch({ type: "LOGIN" });
-              router.push("/onboarding");
-            }}
-          >
-            데모 계정으로 시작하기 <ArrowRight size={18} />
-          </button>
+          <Link href="/" className="button secondary full">
+            둘러보기 <ArrowRight size={18} />
+          </Link>
           <div className="login-note">
             <ShieldCheck size={20} />
-            <p>
-              실제 금전 거래 없이 가상 포인트로 체험하세요.
-              <br />
-              데모 정보는 이 브라우저에만 저장됩니다.
-            </p>
+            <p>로그인하면 내 선수와 스쿼드를 관리할 수 있습니다.</p>
           </div>
         </div>
         <span className="auth-copyright">
@@ -100,96 +86,78 @@ export function LoginScreen() {
     </div>
   );
 }
+function ProfileForm({ onboarding = false }: { onboarding?: boolean }) {
+  const { data } = usePlatform();
+  const [draftName, setDraftName] = useState<string | null>(null),
+    [draftTeam, setDraftTeam] = useState<string | null>(null);
+  const nickname = draftName ?? data.session?.profile?.nickname ?? "",
+    team = draftTeam ?? data.session?.profile?.team ?? "";
+  return (
+    <form
+      onSubmit={(e) => e.preventDefault()}
+      className={`panel ${onboarding ? "onboarding-form" : "settings-form"}`}
+    >
+      {!onboarding && <SectionTitle title="프로필 설정" />}
+      <label>
+        닉네임
+        <input
+          value={nickname}
+          onChange={(e) => setDraftName(e.target.value)}
+          placeholder="사용할 닉네임을 입력하세요"
+          autoComplete="nickname"
+        />
+        <small>구단과 선수 라운지에서 사용할 이름입니다.</small>
+      </label>
+      <label>
+        응원 구단
+        <select
+          value={team}
+          disabled={!data.teams.length}
+          onChange={(e) => setDraftTeam(e.target.value)}
+        >
+          <option value="">응원 구단 선택</option>
+          {data.teams.map((t) => (
+            <option value={t.id} key={t.id}>
+              {t.name}
+            </option>
+          ))}
+        </select>
+      </label>
+      {!data.teams.length && <DataEmpty entity="응원 구단" />}
+      <div className="form-actions">
+        <DisabledAction className="button primary">
+          <Save size={16} />
+          {onboarding ? "프로필 등록" : "변경사항 저장"}
+        </DisabledAction>
+      </div>
+      <p className="fine-print">
+        프로필 저장 서비스 준비 중입니다. 입력한 내용은 저장되지 않습니다.
+      </p>
+    </form>
+  );
+}
 export function OnboardingScreen() {
-  const { state, dispatch } = useDemo();
-  const router = useRouter();
-  const [nickname, setNickname] = useState(state.profile.nickname);
-  const [team, setTeam] = useState(state.profile.team);
-  const submit = (e: FormEvent) => {
-    e.preventDefault();
-    if (nickname.trim().length < 2) return;
-    dispatch({ type: "LOGIN" });
-    dispatch({ type: "PROFILE", nickname, team });
-    router.push("/");
-  };
+  const { status, reload } = usePlatform();
   return (
     <div className="onboarding">
       <Logo />
       <div className="onboarding-intro">
         <span className="eyebrow">MAKE IT YOURS</span>
         <h1>어떤 팀과 함께할까요?</h1>
-        <p>닉네임과 응원 구단을 선택하고, 나만의 축구를 시작하세요.</p>
+        <p>닉네임과 응원 구단으로 나만의 축구를 시작하세요.</p>
       </div>
-      <form onSubmit={submit} className="panel onboarding-form">
-        <label>
-          닉네임
-          <input
-            value={nickname}
-            onChange={(e) => setNickname(e.target.value)}
-            minLength={2}
-            maxLength={16}
-            required
-            placeholder="2~16자의 닉네임"
-          />
-          <small>구단과 선수 라운지에서 사용할 이름이에요.</small>
-        </label>
-        <fieldset>
-          <legend>응원 구단</legend>
-          <div className="onboarding-teams">
-            {teams.map((t) => (
-              <label
-                className={`team-choice ${team === t.id ? "selected" : ""}`}
-                key={t.id}
-              >
-                <input
-                  type="radio"
-                  name="team"
-                  value={t.id}
-                  checked={team === t.id}
-                  onChange={() => setTeam(t.id)}
-                />
-                <TeamBadge id={t.id} />
-                <span>{t.name}</span>
-                {team === t.id && <Check size={15} />}
-              </label>
-            ))}
-          </div>
-        </fieldset>
-        <div className="starter-balance">
-          <Wallet size={23} />
-          <div>
-            <strong>데모 포트폴리오가 준비되어 있어요</strong>
-            <span>
-              보유 포인트 {money(state.points)} P + 예시 선수{" "}
-              {state.holdings.length}명
-            </span>
-          </div>
-        </div>
-        <button
-          className="button primary full"
-          disabled={nickname.trim().length < 2}
-        >
-          KICK-X 시작하기 <ArrowRight size={18} />
-        </button>
-        <p className="fine-print">
-          응원 구단은 마이페이지에서 변경할 수 있습니다. 재입장 시 자산은
-          유지됩니다.
-        </p>
-      </form>
+      <DataNotice status={status} reload={reload} />
+      <MemberNotice />
+      <ProfileForm onboarding />
+      <Link className="back-link" href="/">
+        홈으로 돌아가기
+      </Link>
     </div>
   );
 }
 export function MyPageScreen() {
-  const { state, dispatch } = useDemo();
-  const router = useRouter();
-  const [nickname, setNickname] = useState(state.profile.nickname);
-  const [team, setTeam] = useState(state.profile.team);
-  const [reset, setReset] = useState(false);
-  const save = (e: FormEvent) => {
-    e.preventDefault();
-    if (nickname.trim().length < 2) return;
-    dispatch({ type: "PROFILE", nickname, team });
-  };
+  const { data, getTeam } = usePlatform();
+  const profile = data.session?.profile;
   return (
     <>
       <PageHeading
@@ -197,137 +165,57 @@ export function MyPageScreen() {
         title="마이페이지"
         description="나의 프로필과 응원 구단을 관리하세요."
       />
+      <MemberNotice />
       <div className="settings-layout">
         <aside className="panel profile-card">
           <span className="profile-avatar-large">
-            {state.profile.nickname[0]}
+            {profile?.nickname.slice(0, 1) || "—"}
           </span>
-          <h2>{state.profile.nickname}</h2>
-          <span className="status-pill blue">DEMO MEMBER</span>
+          <h2>{profile?.nickname || "로그인이 필요합니다"}</h2>
           <div className="profile-club">
-            <TeamBadge id={state.profile.team} />
+            <TeamBadge id={profile?.team || null} />
             <strong>
-              {teams.find((t) => t.id === state.profile.team)?.name}
+              {getTeam(profile?.team)?.name || "응원 구단 미선택"}
             </strong>
           </div>
           <div className="profile-facts">
             <span>
-              보유 선수 <b>{state.holdings.length}명</b>
+              보유 선수{" "}
+              <b>{data.member ? `${data.member.holdings.length}명` : "—"}</b>
             </span>
             <span>
-              거래 기록 <b>{state.transactions.length}건</b>
+              거래 기록{" "}
+              <b>
+                {data.member ? `${data.member.transactions.length}건` : "—"}
+              </b>
             </span>
           </div>
-          <button
-            className="button secondary full"
-            onClick={() => {
-              dispatch({ type: "LOGOUT" });
-              router.push("/login");
-            }}
-          >
-            <LogOut size={16} />
-            로그아웃
-          </button>
+          {data.session ? (
+            <DisabledAction className="button secondary full">
+              <LogOut size={16} />
+              로그아웃
+            </DisabledAction>
+          ) : (
+            <Link className="button primary full" href="/login">
+              로그인
+            </Link>
+          )}
         </aside>
         <div>
-          <form className="panel settings-form" onSubmit={save}>
-            <SectionTitle title="프로필 설정" />
-            <label>
-              닉네임
-              <input
-                value={nickname}
-                onChange={(e) => setNickname(e.target.value)}
-                minLength={2}
-                maxLength={16}
-                required
-              />
-              <small>2~16자 이내로 입력해 주세요.</small>
-            </label>
-            <label>
-              응원 구단
-              <select value={team} onChange={(e) => setTeam(e.target.value)}>
-                {teams.map((t) => (
-                  <option value={t.id} key={t.id}>
-                    {t.name}
-                  </option>
-                ))}
-              </select>
-              <small>
-                선택한 구단의 커뮤니티에서 글과 댓글을 작성할 수 있습니다.
-              </small>
-            </label>
-            <div className="form-actions">
-              <button
-                className="button primary"
-                disabled={nickname.trim().length < 2}
-              >
-                <Save size={16} />
-                변경사항 저장
-              </button>
-            </div>
-          </form>
+          <ProfileForm />
           <section className="panel account-settings">
-            <SectionTitle title="계정 및 시연 설정" />
+            <SectionTitle title="계정 설정" />
             <div className="settings-row">
               <Mail size={20} />
               <div>
                 <strong>Google 계정 연결</strong>
-                <span>실제 로그인 연결 전 · 현재 데모 계정</span>
+                <span>로그인 서비스 준비 중</span>
               </div>
-              <span className="status-pill">미연결</span>
-            </div>
-            <div className="settings-row">
-              <RotateCcw size={20} />
-              <div>
-                <strong>데모 데이터 초기화</strong>
-                <span>
-                  거래, 스쿼드, 게시글과 프로필을 처음 상태로 되돌립니다.
-                </span>
-              </div>
-              <button
-                className="button secondary small"
-                onClick={() => setReset(true)}
-              >
-                초기화
-              </button>
+              <span className="status-pill">준비 중</span>
             </div>
           </section>
-          <DemoNote>
-            현재 설정은 브라우저에 저장됩니다. 실제 회원 정보 저장은 Supabase
-            연결 후 제공됩니다.
-          </DemoNote>
         </div>
       </div>
-      {reset && (
-        <Modal
-          title="데모 데이터를 초기화할까요?"
-          onClose={() => setReset(false)}
-        >
-          <p className="muted">
-            이 브라우저에서 만든 거래와 게시글, 스쿼드 편집 내용이 초기 예시
-            상태로 돌아갑니다.
-          </p>
-          <div className="modal-actions">
-            <button
-              className="button secondary"
-              onClick={() => setReset(false)}
-            >
-              취소
-            </button>
-            <button
-              className="button danger"
-              onClick={() => {
-                dispatch({ type: "RESET" });
-                setNickname("KICKER");
-                setTeam("arsenal");
-                setReset(false);
-              }}
-            >
-              초기화
-            </button>
-          </div>
-        </Modal>
-      )}
     </>
   );
 }

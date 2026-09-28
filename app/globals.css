@@ -35,7 +35,8 @@ body {
 }
 body {
   font-family:
-    "KICKX Sans", Inter,
+    "KICKX Sans",
+    Inter,
     "Pretendard",
     "Noto Sans KR",
     -apple-system,
@@ -320,16 +321,6 @@ svg {
   border-radius: 4px;
   letter-spacing: 0.02em;
 }
-.demo-pill {
-  font-size: 10px;
-  letter-spacing: 0.1em;
-  font-weight: 700;
-  color: #98b9e9;
-  border: 1px solid #2b486f;
-  background: #142744;
-  border-radius: 5px;
-  padding: 3px 7px;
-}
 .fine-print {
   color: #7f96b5;
   font-size: 12px;
@@ -376,21 +367,6 @@ svg {
   font-size: 14px;
   margin-top: 10px;
   line-height: 1.65;
-}
-.demo-note {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  margin: 20px 0 2px;
-  font-size: 12px;
-  color: #8fa5c2;
-  line-height: 1.7;
-}
-.demo-note svg {
-  margin-top: 3px;
-}
-.panel > .demo-note {
-  margin: 18px 24px;
 }
 .skip-link {
   position: fixed;
@@ -2040,13 +2016,6 @@ svg {
 }
 .modal-heading h2 {
   font-size: 21px;
-}
-.modal .demo-note {
-  padding: 13px;
-  background: #142943;
-  border: 1px solid #254165;
-  border-radius: 7px;
-  font-size: 11px;
 }
 .modal-actions {
   display: flex;
@@ -3802,7 +3771,6 @@ svg {
 .sidebar-wallet > div,
 .quiet-label,
 .fine-print,
-.demo-note,
 .stat-label,
 .stat-foot,
 .result-count,
@@ -4570,9 +4538,6 @@ svg {
   .topbar-right {
     gap: 7px;
   }
-  .topbar-right > .demo-pill {
-    display: none;
-  }
   .topbar-right .notification {
     width: 26px;
   }
@@ -5334,9 +5299,6 @@ svg {
   .admin-notice strong {
     font-size: 12px;
   }
-  .admin-notice > .demo-pill {
-    display: none;
-  }
   .admin-nav {
     gap: 24px;
   }
@@ -5412,9 +5374,6 @@ svg {
   }
   .modal .summary-list .total dd {
     font-size: 20px;
-  }
-  .modal .demo-note {
-    font-size: 11px;
   }
   .home-bottom {
     gap: 18px;
@@ -5603,4 +5562,156 @@ svg {
     transition: none !important;
     scroll-behavior: auto !important;
   }
+}
+
+/* Empty database states keep the same layout without fabricating records. */
+.data-notice {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 13px 17px;
+  margin-bottom: 24px;
+  border: 1px solid #2c4565;
+  border-radius: 9px;
+  background: #13283f;
+  color: #a9bfdc;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.data-notice > span {
+  flex: 1;
+}
+.data-notice > svg {
+  flex-shrink: 0;
+  color: #6699df;
+}
+.data-notice.error {
+  border-color: #79505a;
+  background: #31232e;
+}
+.chart-empty {
+  position: relative;
+  min-height: 235px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  overflow: hidden;
+  color: #93afd2;
+}
+.chart-empty > svg,
+.chart-empty > strong,
+.chart-empty > span {
+  z-index: 1;
+}
+.chart-empty > strong {
+  font-size: 15px;
+  font-weight: 500;
+}
+.chart-empty > span {
+  font-size: 12px;
+  text-align: center;
+}
+.chart-empty-grid {
+  position: absolute;
+  inset: 15px 0;
+  opacity: 0.3;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent 57px,
+    #39526e 58px,
+    transparent 59px
+  );
+}
+.pitch-empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  z-index: 1;
+  color: #a4bfd1;
+  background: #09203080;
+  padding: 15px;
+  text-align: center;
+}
+.pitch-empty > strong {
+  font-size: 15px;
+  font-weight: 500;
+}
+.pitch-empty > span {
+  font-size: 12px;
+  color: #7f9eb7;
+}
+.pitch.compact .pitch-empty > strong {
+  font-size: 13px;
+}
+.market-empty-icon {
+  color: #4385d2;
+  opacity: 0.5;
+  margin: 20px;
+  flex-shrink: 0;
+}
+.modal-field {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 20px 0;
+}
+.modal-field > textarea {
+  min-height: 100px;
+  padding: 12px;
+  width: 100%;
+}
+.home-market .empty,
+.fixtures-panel .empty {
+  min-height: 220px;
+  padding: 32px 16px;
+}
+.home-stats .stat-card {
+  min-height: 170px;
+}
+.podium .podium-card:only-child {
+  grid-column: 2;
+}
+.pagination > div > span {
+  padding: 6px 12px;
+  color: #9db6d4;
+}
+button:disabled {
+  cursor: not-allowed;
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+@media (max-width: 700px) {
+  .data-notice {
+    font-size: 12px;
+    flex-wrap: wrap;
+  }
+  .chart-empty {
+    min-height: 200px;
+  }
+  .market-empty-icon {
+    width: 40px;
+  }
+  .podium .podium-card:only-child {
+    grid-column: auto;
+  }
+}
+
+.squad-selection > .fine-print {
+  padding: 16px 24px;
 }

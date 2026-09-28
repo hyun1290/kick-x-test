@@ -21,8 +21,9 @@ import {
   X,
   History,
 } from "lucide-react";
-import { money, getTeam } from "@/lib/kickx/data";
-import { useDemo } from "./provider";
+import { money } from "@/lib/kickx/data";
+import { DataNotice } from "./ui";
+import { usePlatform } from "./provider";
 const links = [
   { href: "/", label: "홈", icon: Home },
   { href: "/players", label: "선수 탐색", icon: Users },
@@ -44,7 +45,7 @@ export function Logo() {
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { state } = useDemo();
+  const { data, status, reload, getTeam } = usePlatform();
   const [query, setQuery] = useState("");
   const [mobile, setMobile] = useState(false);
   const [alerts, setAlerts] = useState(false);
@@ -112,14 +113,14 @@ export function AppShell({ children }: { children: ReactNode }) {
             className={`nav-item ${pathname.startsWith("/admin") ? "active" : ""}`}
           >
             <ShieldCheck size={18} />
-            운영 관리 <span className="subtle-tag">데모</span>
+            운영 관리
           </Link>
           <Link href="/portfolio" className="sidebar-wallet">
             <span>
               보유 포인트 <ArrowUpRight size={15} />
             </span>
             <strong>
-              {money(state.points)} <small>P</small>
+              {money(data.member?.points)} <small>P</small>
             </strong>
             <div>나의 다음 선수를 만나보세요</div>
           </Link>
@@ -146,7 +147,6 @@ export function AppShell({ children }: { children: ReactNode }) {
             <kbd>↵</kbd>
           </form>
           <div className="topbar-right">
-            <span className="demo-pill">DEMO</span>
             <div className="notification-wrap">
               <button
                 className="icon-button notification"
@@ -159,10 +159,8 @@ export function AppShell({ children }: { children: ReactNode }) {
               {alerts && (
                 <div className="notification-popover">
                   <strong>알림</strong>
-                  <p>지금은 시연 모드입니다.</p>
-                  <span>
-                    선수 거래와 스쿼드 변경은 이 브라우저에 저장됩니다.
-                  </span>
+                  <p>알림 서비스 준비 중입니다.</p>
+                  <span>새로운 알림은 이곳에 표시됩니다.</span>
                   <button
                     className="text-link"
                     onClick={() => setAlerts(false)}
@@ -172,15 +170,18 @@ export function AppShell({ children }: { children: ReactNode }) {
                 </div>
               )}
             </div>
-            {state.signedIn ? (
+            {data.session ? (
               <Link className="profile-link" href="/mypage">
                 <span className="user-avatar">
-                  {state.profile.nickname.slice(0, 1)}
+                  {data.session.profile?.nickname.slice(0, 1) || "?"}
                 </span>
                 <div>
-                  <strong>{state.profile.nickname}</strong>
+                  <strong>
+                    {data.session.profile?.nickname || "프로필 설정"}
+                  </strong>
                   <small>
-                    {getTeam(state.profile.team)?.name || "응원 구단 선택"}
+                    {getTeam(data.session.profile?.team)?.name ||
+                      "응원 구단 선택"}
                   </small>
                 </div>
                 <ChevronDown size={15} />
@@ -193,6 +194,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
         </header>
         <main id="main-content" className="main-content">
+          <DataNotice status={status} reload={reload} />
           {children}
         </main>
         <footer className="page-footer">
@@ -200,7 +202,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             © 2026 KICK-X <i>·</i> 실제 축구, 나만의 선택
           </span>
           <span>
-            <Globe2 size={13} /> 가상 포인트 시연 <i>·</i> 모든 경기·가격은 예시
+            <Globe2 size={13} /> FOOTBALL MARKET
           </span>
         </footer>
       </div>

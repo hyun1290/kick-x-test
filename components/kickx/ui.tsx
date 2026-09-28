@@ -1,8 +1,8 @@
 "use client";
 import Link from "next/link";
 import {
-  CSSProperties,
-  ReactNode,
+  type CSSProperties,
+  type ReactNode,
   useEffect,
   useId,
   useRef,
@@ -15,14 +15,19 @@ import {
   Search,
   X,
   Star,
-  Check,
   Info,
   ArrowLeft,
+  Database,
+  RefreshCw,
 } from "lucide-react";
-import { getTeam, money, percent, Player, Position } from "@/lib/kickx/data";
-import { useDemo } from "./provider";
-import { DEMO_SELL_FEE } from "@/lib/kickx/store";
-export const IconArrow = ArrowRight;
+import { dateText, money, percent, unavailableAction } from "@/lib/kickx/data";
+import type {
+  DataStatus,
+  Player,
+  Position,
+  SeriesPoint,
+} from "@/lib/kickx/types";
+import { usePlatform } from "./provider";
 export function PageHeading({
   eyebrow,
   title,
@@ -71,10 +76,15 @@ export function SectionTitle({
     </div>
   );
 }
-export function Change({ value }: { value: number }) {
+export function Change({ value }: { value: number | null | undefined }) {
+  const known = value != null && Number.isFinite(value);
   return (
-    <span className={`change ${value >= 0 ? "up" : "down"}`}>
-      {value >= 0 ? <ArrowUpRight size={15} /> : <ArrowDownRight size={15} />}{" "}
+    <span
+      className={`change ${!known || value === 0 ? "muted" : value > 0 ? "up" : "down"}`}
+    >
+      {known &&
+        value !== 0 &&
+        (value > 0 ? <ArrowUpRight size={15} /> : <ArrowDownRight size={15} />)}
       {percent(value)}
     </span>
   );
@@ -83,64 +93,81 @@ export function TeamBadge({
   id,
   size = "normal",
 }: {
-  id: string;
+  id: string | null;
   size?: "small" | "normal" | "large";
 }) {
-  const t = getTeam(id);
+  const { getTeam } = usePlatform();
+  const team = getTeam(id);
+  const color =
+    team?.color && /^#[0-9a-f]{3,8}$/i.test(team.color)
+      ? team.color
+      : "#7396c8";
   return (
     <span
       className={`team-badge ${size}`}
-      style={{ "--team-color": t.color } as CSSProperties}
-      title={t.name}
+      style={{ "--team-color": color } as CSSProperties}
+      title={team?.name || "구단 정보 없음"}
     >
-      {t.code}
+      {team?.code || team?.name.slice(0, 2) || "—"}
     </span>
   );
 }
 export function PlayerAvatar({
-  player: p,
+  player,
   large = false,
 }: {
   player: Player;
   large?: boolean;
 }) {
+  const { getTeam } = usePlatform();
+  const team = getTeam(player.team);
+  const color =
+    team?.color && /^#[0-9a-f]{3,8}$/i.test(team.color)
+      ? team.color
+      : "#7396c8";
   return (
     <span
       className={`player-avatar ${large ? "large" : ""}`}
-      style={{ "--team-color": getTeam(p.team).color } as CSSProperties}
+      style={{ "--team-color": color } as CSSProperties}
     >
-      <span>{p.number}</span>
-      <small>{getTeam(p.team).code}</small>
+      <span>{player.number ?? player.name.slice(0, 1)}</span>
+      <small>{team?.code || "—"}</small>
     </span>
   );
 }
-export function PositionBadge({ position }: { position: Position }) {
+export function PositionBadge({ position }: { position: Position | null }) {
   return (
-    <span className={`position ${position.toLowerCase()}`}>{position}</span>
+    <span className={`position ${position?.toLowerCase() || ""}`}>
+      {position || "—"}
+    </span>
   );
 }
-export function PlayerIdentity({ player: p }: { player: Player }) {
+export function PlayerIdentity({ player }: { player: Player }) {
+  const { getTeam } = usePlatform();
   return (
-    <Link className="player-identity" href={`/players/${p.id}`}>
-      <PlayerAvatar player={p} />
+    <Link className="player-identity" href={`/players/${player.id}`}>
+      <PlayerAvatar player={player} />
       <div>
-        <strong>{p.name}</strong>
+        <strong>{player.name}</strong>
         <span>
-          {getTeam(p.team).name} <i>·</i> {p.position}
+          {getTeam(player.team)?.name || "소속 정보 없음"}
+          <i>·</i>
+          {player.position || "—"}
         </span>
       </div>
     </Link>
   );
 }
 export function WatchButton({ id }: { id: string }) {
-  const { state, dispatch } = useDemo();
-  const active = state.watchlist.includes(id);
+  const { data } = usePlatform();
+  const active = data.member?.watchlist.includes(id) || false;
   return (
     <button
+      disabled
+      title={unavailableAction}
       className={`icon-button watch ${active ? "selected" : ""}`}
       aria-label={active ? "관심 선수 해제" : "관심 선수 추가"}
       aria-pressed={active}
-      onClick={() => dispatch({ type: "WATCH", id })}
     >
       <Star size={17} fill={active ? "currentColor" : "none"} />
     </button>
@@ -164,15 +191,118 @@ export function Empty({
     </div>
   );
 }
-export function DemoNote({ children }: { children?: ReactNode }) {
+export function DataEmpty({
+  entity,
+  filtered = false,
+  status: supplied,
+}: {
+  entity: string;
+  filtered?: boolean;
+  status?: DataStatus;
+}) {
+  const resource = usePlatform();
+  const status = supplied || resource.status;
+  if (status === "loading")
+    return (
+      <div className="empty" role="status">
+        <Database size={28} />
+        <h3>불러오는 중입니다</h3>
+      </div>
+    );
+  if (status === "error")
+    return (
+      <Empty
+        title="데이터를 불러오지 못했습니다"
+        description="잠시 후 다시 시도해 주세요."
+      />
+    );
+  if (status === "unauthorized" || status === "forbidden")
+    return (
+      <Empty
+        title={
+          status === "forbidden"
+            ? "관리자 권한이 필요합니다"
+            : "로그인이 필요합니다"
+        }
+        description="접근 권한이 확인된 계정으로 이용해 주세요."
+      />
+    );
   return (
-    <div className="demo-note">
-      <Info size={15} />
-      <span>
-        {children ||
-          "시연용 예시 데이터입니다. 실제 경기 기록·시세와 다릅니다."}
-      </span>
+    <Empty
+      title={filtered ? "검색 결과가 없습니다" : `${entity} 데이터가 없습니다`}
+      description={
+        status === "not-configured"
+          ? "데이터가 준비되면 이곳에 표시됩니다."
+          : filtered
+            ? "검색어나 필터를 바꿔 확인해 주세요."
+            : "등록된 데이터가 아직 없습니다."
+      }
+    />
+  );
+}
+export function DataNotice({
+  status,
+  reload,
+}: {
+  status: DataStatus;
+  reload: () => void;
+}) {
+  if (status === "ready") return null;
+  const message =
+    status === "loading"
+      ? "데이터를 불러오는 중입니다."
+      : status === "error"
+        ? "데이터를 불러오지 못했습니다."
+        : status === "unauthorized"
+          ? "로그인이 필요합니다."
+          : status === "forbidden"
+            ? "관리자 권한이 필요합니다."
+            : "서비스 준비 중 · 데이터가 준비되면 화면에 표시됩니다.";
+  return (
+    <div
+      className={`data-notice ${status === "error" ? "error" : ""}`}
+      role="status"
+    >
+      <Info size={16} />
+      <span>{message}</span>
+      {status === "error" && (
+        <button className="text-link" onClick={reload}>
+          <RefreshCw size={14} />
+          다시 시도
+        </button>
+      )}
     </div>
+  );
+}
+export function MemberNotice() {
+  const { data, status } = usePlatform();
+  if (status !== "ready" || data.session) return null;
+  return (
+    <div className="data-notice">
+      <Info size={16} />
+      <span>로그인 후 내 정보를 확인할 수 있습니다.</span>
+      <Link className="text-link" href="/login">
+        로그인
+      </Link>
+    </div>
+  );
+}
+export function DisabledAction({
+  children,
+  className = "button secondary",
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <button
+      type="button"
+      disabled
+      className={className}
+      title={unavailableAction}
+    >
+      {children}
+    </button>
   );
 }
 export function Tabs({
@@ -186,14 +316,15 @@ export function Tabs({
 }) {
   return (
     <div className="tabs" role="group" aria-label="보기 선택">
-      {items.map((i) => (
+      {items.map((item) => (
         <button
-          key={i}
-          aria-pressed={value === i}
-          className={value === i ? "active" : ""}
-          onClick={() => onChange(i)}
+          key={item}
+          type="button"
+          aria-pressed={value === item}
+          className={value === item ? "active" : ""}
+          onClick={() => onChange(item)}
         >
-          {i}
+          {item}
         </button>
       ))}
     </div>
@@ -206,6 +337,8 @@ export function Sparkline({
   values: number[];
   down?: boolean;
 }) {
+  if (values.length < 2 || values.some((v) => !Number.isFinite(v)))
+    return <span className="muted">—</span>;
   const min = Math.min(...values),
     range = Math.max(...values) - min || 1;
   return (
@@ -213,7 +346,7 @@ export function Sparkline({
       className={`sparkline ${down ? "negative" : ""}`}
       viewBox="0 0 120 36"
       role="img"
-      aria-label="시연 가격 추이"
+      aria-label="가격 추이"
     >
       <polyline
         fill="none"
@@ -230,31 +363,57 @@ export function Sparkline({
   );
 }
 export function PriceChart({
-  values,
-  labels = ["08.27", "09.03", "09.10", "09.17", "09.25"],
+  points,
   label = "선수 가치",
 }: {
-  values: number[];
-  labels?: string[];
+  points: SeriesPoint[];
   label?: string;
 }) {
   const uid = useId().replace(/:/g, "");
   const [hover, setHover] = useState<number | null>(null);
-  const min = Math.floor((Math.min(...values) * 0.97) / 100) * 100,
-    max = Math.ceil((Math.max(...values) * 1.015) / 100) * 100,
+  const valid = points
+    .filter(
+      (p) => Number.isFinite(p.value) && Number.isFinite(Date.parse(p.at)),
+    )
+    .sort((a, b) => Date.parse(a.at) - Date.parse(b.at));
+  if (valid.length < 2)
+    return (
+      <div className="chart-empty">
+        <div className="chart-empty-grid" aria-hidden="true" />
+        <Database size={26} />
+        <strong>
+          {valid.length
+            ? `${label} ${money(valid[0].value)} P`
+            : "아직 표시할 추이가 없습니다"}
+        </strong>
+        <span>
+          {valid.length
+            ? "기록이 더 쌓이면 추이를 확인할 수 있습니다."
+            : "저장된 기록을 기준으로 그래프가 표시됩니다."}
+        </span>
+      </div>
+    );
+  const values = valid.map((p) => p.value),
+    min = Math.min(...values),
+    max = Math.max(...values),
     range = max - min || 1;
-  const coords = values.map((v, i) => [
-    (i / (values.length - 1)) * 880,
-    180 - ((v - min) / range) * 155,
+  const first = Date.parse(valid[0].at),
+    span = Date.parse(valid[valid.length - 1].at) - first;
+  const coords = valid.map((p, i) => [
+    span
+      ? ((Date.parse(p.at) - first) / span) * 880
+      : (i / (valid.length - 1)) * 880,
+    180 - ((p.value - min) / range) * 155,
   ]);
   const path = coords
     .map(([x, y], i) => `${i ? "L" : "M"} ${x} ${y}`)
     .join(" ");
+  const selected = hover == null ? null : Math.min(hover, valid.length - 1);
   return (
     <div className="chart-wrap">
       <div className="chart-axis">
-        {[max, (max + min) / 2, min].map((v) => (
-          <span key={v}>{money(v)}</span>
+        {[max, (max + min) / 2, min].map((v, i) => (
+          <span key={i}>{money(v)}</span>
         ))}
       </div>
       <div className="chart-inner">
@@ -262,20 +421,16 @@ export function PriceChart({
           viewBox="0 0 880 205"
           preserveAspectRatio="none"
           role="img"
-          aria-label={`${label} 시연 추이. 최근 ${money(values[values.length - 1])} 포인트`}
+          aria-label={`${label} 추이`}
           onMouseLeave={() => setHover(null)}
           onMouseMove={(e) => {
             const rect = e.currentTarget.getBoundingClientRect();
+            const x = ((e.clientX - rect.left) / rect.width) * 880;
             setHover(
-              Math.max(
+              coords.reduce(
+                (best, c, i) =>
+                  Math.abs(c[0] - x) < Math.abs(coords[best][0] - x) ? i : best,
                 0,
-                Math.min(
-                  values.length - 1,
-                  Math.round(
-                    ((e.clientX - rect.left) / rect.width) *
-                      (values.length - 1),
-                  ),
-                ),
               ),
             );
           }}
@@ -305,32 +460,23 @@ export function PriceChart({
             strokeWidth="3"
             vectorEffect="non-scaling-stroke"
           />
-          {hover !== null && (
-            <g>
-              <line
-                x1={coords[hover][0]}
-                x2={coords[hover][0]}
-                y1="0"
-                y2="205"
-                stroke="#5679ae"
-                strokeDasharray="4 4"
-              />
-              <circle
-                cx={coords[hover][0]}
-                cy={coords[hover][1]}
-                r="5"
-                fill="#a6ccff"
-              />
-            </g>
+          {selected !== null && (
+            <circle
+              cx={coords[selected][0]}
+              cy={coords[selected][1]}
+              r="5"
+              fill="#a6ccff"
+            />
           )}
         </svg>
-        {hover !== null && (
-          <span className="chart-tooltip">{money(values[hover])} P</span>
+        {selected !== null && (
+          <span className="chart-tooltip">
+            {dateText(valid[selected].at)} · {money(valid[selected].value)} P
+          </span>
         )}
         <div className="chart-labels">
-          {labels.map((l) => (
-            <span key={l}>{l}</span>
-          ))}
+          <span>{dateText(valid[0].at, false)}</span>
+          <span>{dateText(valid[valid.length - 1].at, false)}</span>
         </div>
       </div>
     </div>
@@ -380,7 +526,7 @@ export function TradeButton({
   side = "buy",
   className = "button primary",
 }: {
-  player: Player;
+  player?: Player;
   side?: "buy" | "sell";
   className?: string;
 }) {
@@ -388,121 +534,46 @@ export function TradeButton({
   return (
     <>
       <button
+        type="button"
         className={className}
-        disabled={!!player.status}
+        disabled={!player || !!player.status}
         onClick={() => setOpen(true)}
       >
-        {player.status || (side === "buy" ? "매입" : "매각")}
+        {player?.status || (side === "buy" ? "매입" : "매각")}
       </button>
-      {open && (
-        <TradeModal
-          player={player}
-          side={side}
+      {open && player && (
+        <Modal
+          title={`선수 ${side === "buy" ? "매입" : "매각"}`}
           onClose={() => setOpen(false)}
-        />
+        >
+          <PlayerIdentity player={player} />
+          <dl className="summary-list">
+            {[
+              ["현재 가치", `${money(player.price)} P`],
+              ["거래 수량", "—"],
+              ["수수료", "—"],
+              ["최종 정산 금액", "—"],
+            ].map(([label, value]) => (
+              <div key={label}>
+                <dt>{label}</dt>
+                <dd>{value}</dd>
+              </div>
+            ))}
+          </dl>
+          <p className="fine-print">
+            거래 서비스 준비 중입니다. 현재는 주문을 접수할 수 없습니다.
+          </p>
+          <div className="modal-actions">
+            <button className="button secondary" onClick={() => setOpen(false)}>
+              닫기
+            </button>
+            <DisabledAction className="button primary">
+              거래 확정
+            </DisabledAction>
+          </div>
+        </Modal>
       )}
     </>
-  );
-}
-function TradeModal({
-  player: p,
-  side,
-  onClose,
-}: {
-  player: Player;
-  side: "buy" | "sell";
-  onClose: () => void;
-}) {
-  const { state, dispatch } = useDemo();
-  const submitted = useRef(false);
-  const owned = state.holdings.some((h) => h.playerId === p.id);
-  const fee = side === "sell" ? Math.floor(p.price * DEMO_SELL_FEE) : 0;
-  const blocked =
-    !state.signedIn ||
-    (side === "buy" ? owned || state.points < p.price : !owned);
-  const reason = !state.signedIn
-    ? "데모 로그인 후 거래할 수 있습니다."
-    : side === "buy"
-      ? owned
-        ? "이미 보유한 선수입니다."
-        : state.points < p.price
-          ? "보유 포인트가 부족합니다."
-          : ""
-      : !owned
-        ? "보유한 선수만 매각할 수 있습니다."
-        : "";
-  return (
-    <Modal
-      title={`선수 ${side === "buy" ? "매입" : "매각"} 확인`}
-      onClose={onClose}
-    >
-      <div className="trade-player">
-        <PlayerAvatar player={p} large />
-        <div>
-          <h3>{p.name}</h3>
-          <p>{p.english}</p>
-          <PositionBadge position={p.position} />
-        </div>
-      </div>
-      <dl className="summary-list">
-        <div>
-          <dt>현재 선수 가치</dt>
-          <dd>{money(p.price)} P</dd>
-        </div>
-        <div>
-          <dt>수량</dt>
-          <dd>1명</dd>
-        </div>
-        <div>
-          <dt>수수료 {side === "sell" ? "(시연용 2%)" : ""}</dt>
-          <dd>{money(fee)} P</dd>
-        </div>
-        <div className="total">
-          <dt>{side === "buy" ? "매입 금액" : "받을 포인트"}</dt>
-          <dd>{money(p.price - fee)} P</dd>
-        </div>
-        <div>
-          <dt>거래 후 보유 포인트</dt>
-          <dd>
-            {money(state.points + (side === "buy" ? -p.price : p.price - fee))}{" "}
-            P
-          </dd>
-        </div>
-      </dl>
-      {reason && (
-        <p className="form-error" role="alert">
-          {reason}
-        </p>
-      )}
-      <DemoNote>
-        가상 포인트로 진행하는 데모 거래입니다. 수수료와 중복 보유 규칙은 시연용
-        가정입니다.
-      </DemoNote>
-      <div className="modal-actions">
-        <button className="button secondary" onClick={onClose}>
-          취소
-        </button>
-        <button
-          className="button primary"
-          disabled={blocked}
-          onClick={() => {
-            if (submitted.current) return;
-            submitted.current = true;
-            dispatch({
-              type: "TRADE",
-              id: p.id,
-              side,
-              requestId: crypto.randomUUID(),
-              date: new Date().toISOString(),
-            });
-            onClose();
-          }}
-        >
-          <Check size={17} />
-          {side === "buy" ? "매입 확정" : "매각 확정"}
-        </button>
-      </div>
-    </Modal>
   );
 }
 export function BackLink({

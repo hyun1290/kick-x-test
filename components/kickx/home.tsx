@@ -1,37 +1,31 @@
 "use client";
 import Link from "next/link";
-import {
-  ArrowRight,
-  ArrowUpRight,
-  CalendarDays,
-  Trophy,
-  Wallet,
-} from "lucide-react";
-import { fixtures, getPlayer, getTeam, money, players } from "@/lib/kickx/data";
-import { useDemo } from "./provider";
+import { ArrowRight, ArrowUpRight, Trophy, Wallet } from "lucide-react";
+import { dateText, money } from "@/lib/kickx/data";
+import { usePlatform } from "./provider";
 import {
   Change,
+  DataEmpty,
   PlayerIdentity,
   SectionTitle,
-  Sparkline,
   TeamBadge,
 } from "./ui";
 import { Pitch } from "./squad";
 export function HomeScreen() {
-  const { state } = useDemo();
-  const value = state.holdings.reduce(
-    (s, h) => s + getPlayer(h.playerId)!.price,
-    0,
-  );
-  const total = state.points + value;
-  const gain = ((total - state.baseline) / state.baseline) * 100;
-  const trending = [...players].sort((a, b) => b.change - a.change).slice(0, 5);
+  const { data, getTeam, getLeague } = usePlatform();
+  const member = data.member;
+  const trending = [...data.players]
+    .filter((p) => p.change != null)
+    .sort((a, b) => b.change! - a.change!)
+    .slice(0, 5);
   return (
     <>
       <div className="home-welcome">
         <span>YOUR FOOTBALL, YOUR CALL.</span>
         <span>
-          2026년 9월 25일 <i>금요일</i>
+          {data.updatedAt
+            ? `최근 갱신 ${dateText(data.updatedAt)}`
+            : "REAL FOOTBALL. YOUR GAME."}
         </span>
       </div>
       <section className="home-hero">
@@ -69,24 +63,12 @@ export function HomeScreen() {
             <ArrowUpRight size={17} />
           </div>
           <div className="stat-value">
-            {money(total)} <small>P</small>
+            {money(member?.totalAssets)} <small>P</small>
           </div>
           <div className="stat-foot">
-            <Change value={gain} />
-            <span>기준 자산 대비</span>
+            <Change value={member?.returnRate} />
+            <span>{member ? "자산 수익률" : "내 자산 정보가 표시됩니다"}</span>
           </div>
-          <Sparkline
-            values={[
-              112000,
-              115000,
-              114000,
-              119000,
-              117000,
-              124000,
-              122000,
-              total,
-            ]}
-          />
         </Link>
         <Link href="/portfolio" className="stat-card">
           <div className="stat-label">
@@ -94,14 +76,11 @@ export function HomeScreen() {
             <ArrowUpRight size={17} />
           </div>
           <div className="stat-value">
-            {money(state.points)} <small>P</small>
+            {money(member?.points)} <small>P</small>
           </div>
           <div className="stat-foot">
             <span>선수 자산</span>
-            <b>{money(value)} P</b>
-          </div>
-          <div className="stat-allocation">
-            <span style={{ width: `${(state.points / total) * 100}%` }} />
+            <b>{money(member?.playerAssets)} P</b>
           </div>
         </Link>
         <Link href="/ranking" className="stat-card ranking-stat">
@@ -113,18 +92,18 @@ export function HomeScreen() {
             <ArrowUpRight size={17} />
           </div>
           <div className="stat-value">
-            <small>#</small> 8 <span className="ranking-tag">WEEKLY</span>
+            {member?.weeklyRank != null ? `#${member.weeklyRank}` : "—"}
+            <span className="ranking-tag">WEEKLY</span>
           </div>
           <div className="stat-foot">
-            <span>주간 수익률 경쟁</span>
-            <b>예시 순위</b>
+            <span>집계된 순위를 확인하세요</span>
           </div>
           <Trophy className="stat-watermark" size={70} />
         </Link>
       </div>
       <div className="home-bottom">
         <section className="panel home-market">
-          <SectionTitle title="지금 주목할 선수" meta="TOP 5" href="/market" />
+          <SectionTitle title="지금 주목할 선수" href="/market" />
           <div className="table-scroll">
             <table className="data-table">
               <thead>
@@ -138,13 +117,11 @@ export function HomeScreen() {
               <tbody>
                 {trending.map((p, i) => (
                   <tr key={p.id}>
-                    <td className="rank-index">0{i + 1}</td>
+                    <td className="rank-index">{i + 1}</td>
                     <td>
                       <PlayerIdentity player={p} />
                     </td>
-                    <td className="numeric strong">
-                      {money(p.price)} <small>P</small>
-                    </td>
+                    <td className="numeric strong">{money(p.price)} P</td>
                     <td className="numeric">
                       <Change value={p.change} />
                     </td>
@@ -153,6 +130,7 @@ export function HomeScreen() {
               </tbody>
             </table>
           </div>
+          {!trending.length && <DataEmpty entity="선수" />}
           <div className="panel-bottom-note">
             <span className="blue-dot" />
             선수 가격 · 거래량 · 경기력 한눈에 확인하기
@@ -160,53 +138,51 @@ export function HomeScreen() {
         </section>
         <section className="panel fixtures-panel">
           <SectionTitle title="주요 경기" meta="KST" />
-          {fixtures.map((f) => (
+          {data.fixtures.map((f) => (
             <div className="fixture" key={f.id}>
               <div className="fixture-meta">
-                <span>{f.league}</span>
-                <span>
-                  {f.date} ({f.day})
-                </span>
+                <span>{getLeague(f.leagueId)?.name || "—"}</span>
+                <span>{dateText(f.startsAt)}</span>
               </div>
               <div className="fixture-teams">
                 <Link href={`/community/clubs/${f.home}`}>
                   <TeamBadge id={f.home} />
-                  <span>{getTeam(f.home).name}</span>
+                  <span>{getTeam(f.home)?.name || "구단 정보 없음"}</span>
                 </Link>
                 <div>
-                  <strong>{f.time}</strong>
-                  <span>예정</span>
+                  <strong>VS</strong>
+                  <span>{f.status}</span>
                 </div>
                 <Link href={`/community/clubs/${f.away}`}>
                   <TeamBadge id={f.away} />
-                  <span>{getTeam(f.away).name}</span>
+                  <span>{getTeam(f.away)?.name || "구단 정보 없음"}</span>
                 </Link>
               </div>
             </div>
           ))}
-          <p className="panel-bottom-note">
-            <CalendarDays size={14} />
-            실제 일정이 아닌 예시 경기입니다.
-          </p>
+          {!data.fixtures.length && <DataEmpty entity="경기 일정" />}
         </section>
         <section className="panel home-squad">
-          <SectionTitle title="내 스쿼드" href="/squad" link="편집" />
+          <SectionTitle title="내 스쿼드" href="/squad" link="관리" />
           <div className="squad-summary">
-            <strong>{state.formation}</strong>
-            <span>{state.squad.filter(Boolean).length} / 11명</span>
+            <strong>
+              {data.formations.find((f) => f.id === member?.squad?.formationId)
+                ?.name || "포메이션 미선택"}
+            </strong>
+            <span>
+              {member?.squad
+                ? `${member.squad.slots.filter(Boolean).length}명`
+                : "—"}
+            </span>
           </div>
-          <Pitch slots={state.squad} formation={state.formation} compact />
+          <Pitch
+            slots={member?.squad?.slots || []}
+            formation={member?.squad?.formationId || null}
+            compact
+          />
           <div className="home-squad-footer">
             <span>선수단 가치</span>
-            <strong>
-              {money(
-                state.squad.reduce(
-                  (s, id) => s + (id ? getPlayer(id)!.price : 0),
-                  0,
-                ),
-              )}{" "}
-              P
-            </strong>
+            <strong>{money(member?.squad?.value)} P</strong>
           </div>
         </section>
       </div>
