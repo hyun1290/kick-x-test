@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import {
   type CSSProperties,
   type ReactNode,
@@ -159,19 +160,17 @@ export function PlayerIdentity({ player }: { player: Player }) {
   );
 }
 export function WatchButton({ id }: { id: string }) {
-  const { data } = usePlatform();
+  const { data, status, setWatched, pendingWatch } = usePlatform();
+  const pathname = usePathname();
   const active = data.member?.watchlist.includes(id) || false;
-  return (
-    <button
-      disabled
-      title={unavailableAction}
-      className={`icon-button watch ${active ? "selected" : ""}`}
-      aria-label={active ? "관심 선수 해제" : "관심 선수 추가"}
-      aria-pressed={active}
-    >
-      <Star size={17} fill={active ? "currentColor" : "none"} />
-    </button>
-  );
+  const pending = pendingWatch.includes(id);
+  if (!data.session && status === "ready")
+    return <Link href={"/login?next=" + encodeURIComponent(pathname)} className="icon-button watch" aria-label="로그인하고 관심 선수 추가" title="로그인하고 관심 선수 추가"><Star size={17}/></Link>;
+  return <button type="button" disabled={status !== "ready" || !data.session || !data.member || pending}
+    title={status !== "ready" ? "서비스 연결 후 이용할 수 있습니다." : active ? "관심 선수 해제" : "관심 선수 추가"}
+    className={`icon-button watch ${active ? "selected" : ""} ${pending ? "is-pending" : ""}`}
+    aria-label={active ? "관심 선수 해제" : "관심 선수 추가"} aria-pressed={active} aria-busy={pending}
+    onClick={() => void setWatched(id, !active)}><Star size={17} fill={active ? "currentColor" : "none"}/></button>;
 }
 export function Empty({
   title = "검색 결과가 없습니다",
@@ -184,7 +183,7 @@ export function Empty({
 }) {
   return (
     <div className="empty">
-      <Search size={28} />
+      <span className="kx-empty-symbol" aria-hidden="true"><Search size={26} /></span>
       <h3>{title}</h3>
       <p>{description}</p>
       {action}
@@ -204,8 +203,8 @@ export function DataEmpty({
   const status = supplied || resource.status;
   if (status === "loading")
     return (
-      <div className="empty" role="status">
-        <Database size={28} />
+      <div className="empty kx-loading-state" role="status" aria-busy="true">
+        <div className="kx-skeleton-lines" aria-hidden="true"><i/><i/><i/></div>
         <h3>불러오는 중입니다</h3>
       </div>
     );
@@ -214,6 +213,7 @@ export function DataEmpty({
       <Empty
         title="데이터를 불러오지 못했습니다"
         description="잠시 후 다시 시도해 주세요."
+        action={!supplied && <button type="button" className="button secondary small" onClick={resource.reload}><RefreshCw size={14}/>다시 시도</button>}
       />
     );
   if (status === "unauthorized" || status === "forbidden")
@@ -229,7 +229,7 @@ export function DataEmpty({
     );
   return (
     <Empty
-      title={filtered ? "검색 결과가 없습니다" : `${entity} 데이터가 없습니다`}
+      title={filtered ? "검색 결과가 없습니다" : status === "not-configured" ? `${entity} 정보를 준비하고 있습니다` : `아직 등록된 ${entity} 정보가 없습니다`}
       description={
         status === "not-configured"
           ? "데이터가 준비되면 이곳에 표시됩니다."
