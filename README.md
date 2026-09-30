@@ -1,109 +1,59 @@
-<a href="https://demo-nextjs-with-supabase.vercel.app/">
-  <img alt="Next.js and Supabase Starter Kit - the fastest way to build apps with Next.js and Supabase" src="https://demo-nextjs-with-supabase.vercel.app/opengraph-image.png">
-  <h1 align="center">Next.js and Supabase Starter Kit</h1>
-</a>
+# KICK-X
 
-<p align="center">
- The fastest way to build apps with Next.js and Supabase
-</p>
+Next.js 기반 판타지 축구 선수 시장의 전체 페이지 UI와 **DB 연결 준비 구조**입니다.
 
-<p align="center">
-  <a href="#features"><strong>Features</strong></a> ·
-  <a href="#demo"><strong>Demo</strong></a> ·
-  <a href="#deploy-to-vercel"><strong>Deploy to Vercel</strong></a> ·
-  <a href="#clone-and-run-locally"><strong>Clone and run locally</strong></a> ·
-  <a href="#feedback-and-issues"><strong>Feedback and issues</strong></a>
-  <a href="#more-supabase-examples"><strong>More Examples</strong></a>
-</p>
-<br/>
+2026-09-30: 제공된 Yellow Playbook 레퍼런스에 맞춰 노랑·검정·흰색 테마와 상단 메뉴를 적용했습니다. 홈은 선수 검색/필터/정렬과 자산·스쿼드·경기 일정·관심 선수 패널로 구성합니다. 기존 URL과 서버 조회·권한 경계는 유지하며 예시 데이터나 가상 로그인/거래를 추가하지 않습니다.
 
-## Features
+2026-09-28: 기존 예시 선수·구단·경기·가격·랭킹·회원·자산·게시글·관리자 기록과 브라우저 거래 시뮬레이터를 제거했습니다. 현재는 서버의 미연결 어댑터에서 빈 응답을 받습니다. 실제 DB나 외부 서비스에 연결된 상태는 아닙니다.
 
-- Works across the entire [Next.js](https://nextjs.org) stack
-  - App Router
-  - Pages Router
-  - Proxy
-  - Client
-  - Server
-  - It just works!
-- supabase-ssr. A package to configure Supabase Auth to use cookies
-- Password-based authentication block installed via the [Supabase UI Library](https://supabase.com/ui/docs/nextjs/password-based-auth)
-- Styling with [Tailwind CSS](https://tailwindcss.com)
-- Components with [shadcn/ui](https://ui.shadcn.com/)
-- Optional deployment with [Supabase Vercel Integration and Vercel deploy](#deploy-your-own)
-  - Environment variables automatically assigned to Vercel project
+## 실행
 
-## Demo
+```sh
+npm ci
+npm run dev
+```
 
-You can view a fully working demo at [demo-nextjs-with-supabase.vercel.app](https://demo-nextjs-with-supabase.vercel.app/).
+환경변수 없이 빈 화면 구조를 확인할 수 있습니다. 알 수 없는 금액은 `—`, 목록은 빈 상태로 표시합니다. DB 연결 실패와 정상적인 빈 조회 결과도 구분합니다. Google 로그인·주문 확정·저장·삭제·신고·관리자 재처리는 서비스 연결 전까지 비활성화됩니다. 검색·필터·탭·페이지 이동과 입력 양식은 확인할 수 있습니다.
 
-## Deploy to Vercel
+이전 버전의 `kickx-ui-demo-v1` 브라우저 데이터는 접속 시 해당 키만 제거하며, 읽거나 다시 저장하지 않습니다. 다른 사이트·기능의 저장 데이터에는 영향을 주지 않습니다. 저장소 접근이 차단되어도 데모 데이터를 읽지 않으므로 예시가 복원되지 않습니다.
 
-Vercel deployment will guide you through creating a Supabase account and project.
+## 개발 구조
 
-After installation of the Supabase integration, all relevant environment variables will be assigned to the project so the deployment is fully functioning.
+| 위치                            | 역할                                                                       |
+| ------------------------------- | -------------------------------------------------------------------------- |
+| `app/`                          | 기존 20개 화면의 URL, 공통 레이아웃, 오류 화면                             |
+| `components/kickx/`             | Yellow Playbook 디자인, 화면별 표시와 편집 양식                             |
+| `lib/kickx/types.ts`            | 서버에서 UI로 전달할 데이터 타입. **DB 테이블 스키마가 아닌 조회 모델**    |
+| `lib/kickx/data.ts`             | 빈 데이터 생성과 숫자·날짜·기간 표시 유틸리티                              |
+| `components/kickx/provider.tsx` | HTTP 조회, 로딩·미연결·오류 상태, 다시 시도, 기존 데모 저장소 정리         |
+| `server/kickx/repository.ts`    | 실제 Supabase 조회 구현을 넣을 서버 전용 인터페이스와 현재의 미연결 어댑터 |
+| `server/kickx/service.ts`       | 검증된 세션의 회원 정보만 조회하고 관리자 데이터를 별도 분리하는 서비스    |
+| `app/api/kickx/route.ts`        | 공개 데이터 및 현재 로그인 사용자 데이터 조회. 개인 응답 캐시 금지         |
+| `app/api/kickx/admin/route.ts`  | 관리자 전용 조회. 연결 후 비로그인 401, 일반 회원 403                      |
+| `tests/data-boundary.test.mjs`  | 빈 초기 상태, 미확정 값, 비로그인/회원/관리자 데이터 분리, 조회 실패 검증  |
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fvercel%2Fnext.js%2Ftree%2Fcanary%2Fexamples%2Fwith-supabase&project-name=nextjs-with-supabase&repository-name=nextjs-with-supabase&demo-title=nextjs-with-supabase&demo-description=This+starter+configures+Supabase+Auth+to+use+cookies%2C+making+the+user%27s+session+available+throughout+the+entire+Next.js+app+-+Client+Components%2C+Server+Components%2C+Route+Handlers%2C+Server+Actions+and+Middleware.&demo-url=https%3A%2F%2Fdemo-nextjs-with-supabase.vercel.app%2F&external-id=https%3A%2F%2Fgithub.com%2Fvercel%2Fnext.js%2Ftree%2Fcanary%2Fexamples%2Fwith-supabase&demo-image=https%3A%2F%2Fdemo-nextjs-with-supabase.vercel.app%2Fopengraph-image.png)
+`GET /api/kickx`의 응답은 `{ status, data }`이며 `status`는 `not-configured` 또는 `ready`입니다. 조회 실패는 HTTP 500이며 성공한 빈 결과로 숨기지 않습니다. 데이터가 없거나 미확정인 값은 `null`, 실제 조회 결과가 0일 때만 `0`을 사용합니다. 관리자 데이터를 공개 API에 포함하지 않습니다.
 
-The above will also clone the Starter kit to your GitHub, you can clone that locally and develop locally.
+**환경변수만 넣으면 자동 연결되는 구현은 아닙니다.** 실제 연결 시 `KickxRepository`를 구현해 `getKickxRepository()`가 반환하도록 교체해야 합니다. `getSession()`은 서버에서 OAuth 세션을 검증해야 하며 브라우저가 보낸 사용자 ID·관리자 역할을 신뢰하면 안 됩니다. 현재 어댑터는 인증된 사용자나 관리자 권한을 만들어내지 않습니다.
 
-If you wish to just develop locally and not deploy to Vercel, [follow the steps below](#clone-and-run-locally).
+화면에 필요한 조회 구조만 준비했습니다. Google OAuth 콜백, DB 테이블·RLS·마이그레이션, 쓰기 API, 주문 견적/거래 트랜잭션, 계산·수집 작업은 아직 구현 전입니다. 실제 데이터 규모가 커지면 전체 조회 형태를 화면별 조회와 서버 페이지네이션으로 분리하세요. 권한·데이터 구조·조회 실패 처리 테스트는 어댑터를 바꿀 때도 유지해야 합니다.
 
-## Clone and run locally
+## 페이지별 기능과 다음 작업
 
-1. You'll first need a Supabase project which can be made [via the Supabase dashboard](https://database.new)
+[전체 페이지별 기능·결정 사항·구현 순서](docs/ui-implementation.md)에 20개 화면과 필요한 정책을 정리했습니다. DB 설계 전에 우선 거래 방식, 초기 포인트, 가격/수수료 계산, 선수 보유 방식, 스쿼드·랭킹 규칙을 확정하세요.
 
-2. Create a Next.js app using the Supabase Starter template npx command
+## 검증
 
-   ```bash
-   npx create-next-app --example with-supabase with-supabase-app
-   ```
+```sh
+npm run lint
+npm test
+npm run build
+```
 
-   ```bash
-   yarn create next-app --example with-supabase with-supabase-app
-   ```
+기존 런타임 의존성을 유지하며 테스트에는 기존 TypeScript와 Node 테스트 러너를 사용합니다.
 
-   ```bash
-   pnpm create next-app --example with-supabase with-supabase-app
-   ```
+## 시각 자산
 
-3. Use `cd` to change into the app's directory
+`public/images/yellow-playbook-reference.png`는 사용자가 제공한 디자인 레퍼런스입니다. 상단과 제목 옆의 선수 이미지를 장식용으로만 사용하며 실제 선수 데이터로 표시하지 않습니다. 노랑·검정 테마는 `app/yellow-playbook.css`에서 정의하고, 모션 감소 설정에서는 등장·호버 애니메이션을 끕니다. 기존 `stadium-night.webp`는 이전 디자인 자산으로 보존합니다.
 
-   ```bash
-   cd with-supabase-app
-   ```
-
-4. Rename `.env.example` to `.env.local` and update the following:
-
-  ```env
-  NEXT_PUBLIC_SUPABASE_URL=[INSERT SUPABASE PROJECT URL]
-  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=[INSERT SUPABASE PROJECT API PUBLISHABLE OR ANON KEY]
-  ```
-  > [!NOTE]
-  > This example uses `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, which refers to Supabase's new **publishable** key format.
-  > Both legacy **anon** keys and new **publishable** keys can be used with this variable name during the transition period. Supabase's dashboard may show `NEXT_PUBLIC_SUPABASE_ANON_KEY`; its value can be used in this example.
-  > See the [full announcement](https://github.com/orgs/supabase/discussions/29260) for more information.
-
-  Both `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` can be found in [your Supabase project's API settings](https://supabase.com/dashboard/project/_?showConnect=true)
-
-5. You can now run the Next.js local development server:
-
-   ```bash
-   npm run dev
-   ```
-
-   The starter kit should now be running on [localhost:3000](http://localhost:3000/).
-
-6. This template comes with the default shadcn/ui style initialized. If you instead want other ui.shadcn styles, delete `components.json` and [re-install shadcn/ui](https://ui.shadcn.com/docs/installation/next)
-
-> Check out [the docs for Local Development](https://supabase.com/docs/guides/getting-started/local-development) to also run Supabase locally.
-
-## Feedback and issues
-
-Please file feedback and issues over on the [Supabase GitHub org](https://github.com/supabase/supabase/issues/new/choose).
-
-## More Supabase examples
-
-- [Next.js Subscription Payments Starter](https://github.com/vercel/nextjs-subscription-payments)
-- [Cookie-based Auth and the Next.js 13 App Router (free course)](https://youtube.com/playlist?list=PL5S4mPUpp4OtMhpnp93EFSo42iQ40XjbF)
-- [Supabase Auth and the Next.js App Router](https://github.com/supabase/supabase/tree/master/examples/auth/nextjs)
+`public/fonts/noto-sans-kr.woff2`는 Google Fonts Noto Sans KR의 한글·라틴·기본 기호 서브셋입니다. 라이선스는 `public/fonts/OFL-NotoSansKR.txt`에 포함되어 있습니다.

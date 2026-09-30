@@ -1,40 +1,30 @@
+import { Suspense } from "react";
 import type { Metadata } from "next";
-import { Geist } from "next/font/google";
-import { ThemeProvider } from "next-themes";
+import { PlatformProvider } from "@/components/kickx/provider";
+import { AppShell } from "@/components/kickx/shell";
 import "./globals.css";
-
-const defaultUrl = process.env.VERCEL_URL
-  ? `https://${process.env.VERCEL_URL}`
-  : "http://localhost:3000";
-
+import "./yellow-playbook.css";
 export const metadata: Metadata = {
-  metadataBase: new URL(defaultUrl),
-  title: "Next.js and Supabase Starter Kit",
-  description: "The fastest way to build apps with Next.js and Supabase",
+  title: { default: "KICK-X | Football Market", template: "%s | KICK-X" },
+  description:
+    "실제 축구의 흐름을 나만의 선수 자산으로. KICK-X 판타지 축구 선수 시장.",
+  icons: { icon: "/favicon.svg" },
 };
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  display: "swap",
-  subsets: ["latin"],
-});
-
 export default function RootLayout({
   children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+}: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body className={`${geistSans.className} antialiased`}>
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-          disableTransitionOnChange
+    <html lang="ko">
+      <body>
+        <Suspense
+          fallback={
+            <div className="page-loading">KICK-X 화면을 불러오는 중…</div>
+          }
         >
-          {children}
-        </ThemeProvider>
+          <PlatformProvider>
+            <AppShell>{children}</AppShell>
+          </PlatformProvider>
+        </Suspense>
       </body>
     </html>
   );

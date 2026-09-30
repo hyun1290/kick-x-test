@@ -1,0 +1,197 @@
+/** View models returned by the server. Null means unknown, never a fabricated zero. */
+export type Position = "GK" | "DF" | "MF" | "FW";
+export type SeriesPoint = { at: string; value: number };
+export type Team = {
+  id: string;
+  name: string;
+  english: string | null;
+  code: string | null;
+  color: string | null;
+  leagueId: string | null;
+};
+export type League = { id: string; name: string };
+export type PlayerRecord = {
+  id: string;
+  playedAt: string;
+  opponent: string;
+  result: string | null;
+  minutes: number | null;
+  goals: number | null;
+  assists: number | null;
+  performance: number | null;
+};
+export type Player = {
+  id: string;
+  name: string;
+  english: string | null;
+  short: string | null;
+  team: string | null;
+  position: Position | null;
+  number: number | null;
+  country: string | null;
+  age: number | null;
+  price: number | null;
+  change: number | null;
+  performance: number | null;
+  volume: number | null;
+  goals: number | null;
+  assists: number | null;
+  minutes: number | null;
+  history: SeriesPoint[];
+  records: PlayerRecord[];
+  analysis: string | null;
+  updatedAt: string | null;
+  status: string | null;
+};
+export type Fixture = {
+  id: string;
+  leagueId: string | null;
+  home: string;
+  away: string;
+  startsAt: string;
+  status: string;
+};
+export type Formation = { id: string; name: string; positions: Position[] };
+export type Transaction = {
+  id: string;
+  playerId: string;
+  playerName: string;
+  type: "buy" | "sell";
+  quantity: number;
+  price: number;
+  fee: number;
+  net: number;
+  date: string;
+  status: string;
+};
+export type Holding = {
+  id: string;
+  playerId: string;
+  playerName: string;
+  quantity: number;
+  cost: number;
+  value: number | null;
+  profit: number | null;
+  returnRate: number | null;
+};
+export type Post = {
+  id: string;
+  author: string;
+  authorId: string;
+  scope: "club" | "player";
+  target: string;
+  category: string;
+  title: string;
+  body: string;
+  date: string;
+  likes: number;
+  views: number;
+  commentCount: number;
+  transaction: Transaction | null;
+};
+export type Comment = {
+  id: string;
+  postId: string;
+  author: string;
+  authorId: string;
+  body: string;
+  date: string;
+};
+export type Profile = { nickname: string; team: string | null };
+export type Session = {
+  userId: string;
+  role: "member" | "admin";
+  profile: Profile | null;
+};
+export type MemberData = {
+  points: number | null;
+  totalAssets: number | null;
+  playerAssets: number | null;
+  profit: number | null;
+  returnRate: number | null;
+  weeklyRank: number | null;
+  holdings: Holding[];
+  transactions: Transaction[];
+  watchlist: string[];
+  assetHistory: SeriesPoint[];
+  squad: {
+    formationId: string;
+    slots: (string | null)[];
+    value: number | null;
+    performance: number | null;
+  } | null;
+};
+export type RankingRow = {
+  userId: string;
+  rank: number;
+  nickname: string;
+  team: string | null;
+  assets: number | null;
+  returnRate: number | null;
+};
+export type RankingPeriod = {
+  id: "weekly" | "monthly";
+  startsAt: string;
+  endsAt: string;
+  calculatedAt: string;
+  rows: RankingRow[];
+};
+export type PublicData = {
+  players: Player[];
+  teams: Team[];
+  leagues: League[];
+  fixtures: Fixture[];
+  formations: Formation[];
+  categories: string[];
+  posts: Post[];
+  comments: Comment[];
+  rankings: RankingPeriod[];
+  market: {
+    volume: number | null;
+    rising: number | null;
+    falling: number | null;
+    calculatedAt: string | null;
+  } | null;
+  updatedAt: string | null;
+};
+export type PlatformData = PublicData & {
+  session: Session | null;
+  member: MemberData | null;
+};
+export type AdminData = {
+  summary: {
+    players: number | null;
+    completedJobs: number | null;
+    failedJobs: number | null;
+    pendingReports: number | null;
+  } | null;
+  jobs: {
+    id: string;
+    name: string;
+    kind: string;
+    target: string;
+    time: string;
+    status: string;
+    success: number | null;
+    fail: number | null;
+    error: string | null;
+  }[];
+  trades: (Transaction & { userId: string })[];
+  reports: {
+    id: string;
+    postId: string;
+    title: string;
+    reason: string;
+    status: string;
+    date: string;
+  }[];
+  audit: { id: string; description: string; date: string }[];
+};
+export type DataStatus =
+  | "loading"
+  | "not-configured"
+  | "ready"
+  | "error"
+  | "unauthorized"
+  | "forbidden";
+export type DataResponse<T> = { status: "ready" | "not-configured"; data: T };
