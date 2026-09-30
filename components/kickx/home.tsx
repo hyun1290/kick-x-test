@@ -1,191 +1,70 @@
 "use client";
 import Link from "next/link";
-import { ArrowRight, ArrowUpRight, Trophy, Wallet } from "lucide-react";
+import { useMemo, useState } from "react";
+import { ArrowRight, ChevronDown, Search, Shield, Shirt, Star, X } from "lucide-react";
 import { dateText, money } from "@/lib/kickx/data";
 import { usePlatform } from "./provider";
-import {
-  Change,
-  DataEmpty,
-  PlayerIdentity,
-  SectionTitle,
-  TeamBadge,
-} from "./ui";
+import { DataEmpty, DataNotice, Modal, PlayerAvatar, PlayerIdentity, PositionBadge, WatchButton } from "./ui";
 import { Pitch } from "./squad";
+import { PlaybookArt } from "./playbook-art";
+
+function SectionLink({ title, href, label }: { title: string; href: string; label?: string }) {
+  return <div className="yb-panel-heading"><h2>{title}</h2><Link href={href} aria-label={`${title} ${label || "보기"}`}>{label && <span>{label}</span>}<ArrowRight size={24} /></Link></div>;
+}
+/** An unselected pitch illustration, not a configured/default formation. */
+function EmptyPitch() {
+  const spots = [[27,22],[50,15],[73,22],[24,49],[50,49],[76,49],[13,73],[38,73],[62,73],[87,73],[50,92]];
+  return <Link href="/squad" className="yb-empty-pitch" aria-label="스쿼드 구성하기"><svg viewBox="0 0 360 280" preserveAspectRatio="none" aria-hidden="true"><path d="M36 8H324L357 274H3Z M21 140H339 M114 8L109 61H251L246 8 M141 8L139 29H221L219 8 M90 274L94 227H266L270 274 M137 274L138 254H222L223 274" /><ellipse cx="180" cy="140" rx="39" ry="23" /></svg>{spots.map(([x,y],i)=><Shirt aria-hidden="true" key={i} style={{left:`${x}%`,top:`${y}%`}} />)}</Link>;
+}
 export function HomeScreen() {
-  const { data, getTeam, getLeague } = usePlatform();
+  const { data, status, reload, getTeam } = usePlatform();
+  const [query, setQuery] = useState("");
+  const [search, setSearch] = useState("");
+  const [position, setPosition] = useState("all");
+  const [team, setTeam] = useState("all");
+  const [sort, setSort] = useState("default");
+  const [all, setAll] = useState(false);
+  const [fixturesOpen, setFixturesOpen] = useState(false);
   const member = data.member;
-  const trending = [...data.players]
-    .filter((p) => p.change != null)
-    .sort((a, b) => b.change! - a.change!)
-    .slice(0, 5);
+  const filtered = !!search || position !== "all" || team !== "all";
+  const results = useMemo(() => data.players.filter(player => {
+    const club = data.teams.find(item => item.id === player.team);
+    return `${player.name} ${player.english || ""} ${club?.name || ""}`.toLowerCase().includes(search.trim().toLowerCase()) && (position === "all" || player.position === position) && (team === "all" || player.team === team);
+  }).sort((a,b) => {
+    if (sort === "default") return 0;
+    const left = sort === "performance" ? a.performance : a.price;
+    const right = sort === "performance" ? b.performance : b.price;
+    if (left == null) return right == null ? 0 : 1;
+    if (right == null) return -1;
+    return sort === "low" ? left - right : right - left;
+  }), [data.players,data.teams,search,position,team,sort]);
+  const watched = data.players.filter(player => member?.watchlist.includes(player.id));
+  const formation = data.formations.find(item => item.id === member?.squad?.formationId);
+  const reset = () => {setQuery("");setSearch("");setPosition("all");setTeam("all");setSort("default");setAll(false);};
   return (
-    <>
-      <div className="home-welcome">
-        <span>YOUR FOOTBALL, YOUR CALL.</span>
-        <span>
-          {data.updatedAt
-            ? `최근 갱신 ${dateText(data.updatedAt)}`
-            : "REAL FOOTBALL. YOUR GAME."}
-        </span>
-      </div>
-      <section className="home-hero">
-        <div className="hero-copy">
-          <span className="hero-eyebrow">
-            <span />
-            REAL MATCH DATA × PLAYER MARKET
-          </span>
-          <h1>
-            경기를 읽는 당신,
-            <br />
-            <em>가치를 만드는 선택.</em>
-          </h1>
-          <p>
-            실제 축구의 흐름이 나만의 선수 자산으로.
-            <br />
-            KICK-X에서 다음 가능성을 발견하세요.
-          </p>
-          <Link href="/market" className="button primary">
-            선수 시장 둘러보기 <ArrowRight size={18} />
-          </Link>
+    <><div className="yb-dashboard">
+      <section className="yb-market" aria-labelledby="yb-market-title">
+        <div className="yb-hero"><PlaybookArt variant="hero" className="yb-hero-art" /><div className="yb-hero-copy"><p>선수 시장</p><h1 id="yb-market-title">다음 선수를 찾아라.</h1><span>발견하고, 분석하고, 당신의 스쿼드를 완성하세요.</span></div></div>
+        <form className="yb-search" onSubmit={event=>{event.preventDefault();setSearch(query);setAll(true);}}>
+          <label className="yb-search-field"><Search size={25}/><input aria-label="선수 이름 검색" placeholder="선수 이름을 검색하세요." value={query} onChange={event=>setQuery(event.target.value)} />{query&&<button aria-label="검색어 지우기" type="button" onClick={()=>{setQuery("");setSearch("");}}><X size={15}/></button>}</label>
+          <select aria-label="포지션" value={position} onChange={event=>setPosition(event.target.value)}><option value="all">포지션 전체</option>{["FW","MF","DF","GK"].map(value=><option key={value}>{value}</option>)}</select>
+          <select aria-label="소속 구단" value={team} onChange={event=>setTeam(event.target.value)}><option value="all">소속 구단 전체</option>{data.teams.map(club=><option key={club.id} value={club.id}>{club.name}</option>)}</select>
+          <select aria-label="정렬 기준" value={sort} onChange={event=>setSort(event.target.value)}><option value="default">정렬 기준</option><option value="high">가치 높은 순</option><option value="low">가치 낮은 순</option><option value="performance">Performance 순</option></select>
+          <button type="submit" className="yb-search-button">검색</button>
+        </form>
+        {filtered && <div className="yb-filter-result" role="status"><span>검색 결과 <strong>{results.length}명</strong></span><button onClick={reset}>필터 초기화 <X size={13}/></button></div>}
+        <div className="yb-table-wrap"><table className="yb-player-table"><caption className="sr-only">선수 시장 목록</caption><thead><tr><th>선수</th><th>포지션</th><th className="yb-club-column">소속 구단</th><th>현재 가치</th><th className="yb-performance-column">Performance</th><th>관심</th></tr></thead><tbody>{(all?results:results.slice(0,8)).map((player,index)=><tr key={player.id} style={{animationDelay:`${index%8*35}ms`}}><td><PlayerIdentity player={player}/></td><td><PositionBadge position={player.position}/></td><td className="yb-club-column">{getTeam(player.team)?.name || "—"}</td><td className="yb-price">{money(player.price)}{player.price != null && <small> P</small>}</td><td className="yb-performance-column">{player.performance ?? "—"}</td><td><WatchButton id={player.id}/></td></tr>)}</tbody></table>
+          {!results.length && <div className="yb-market-empty"><DataEmpty entity="선수" filtered={filtered}/></div>}
         </div>
-        <div className="hero-caption">
-          <span>THE BEAUTIFUL GAME.</span>
-          <strong>A NEW WAY TO PLAY.</strong>
-        </div>
+        {results.length>8&&!all&&<button className="yb-load-more" onClick={()=>setAll(true)}>선수 더 보기</button>}
+        <div className="yb-data-status"><DataNotice status={status} reload={reload}/>{data.updatedAt&&<p>최근 갱신 {dateText(data.updatedAt)}</p>}</div>
       </section>
-      <div className="home-stats">
-        <Link href="/portfolio" className="stat-card">
-          <div className="stat-label">
-            <span>
-              <Wallet size={17} />
-              총자산
-            </span>
-            <ArrowUpRight size={17} />
-          </div>
-          <div className="stat-value">
-            {money(member?.totalAssets)} <small>P</small>
-          </div>
-          <div className="stat-foot">
-            <Change value={member?.returnRate} />
-            <span>{member ? "자산 수익률" : "내 자산 정보가 표시됩니다"}</span>
-          </div>
-        </Link>
-        <Link href="/portfolio" className="stat-card">
-          <div className="stat-label">
-            <span>보유 포인트</span>
-            <ArrowUpRight size={17} />
-          </div>
-          <div className="stat-value">
-            {money(member?.points)} <small>P</small>
-          </div>
-          <div className="stat-foot">
-            <span>선수 자산</span>
-            <b>{money(member?.playerAssets)} P</b>
-          </div>
-        </Link>
-        <Link href="/ranking" className="stat-card ranking-stat">
-          <div className="stat-label">
-            <span>
-              <Trophy size={17} />
-              이번 주 랭킹
-            </span>
-            <ArrowUpRight size={17} />
-          </div>
-          <div className="stat-value">
-            {member?.weeklyRank != null ? `#${member.weeklyRank}` : "—"}
-            <span className="ranking-tag">WEEKLY</span>
-          </div>
-          <div className="stat-foot">
-            <span>집계된 순위를 확인하세요</span>
-          </div>
-          <Trophy className="stat-watermark" size={70} />
-        </Link>
-      </div>
-      <div className="home-bottom">
-        <section className="panel home-market">
-          <SectionTitle title="지금 주목할 선수" href="/market" />
-          <div className="table-scroll">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>#</th>
-                  <th>선수</th>
-                  <th className="numeric">현재 가치</th>
-                  <th className="numeric">등락률</th>
-                </tr>
-              </thead>
-              <tbody>
-                {trending.map((p, i) => (
-                  <tr key={p.id}>
-                    <td className="rank-index">{i + 1}</td>
-                    <td>
-                      <PlayerIdentity player={p} />
-                    </td>
-                    <td className="numeric strong">{money(p.price)} P</td>
-                    <td className="numeric">
-                      <Change value={p.change} />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          {!trending.length && <DataEmpty entity="선수" />}
-          <div className="panel-bottom-note">
-            <span className="blue-dot" />
-            선수 가격 · 거래량 · 경기력 한눈에 확인하기
-          </div>
-        </section>
-        <section className="panel fixtures-panel">
-          <SectionTitle title="주요 경기" meta="KST" />
-          {data.fixtures.map((f) => (
-            <div className="fixture" key={f.id}>
-              <div className="fixture-meta">
-                <span>{getLeague(f.leagueId)?.name || "—"}</span>
-                <span>{dateText(f.startsAt)}</span>
-              </div>
-              <div className="fixture-teams">
-                <Link href={`/community/clubs/${f.home}`}>
-                  <TeamBadge id={f.home} />
-                  <span>{getTeam(f.home)?.name || "구단 정보 없음"}</span>
-                </Link>
-                <div>
-                  <strong>VS</strong>
-                  <span>{f.status}</span>
-                </div>
-                <Link href={`/community/clubs/${f.away}`}>
-                  <TeamBadge id={f.away} />
-                  <span>{getTeam(f.away)?.name || "구단 정보 없음"}</span>
-                </Link>
-              </div>
-            </div>
-          ))}
-          {!data.fixtures.length && <DataEmpty entity="경기 일정" />}
-        </section>
-        <section className="panel home-squad">
-          <SectionTitle title="내 스쿼드" href="/squad" link="관리" />
-          <div className="squad-summary">
-            <strong>
-              {data.formations.find((f) => f.id === member?.squad?.formationId)
-                ?.name || "포메이션 미선택"}
-            </strong>
-            <span>
-              {member?.squad
-                ? `${member.squad.slots.filter(Boolean).length}명`
-                : "—"}
-            </span>
-          </div>
-          <Pitch
-            slots={member?.squad?.slots || []}
-            formation={member?.squad?.formationId || null}
-            compact
-          />
-          <div className="home-squad-footer">
-            <span>선수단 가치</span>
-            <strong>{money(member?.squad?.value)} P</strong>
-          </div>
-        </section>
-      </div>
-    </>
+      <aside className="yb-sidebar" aria-label="나의 축구 대시보드">
+        <section className="yb-panel yb-assets"><SectionLink title="내 자산" href="/portfolio"/><div className="yb-asset-stats"><div><span>현재 가치</span><strong>{money(member?.totalAssets)}{member?.totalAssets != null && <small> P</small>}</strong></div><div><span>보유 선수</span><strong>{member ? new Set(member.holdings.map(item=>item.playerId)).size : "—"}{member&&<small>명</small>}</strong></div><div><span>평가 손익</span><strong>{money(member?.profit)}{member?.profit != null&&<small> P</small>}</strong></div></div></section>
+        <section className="yb-panel yb-squad"><SectionLink title="내 스쿼드" href="/squad" label="스쿼드 관리"/><div className="yb-squad-layout">{formation&&member?.squad?<Pitch slots={member.squad.slots} formation={formation.id} compact/>:<EmptyPitch/>}<div className="yb-squad-options"><Link href="/squad"><span>포메이션</span><strong>{formation?.name||"—"}<ChevronDown size={16}/></strong></Link><div><span>주요 전술</span><strong>—</strong></div><Link href="/squad" className="yb-black-button">스쿼드 편집</Link></div></div></section>
+        <section className="yb-panel yb-fixtures"><div className="yb-panel-heading"><h2>주요 경기</h2><button aria-label="경기 일정 보기" onClick={()=>setFixturesOpen(true)}><ArrowRight size={24}/></button></div>{data.fixtures.length?<div className="yb-fixture-list">{data.fixtures.slice(0,3).map(fixture=><div className="yb-fixture" key={fixture.id}><Link href={`/community/clubs/${fixture.home}`}><Shield size={21}/><span>{getTeam(fixture.home)?.name||"—"}</span></Link><span>VS</span><Link href={`/community/clubs/${fixture.away}`}><span>{getTeam(fixture.away)?.name||"—"}</span><Shield size={21}/></Link><time title={dateText(fixture.startsAt)}>{Number.isFinite(Date.parse(fixture.startsAt))?new Intl.DateTimeFormat("ko-KR",{timeZone:"Asia/Seoul",hour:"2-digit",minute:"2-digit",hour12:false}).format(new Date(fixture.startsAt)):"—"}</time></div>)}</div>:<div className="yb-fixtures-empty"><Shield size={25}/><p>{status==="loading"?"경기 일정을 불러오는 중입니다.":status==="error"?"경기 일정을 불러오지 못했습니다.":"경기 일정이 준비되면 표시됩니다."}</p></div>}</section>
+        <section className="yb-panel yb-watchlist"><SectionLink title="관심 선수" href="/players?watchlist=1"/><div className="yb-watch-grid">{watched.slice(0,4).map(player=><article key={player.id}><Link href={`/players/${player.id}`}><PlayerAvatar player={player}/><strong>{player.name}</strong><small>{getTeam(player.team)?.name||"소속 정보 없음"}</small></Link><WatchButton id={player.id}/></article>)}</div>{!watched.length&&<div className="yb-watch-empty"><Star size={25}/><p>{data.session?"등록된 관심 선수가 없습니다.":"로그인 후 관심 선수를 확인하세요."}</p><Link href={data.session?"/players":"/login"}>{data.session?"선수 탐색":"로그인"}</Link></div>}</section>
+      </aside>
+    </div>{fixturesOpen&&<Modal title="주요 경기 일정" onClose={()=>setFixturesOpen(false)}>{data.fixtures.map(fixture=><article className="yb-schedule-item" key={fixture.id}><strong>{getTeam(fixture.home)?.name||"—"}<small>VS</small>{getTeam(fixture.away)?.name||"—"}</strong><time>{dateText(fixture.startsAt)} · KST</time><span>{fixture.status}</span></article>)}{!data.fixtures.length&&<DataEmpty entity="경기 일정"/>}</Modal>}</>
   );
 }

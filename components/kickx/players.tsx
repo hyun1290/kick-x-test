@@ -47,10 +47,11 @@ export function PlayerList({ market = false }: { market?: boolean }) {
     [pos, setPos] = useState("전체");
   const [sort, setSort] = useState(market ? "volume" : "price"),
     [view, setView] = useState(market ? "list" : "grid"),
-    [tab, setTab] = useState("전체 선수"),
+    [tab, setTab] = useState(sp.get("watchlist") === "1" ? "관심 선수" : "전체 선수"),
     [page, setPage] = useState(1);
   useEffect(() => {
     setQ(sp.get("q") || "");
+    setTab(sp.get("watchlist") === "1" ? "관심 선수" : "전체 선수");
     setPage(1);
   }, [sp]);
   const results = data.players

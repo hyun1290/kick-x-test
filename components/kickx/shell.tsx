@@ -2,210 +2,59 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { FormEvent, ReactNode, useState } from "react";
-import {
-  Activity,
-  ArrowUpRight,
-  Bell,
-  ChevronDown,
-  Globe2,
-  Home,
-  LayoutGrid,
-  Menu,
-  MessageCircle,
-  Search,
-  Settings2,
-  ShieldCheck,
-  Trophy,
-  Users,
-  Wallet,
-  X,
-  History,
-} from "lucide-react";
-import { money } from "@/lib/kickx/data";
+import { ArrowRight, Search } from "lucide-react";
 import { DataNotice } from "./ui";
 import { usePlatform } from "./provider";
+import { PlaybookArt } from "./playbook-art";
+
 const links = [
-  { href: "/", label: "홈", icon: Home },
-  { href: "/players", label: "선수 탐색", icon: Users },
-  { href: "/market", label: "선수 시장", icon: Activity },
-  { href: "/squad", label: "내 스쿼드", icon: LayoutGrid },
-  { href: "/portfolio", label: "내 자산", icon: Wallet },
-  { href: "/transactions", label: "거래 내역", icon: History },
-  { href: "/ranking", label: "랭킹", icon: Trophy },
-  { href: "/community", label: "커뮤니티", icon: MessageCircle },
+  { href: "/", label: "홈" },
+  { href: "/market", label: "선수 시장" },
+  { href: "/squad", label: "스쿼드" },
+  { href: "/ranking", label: "랭킹" },
+  { href: "/community", label: "커뮤니티" },
 ];
 export function Logo() {
-  return (
-    <Link href="/" className="logo" aria-label="KICK-X 홈">
-      KICK<span>-X</span>
-      <small>FOOTBALL MARKET</small>
-    </Link>
-  );
+  return <Link href="/" className="logo yb-wordmark" aria-label="KICK-X 홈">KICK-X</Link>;
 }
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { data, status, reload, getTeam } = usePlatform();
+  const { data, status, reload } = usePlatform();
   const [query, setQuery] = useState("");
-  const [mobile, setMobile] = useState(false);
-  const [alerts, setAlerts] = useState(false);
   const standalone = pathname === "/login" || pathname === "/onboarding";
-  const submit = (e: FormEvent) => {
-    e.preventDefault();
+  const isHome = pathname === "/";
+  const submit = (event: FormEvent) => {
+    event.preventDefault();
     router.push(`/players?q=${encodeURIComponent(query.trim())}`);
   };
   if (standalone) return <>{children}</>;
   return (
-    <div className="app-shell">
-      <a className="skip-link" href="#main-content">
-        본문으로 바로가기
-      </a>
-      {mobile && (
-        <button
-          className="sidebar-scrim"
-          aria-label="메뉴 닫기"
-          onClick={() => setMobile(false)}
-        />
-      )}
-      <aside className={`sidebar ${mobile ? "open" : ""}`}>
-        <div className="sidebar-logo">
-          <Logo />
-          <button
-            className="icon-button mobile-only"
-            aria-label="메뉴 닫기"
-            onClick={() => setMobile(false)}
-          >
-            <X size={20} />
-          </button>
-        </div>
-        <div className="nav-label">PLAY THE GAME</div>
-        <nav aria-label="주 메뉴">
-          {links.map(({ href, label, icon: Icon }) => (
-            <Link
-              key={href}
-              href={href}
-              onClick={() => setMobile(false)}
-              className={`nav-item ${(href === "/" ? pathname === "/" : pathname.startsWith(href)) ? "active" : ""}`}
-              aria-current={
-                (href === "/" ? pathname === "/" : pathname.startsWith(href))
-                  ? "page"
-                  : undefined
-              }
-            >
-              <Icon size={19} />
-              {label}
-              {href === "/market" && <span className="nav-tag">MARKET</span>}
-            </Link>
-          ))}
+    <div className="yb-shell">
+      <a className="skip-link" href="#main-content">본문으로 바로가기</a>
+      <div className="yb-edition"><span>14 / YELLOW PLAYBOOK</span><span>REAL FOOTBALL. YOUR GAME.</span></div>
+      <header className="yb-header">
+        <Logo />
+        <p className="yb-brand-line">축구를 더 가깝게,<br />선수를 소유하는 새로운 방법.</p>
+        <nav className="yb-nav" aria-label="주 메뉴">
+          {links.map(({ href, label }) => {
+            const active = href === "/" ? isHome : pathname.startsWith(href) || (href === "/market" && pathname.startsWith("/players"));
+            return <Link href={href} key={href} aria-current={active ? "page" : undefined}>{label}</Link>;
+          })}
         </nav>
-        <div className="sidebar-bottom">
-          <Link
-            href="/mypage"
-            onClick={() => setMobile(false)}
-            className={`nav-item ${pathname === "/mypage" ? "active" : ""}`}
-          >
-            <Settings2 size={18} />
-            마이페이지
-          </Link>
-          <Link
-            href="/admin"
-            onClick={() => setMobile(false)}
-            className={`nav-item ${pathname.startsWith("/admin") ? "active" : ""}`}
-          >
-            <ShieldCheck size={18} />
-            운영 관리
-          </Link>
-          <Link href="/portfolio" className="sidebar-wallet">
-            <span>
-              보유 포인트 <ArrowUpRight size={15} />
-            </span>
-            <strong>
-              {money(data.member?.points)} <small>P</small>
-            </strong>
-            <div>나의 다음 선수를 만나보세요</div>
-          </Link>
-          <p className="sidebar-footer">REAL FOOTBALL. YOUR GAME.</p>
-        </div>
-      </aside>
-      <div className="workspace">
-        <header className="topbar">
-          <button
-            className="icon-button mobile-only"
-            aria-label="메뉴 열기"
-            onClick={() => setMobile(true)}
-          >
-            <Menu size={22} />
-          </button>
-          <form className="global-search" onSubmit={submit}>
-            <Search size={19} />
-            <input
-              aria-label="선수, 구단, 리그 통합 검색"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="선수, 구단, 리그를 검색하세요"
-            />
-            <kbd>↵</kbd>
-          </form>
-          <div className="topbar-right">
-            <div className="notification-wrap">
-              <button
-                className="icon-button notification"
-                aria-label="알림 열기"
-                aria-expanded={alerts}
-                onClick={() => setAlerts(!alerts)}
-              >
-                <Bell size={20} />
-              </button>
-              {alerts && (
-                <div className="notification-popover">
-                  <strong>알림</strong>
-                  <p>알림 서비스 준비 중입니다.</p>
-                  <span>새로운 알림은 이곳에 표시됩니다.</span>
-                  <button
-                    className="text-link"
-                    onClick={() => setAlerts(false)}
-                  >
-                    확인
-                  </button>
-                </div>
-              )}
-            </div>
-            {data.session ? (
-              <Link className="profile-link" href="/mypage">
-                <span className="user-avatar">
-                  {data.session.profile?.nickname.slice(0, 1) || "?"}
-                </span>
-                <div>
-                  <strong>
-                    {data.session.profile?.nickname || "프로필 설정"}
-                  </strong>
-                  <small>
-                    {getTeam(data.session.profile?.team)?.name ||
-                      "응원 구단 선택"}
-                  </small>
-                </div>
-                <ChevronDown size={15} />
-              </Link>
-            ) : (
-              <Link className="button primary small" href="/login">
-                로그인
-              </Link>
-            )}
-          </div>
-        </header>
-        <main id="main-content" className="main-content">
-          <DataNotice status={status} reload={reload} />
-          {children}
-        </main>
-        <footer className="page-footer">
-          <span>
-            © 2026 KICK-X <i>·</i> 실제 축구, 나만의 선택
-          </span>
-          <span>
-            <Globe2 size={13} /> FOOTBALL MARKET
-          </span>
-        </footer>
-      </div>
+        <PlaybookArt variant="header" className="yb-header-art" />
+        <Link href={data.session ? "/mypage" : "/login"} className="yb-login">{data.session ? data.session.profile?.nickname || "내 계정" : "로그인"}<ArrowRight size={24} /></Link>
+        <span className="yb-manifesto">PLAYERS<br />MARKET<br />SQUAD<br />COMMUNITY<br />FOR A BIGGER FOOTBALL</span>
+      </header>
+      {!isHome && <div className="yb-utility">
+        <nav aria-label="내 활동 메뉴"><Link href="/players">선수 탐색</Link><Link href="/portfolio">내 자산</Link><Link href="/transactions">거래 내역</Link><Link href="/mypage">마이페이지</Link><Link href="/admin">운영 관리</Link></nav>
+        <form onSubmit={submit}><Search size={17} /><input aria-label="선수, 구단, 리그 통합 검색" value={query} onChange={event => setQuery(event.target.value)} placeholder="선수·구단 검색" /><button type="submit">검색</button></form>
+      </div>}
+      <main id="main-content" className={isHome ? "yb-main" : "yb-content"}>
+        {!isHome && <DataNotice status={status} reload={reload} />}
+        {children}
+      </main>
+      <footer className="yb-footer"><span>© 2026 KICK-X · REAL FOOTBALL. YOUR GAME.</span><nav aria-label="보조 메뉴"><Link href="/players">선수 탐색</Link><Link href="/portfolio">내 자산</Link><Link href="/transactions">거래 내역</Link><Link href="/mypage">마이페이지</Link><Link href="/admin">운영 관리</Link></nav></footer>
     </div>
   );
 }

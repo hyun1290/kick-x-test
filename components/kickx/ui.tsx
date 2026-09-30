@@ -101,7 +101,7 @@ export function TeamBadge({
   const color =
     team?.color && /^#[0-9a-f]{3,8}$/i.test(team.color)
       ? team.color
-      : "#7396c8";
+      : "#aaa";
   return (
     <span
       className={`team-badge ${size}`}
@@ -124,7 +124,7 @@ export function PlayerAvatar({
   const color =
     team?.color && /^#[0-9a-f]{3,8}$/i.test(team.color)
       ? team.color
-      : "#7396c8";
+      : "#aaa";
   return (
     <span
       className={`player-avatar ${large ? "large" : ""}`}
@@ -437,8 +437,8 @@ export function PriceChart({
         >
           <defs>
             <linearGradient id={uid} x1="0" x2="0" y1="0" y2="1">
-              <stop offset="0%" stopColor="#4d87ff" stopOpacity=".26" />
-              <stop offset="100%" stopColor="#4d87ff" stopOpacity="0" />
+              <stop offset="0%" stopColor="#b6a000" stopOpacity=".26" />
+              <stop offset="100%" stopColor="#b6a000" stopOpacity="0" />
             </linearGradient>
           </defs>
           {[24, 102, 180].map((y) => (
@@ -448,7 +448,7 @@ export function PriceChart({
               y1={y}
               x2="880"
               y2={y}
-              stroke="#20334b"
+              stroke="#d2d2d2"
               strokeDasharray="4 7"
             />
           ))}
@@ -456,7 +456,7 @@ export function PriceChart({
           <path
             d={path}
             fill="none"
-            stroke="#5796ff"
+            stroke="#1a1a1a"
             strokeWidth="3"
             vectorEffect="non-scaling-stroke"
           />
@@ -465,7 +465,7 @@ export function PriceChart({
               cx={coords[selected][0]}
               cy={coords[selected][1]}
               r="5"
-              fill="#a6ccff"
+              fill="#b6a000"
             />
           )}
         </svg>

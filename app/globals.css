@@ -81,21 +81,21 @@ textarea,
 select {
   min-width: 0;
   color: var(--text);
-  background: #0a1627;
-  border: 1px solid #293b54;
+  background: #f7f7f5;
+  border: 1px solid #c8c8c8;
   border-radius: 8px;
   padding: 11px 13px;
   outline: none;
 }
 input::placeholder,
 textarea::placeholder {
-  color: #7187a5;
+  color: #606060;
 }
 input:focus,
 select:focus,
 textarea:focus {
-  border-color: #528bdf;
-  box-shadow: 0 0 0 3px #397ee51c;
+  border-color: #c8c8c8;
+  box-shadow: 0 0 0 3px #0000001c;
 }
 select {
   padding-right: 30px;
@@ -118,7 +118,7 @@ textarea {
 }
 button:focus-visible,
 a:focus-visible {
-  outline: 2px solid #83b4ff;
+  outline: 2px solid #c8c8c8;
   outline-offset: 4px;
 }
 h1,
@@ -162,7 +162,7 @@ svg {
   flex-shrink: 0;
 }
 ::selection {
-  background: #2665c8;
+  background: #ffe637;
   color: white;
 }
 .muted {
@@ -187,21 +187,21 @@ svg {
   font-weight: 400;
 }
 .eyebrow {
-  color: #80a7d8;
+  color: #161616;
   font-size: 11px;
   letter-spacing: 0.15em;
   font-weight: 700;
 }
 .eyebrow i {
   padding: 0 10px;
-  color: #3d5575;
+  color: #777;
 }
 .blue-dot {
   display: inline-block;
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #6ca7ff;
+  background: #ffe637;
   flex-shrink: 0;
 }
 .button {
@@ -219,32 +219,32 @@ svg {
   line-height: 1.35;
 }
 .button.primary {
-  background: #317bf5;
-  color: #fff;
-  border-color: #4a8cff;
-  box-shadow: 0 4px 16px #0d3d851a;
+  background: #ffe637;
+  color: #161616;
+  border-color: #c8c8c8;
+  box-shadow: 0 4px 16px #0000001a;
 }
 .button.primary:hover {
-  background: #4b8fff;
-  box-shadow: 0 4px 18px #246de82b;
+  background: #ffe637;
+  box-shadow: 0 4px 18px #0000002b;
 }
 .button.secondary {
-  background: #14243a;
-  color: #d3e1f6;
-  border-color: #2b405c;
+  background: #f7f7f5;
+  color: #161616;
+  border-color: #c8c8c8;
 }
 .button.secondary:hover {
-  background: #1b3150;
-  border-color: #456084;
+  background: #efefeb;
+  border-color: #c8c8c8;
 }
 .button.subtle {
-  background: #193253;
-  color: #a6c8fa;
+  background: #efefeb;
+  color: #161616;
 }
 .button.danger {
-  background: #402331;
-  color: #ffa0ad;
-  border-color: #673443;
+  background: #f7f7f5;
+  color: #b44030;
+  border-color: #d9a39b;
 }
 .button.small {
   font-size: 12px;
@@ -267,67 +267,67 @@ svg {
   align-items: center;
   justify-content: center;
   background: transparent;
-  color: #93a7c3;
+  color: #606060;
   border-radius: 7px;
 }
 .icon-button:hover {
-  background: #203249;
-  color: #d9e9ff;
+  background: #efefeb;
+  color: #161616;
 }
 .text-link {
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  color: #8fbaff;
+  color: #161616;
   font-size: 13px;
   white-space: nowrap;
   background: transparent;
 }
 .text-link:hover {
-  color: #c0d9ff;
+  color: #161616;
 }
 .quiet-label {
   display: flex;
   align-items: center;
   gap: 8px;
   font-size: 12px;
-  color: #8299b7;
+  color: #606060;
 }
 .back-link {
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  color: #98b0cf;
+  color: #606060;
   font-size: 13px;
   margin-bottom: 23px;
 }
 .back-link:hover {
-  color: #fff;
+  color: #161616;
 }
 .inline-meta {
   display: flex;
   align-items: center;
   gap: 10px;
-  color: #91a7c3;
+  color: #606060;
   font-size: 13px;
   flex-wrap: wrap;
 }
 .subtle-tag {
-  border: 1px solid #31435f;
-  background: #1a2b42;
-  color: #9bb2d1;
+  border: 1px solid #c8c8c8;
+  background: #f7f7f5;
+  color: #606060;
   font-size: 10px;
   padding: 1px 6px;
   border-radius: 4px;
   letter-spacing: 0.02em;
 }
 .fine-print {
-  color: #7f96b5;
+  color: #606060;
   font-size: 12px;
   line-height: 1.7;
 }
 .panel {
-  background: linear-gradient(120deg, #101f32, #0d1a2b 65%);
+  background: linear-gradient(120deg, #f7f7f5, #f7f7f5 65%);
   border: 1px solid var(--line);
   border-radius: 12px;
   min-width: 0;
@@ -348,7 +348,7 @@ svg {
 }
 .section-title h2 > span {
   font-size: 11px;
-  color: #7891b2;
+  color: #606060;
   font-weight: 500;
   letter-spacing: 0.03em;
 }
@@ -363,7 +363,7 @@ svg {
   margin-bottom: 9px;
 }
 .page-heading p {
-  color: #93a8c4;
+  color: #606060;
   font-size: 14px;
   margin-top: 10px;
   line-height: 1.65;
@@ -373,7 +373,7 @@ svg {
   top: -60px;
   left: 230px;
   z-index: 100;
-  background: #387ff3;
+  background: #ffe637;
   padding: 10px;
 }
 .skip-link:focus {
@@ -383,7 +383,7 @@ svg {
   display: grid;
   place-items: center;
   min-height: 100vh;
-  color: #9dbbdf;
+  color: #161616;
 }
 .logo {
   display: inline-block;
@@ -391,12 +391,12 @@ svg {
   font-style: italic;
   letter-spacing: -1.4px;
   font-size: 31px;
-  color: #f1f6ff;
+  color: #161616;
   line-height: 1.1;
   white-space: nowrap;
 }
 .logo > span {
-  color: #4e8eff;
+  color: #161616;
 }
 .logo > small {
   display: block;
@@ -404,7 +404,7 @@ svg {
   font-size: 8px;
   letter-spacing: 0.24em;
   font-weight: 600;
-  color: #6d8cae;
+  color: #606060;
   margin-top: 9px;
   margin-left: 1px;
 }
@@ -417,8 +417,8 @@ svg {
   z-index: 40;
   display: flex;
   flex-direction: column;
-  background: linear-gradient(180deg, #0b1828, #081523);
-  border-right: 1px solid #1a2a3e;
+  background: linear-gradient(180deg, #f7f7f5, #f7f7f5);
+  border-right: 1px solid #c8c8c8;
   padding: 29px 17px 17px;
   overflow-y: auto;
 }
@@ -431,7 +431,7 @@ svg {
 .nav-label {
   font-size: 9px;
   letter-spacing: 0.17em;
-  color: #6b819f;
+  color: #606060;
   padding: 5px 15px 12px;
 }
 .sidebar nav {
@@ -444,7 +444,7 @@ svg {
   align-items: center;
   gap: 13px;
   font-size: 14px;
-  color: #9caec7;
+  color: #606060;
   padding: 12px 14px;
   border-radius: 7px;
   font-weight: 500;
@@ -453,12 +453,12 @@ svg {
   white-space: nowrap;
 }
 .nav-item:hover {
-  color: #e5efff;
-  background: #132339;
+  color: #161616;
+  background: #f7f7f5;
 }
 .nav-item.active {
-  color: #acd0ff;
-  background: linear-gradient(90deg, #1b3d6c, #142a47);
+  color: #161616;
+  background: linear-gradient(90deg, #efefeb, #efefeb);
 }
 .nav-item.active:before {
   content: "";
@@ -466,20 +466,20 @@ svg {
   width: 2px;
   position: absolute;
   left: 0;
-  background: #5d9dff;
+  background: #ffe637;
   border-radius: 2px;
 }
 .nav-item svg {
-  color: #8ca7c9;
+  color: #606060;
 }
 .nav-item.active svg {
-  color: #9dc4ff;
+  color: #161616;
 }
 .nav-tag {
   font-size: 8px;
   letter-spacing: 0.04em;
   margin-left: auto;
-  color: #5678a5;
+  color: #606060;
 }
 .sidebar-bottom {
   margin-top: auto;
@@ -487,8 +487,8 @@ svg {
 }
 .sidebar-wallet {
   display: block;
-  background: linear-gradient(115deg, #132b49, #102037);
-  border: 1px solid #233a59;
+  background: linear-gradient(115deg, #efefeb, #f7f7f5);
+  border: 1px solid #c8c8c8;
   border-radius: 10px;
   margin-top: 22px;
   padding: 15px;
@@ -497,7 +497,7 @@ svg {
   display: flex;
   justify-content: space-between;
   font-size: 11px;
-  color: #a6bedc;
+  color: #161616;
 }
 .sidebar-wallet strong {
   font-size: 23px;
@@ -508,16 +508,16 @@ svg {
 }
 .sidebar-wallet small {
   font-size: 12px;
-  color: #82ace4;
+  color: #161616;
 }
 .sidebar-wallet > div {
   font-size: 10px;
-  color: #778faf;
+  color: #606060;
   margin-top: 7px;
   white-space: nowrap;
 }
 .sidebar-footer {
-  color: #425d7e;
+  color: #777;
   font-size: 8px;
   letter-spacing: 0.08em;
   text-align: center;
@@ -539,8 +539,8 @@ svg {
   align-items: center;
   gap: 20px;
   padding: 0 32px;
-  border-bottom: 1px solid #1b2a3d;
-  background: #081421ed;
+  border-bottom: 1px solid #c8c8c8;
+  background: #f7f7f5ed;
   backdrop-filter: blur(18px);
 }
 .global-search {
@@ -550,14 +550,14 @@ svg {
   display: flex;
   align-items: center;
   gap: 12px;
-  border: 1px solid #243953;
+  border: 1px solid #c8c8c8;
   border-radius: 8px;
   padding: 0 13px;
-  background: #102034;
-  color: #7997bc;
+  background: #f7f7f5;
+  color: #606060;
 }
 .global-search:focus-within {
-  border-color: #4e7db9;
+  border-color: #c8c8c8;
 }
 .global-search input {
   width: 100%;
@@ -569,10 +569,10 @@ svg {
 }
 .global-search kbd {
   font-size: 12px;
-  border: 1px solid #2c405a;
+  border: 1px solid #c8c8c8;
   border-radius: 3px;
   padding: 0 4px;
-  color: #6e85a2;
+  color: #606060;
 }
 .topbar-right {
   display: flex;
@@ -587,10 +587,10 @@ svg {
   top: 50px;
   right: 0;
   width: 285px;
-  border: 1px solid #355477;
+  border: 1px solid #c8c8c8;
   border-radius: 10px;
-  background: #13253c;
-  box-shadow: 0 12px 35px #0007;
+  background: #f7f7f5;
+  box-shadow: 0 12px 35px #00000077;
   padding: 21px;
   font-size: 14px;
 }
@@ -600,7 +600,7 @@ svg {
 .notification-popover span {
   display: block;
   font-size: 13px;
-  color: #a4b7d1;
+  color: #606060;
 }
 .notification-popover button {
   margin-top: 15px;
@@ -609,20 +609,20 @@ svg {
   display: flex;
   align-items: center;
   gap: 10px;
-  border-left: 1px solid #273a53;
+  border-left: 1px solid #c8c8c8;
   padding-left: 18px;
 }
 .user-avatar {
   width: 35px;
   height: 35px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #5c83b8, #203e66);
-  border: 1px solid #7393bd66;
+  background: linear-gradient(135deg, #ffe637, #efefeb);
+  border: 1px solid #c8c8c866;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   font-size: 14px;
-  color: #e5efff;
+  color: #161616;
   font-weight: 700;
   flex-shrink: 0;
 }
@@ -638,12 +638,12 @@ svg {
 }
 .profile-link small {
   display: block;
-  color: #8ca3c2;
+  color: #606060;
   font-size: 10px;
 }
 .profile-link > svg {
   margin-left: 15px;
-  color: #7691b4;
+  color: #606060;
 }
 .main-content {
   padding: 28px 32px 38px;
@@ -657,8 +657,8 @@ svg {
   justify-content: space-between;
   align-items: center;
   padding: 20px 32px;
-  border-top: 1px solid #1b2a3b;
-  color: #627c9e;
+  border-top: 1px solid #c8c8c8;
+  color: #606060;
   font-size: 10px;
   gap: 15px;
 }
@@ -668,7 +668,7 @@ svg {
   align-items: center;
 }
 .page-footer i {
-  color: #3b536f;
+  color: #777;
 }
 .mobile-only {
   display: none;
@@ -681,7 +681,7 @@ svg {
   justify-content: space-between;
   margin: 0 0 18px;
   font-size: 10px;
-  color: #7f9ab9;
+  color: #606060;
   letter-spacing: 0.09em;
 }
 .home-welcome span:last-child {
@@ -689,19 +689,19 @@ svg {
   letter-spacing: 0;
 }
 .home-welcome i {
-  color: #57718f;
+  color: #606060;
   margin-left: 6px;
 }
 .home-hero {
   position: relative;
   isolation: isolate;
-  border: 1px solid #264363;
+  border: 1px solid #c8c8c8;
   border-radius: 13px;
   min-height: 300px;
   display: flex;
   align-items: center;
   overflow: hidden;
-  background: #0d2340 url("/images/stadium-night.webp") center 58% / cover
+  background: #f7f7f5 url("/images/stadium-night.webp") center 58% / cover
     no-repeat;
 }
 .home-hero:before {
@@ -709,7 +709,7 @@ svg {
   position: absolute;
   inset: 0;
   z-index: -1;
-  background: linear-gradient(90deg, #07172ae8, #07172a42 67%, #08182a0a);
+  background: linear-gradient(90deg, #f7f7f5e8, #f7f7f542 67%, #f7f7f50a);
 }
 .hero-copy {
   padding: 32px 38px 35px;
@@ -720,7 +720,7 @@ svg {
   gap: 8px;
   font-size: 9px;
   letter-spacing: 0.13em;
-  color: #99c0f2;
+  color: #161616;
   font-weight: 600;
   margin-bottom: 17px;
 }
@@ -728,7 +728,7 @@ svg {
   display: block;
   width: 5px;
   height: 5px;
-  background: #6ca5fa;
+  background: #ffe637;
   border-radius: 50%;
 }
 .hero-copy h1 {
@@ -738,11 +738,11 @@ svg {
   font-weight: 750;
 }
 .hero-copy h1 em {
-  color: #c7dfff;
+  color: #161616;
 }
 .hero-copy p {
   font-size: 13px;
-  color: #a9bfdc;
+  color: #161616;
   line-height: 1.8;
   margin: 14px 0 22px;
 }
@@ -761,12 +761,12 @@ svg {
   display: block;
   font-size: 9px;
   letter-spacing: 0.2em;
-  color: #93afd0;
+  color: #606060;
 }
 .hero-caption strong {
   font-size: 11px;
   letter-spacing: 0.13em;
-  color: #d4e4fa;
+  color: #161616;
   font-weight: 600;
 }
 .home-stats {
@@ -777,22 +777,22 @@ svg {
 }
 .stat-card {
   position: relative;
-  border: 1px solid #23364f;
+  border: 1px solid #c8c8c8;
   overflow: hidden;
   border-radius: 11px;
   padding: 20px 24px;
-  background: linear-gradient(125deg, #12263e, #0d1b2d);
+  background: linear-gradient(125deg, #f7f7f5, #f7f7f5);
   min-height: 145px;
 }
 .stat-card:hover {
-  border-color: #41608a;
+  border-color: #c8c8c8;
   transform: translateY(-2px);
 }
 .stat-label {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  color: #91a9c9;
+  color: #606060;
   font-size: 12px;
 }
 .stat-label span {
@@ -801,7 +801,7 @@ svg {
   gap: 8px;
 }
 .stat-label > svg {
-  color: #5e7c9f;
+  color: #606060;
 }
 .stat-value {
   font-size: 31px;
@@ -812,14 +812,14 @@ svg {
 }
 .stat-value small {
   font-size: 17px;
-  color: #7da1ce;
+  color: #606060;
   font-weight: 500;
 }
 .stat-foot {
   display: flex;
   gap: 10px;
   align-items: center;
-  color: #829bbb;
+  color: #606060;
   font-size: 10px;
 }
 .stat-foot .change {
@@ -827,7 +827,7 @@ svg {
 }
 .stat-foot b {
   font-weight: 500;
-  color: #b7c8e0;
+  color: #161616;
 }
 .stat-card > .sparkline {
   position: absolute;
@@ -844,19 +844,19 @@ svg {
   width: 62px;
   height: 5px;
   border-radius: 5px;
-  background: #1d3655;
+  background: #efefeb;
 }
 .stat-allocation span {
   height: 100%;
   display: block;
-  background: #5c9cff;
+  background: #ffe637;
   border-radius: 5px;
 }
 .ranking-tag {
   font-size: 9px;
   letter-spacing: 0.1em;
-  color: #8dafdb;
-  border: 1px solid #304d76;
+  color: #161616;
+  border: 1px solid #c8c8c8;
   padding: 3px 7px;
   border-radius: 4px;
   vertical-align: middle;
@@ -866,7 +866,7 @@ svg {
   position: absolute;
   right: 24px;
   bottom: 21px;
-  color: #486b9a;
+  color: #606060;
   opacity: 0.22;
   stroke-width: 1;
 }
@@ -938,19 +938,19 @@ svg {
   display: flex;
   align-items: center;
   gap: 6px;
-  color: #6e89a9;
+  color: #606060;
   padding: 12px 20px 14px;
   font-size: 10px;
 }
 .fixture {
   padding: 13px 18px 17px;
-  border-bottom: 1px solid #1e3046;
+  border-bottom: 1px solid #c8c8c8;
 }
 .fixture-meta {
   display: flex;
   justify-content: space-between;
   font-size: 9px;
-  color: #7f99bb;
+  color: #606060;
   margin-bottom: 12px;
 }
 .fixture-teams {
@@ -966,7 +966,7 @@ svg {
   gap: 5px;
   text-align: center;
   font-size: 10px;
-  color: #afc2dc;
+  color: #161616;
   min-width: 0;
 }
 .fixture-teams > div {
@@ -980,7 +980,7 @@ svg {
 }
 .fixture-teams > div > span {
   font-size: 9px;
-  color: #5e7a9f;
+  color: #606060;
   display: block;
   margin-top: 3px;
 }
@@ -994,11 +994,11 @@ svg {
   justify-content: space-between;
   padding: 0 20px 10px;
   font-size: 10px;
-  color: #86a3c7;
+  color: #606060;
 }
 .squad-summary strong {
   font-weight: 600;
-  color: #c8d9ef;
+  color: #161616;
 }
 .home-squad .pitch {
   margin: 0 13px;
@@ -1010,10 +1010,10 @@ svg {
   align-items: center;
   justify-content: space-between;
   font-size: 10px;
-  color: #7892b2;
+  color: #606060;
 }
 .home-squad-footer strong {
-  color: #b9cce7;
+  color: #161616;
   font-size: 12px;
 }
 .team-badge {
@@ -1031,7 +1031,7 @@ svg {
   border: 1px solid color-mix(in srgb, var(--team-color), transparent 55%);
   color: var(--team-color);
   border-radius: 7px 7px 12px 12px;
-  box-shadow: inset 0 0 8px #ffffff05;
+  box-shadow: inset 0 0 8px #00000005;
 }
 .team-badge.small {
   width: 23px;
@@ -1055,8 +1055,8 @@ svg {
   border: 1px solid color-mix(in srgb, var(--team-color), transparent 65%);
   background: linear-gradient(
     140deg,
-    color-mix(in srgb, var(--team-color), #152236 84%),
-    #16243a
+    color-mix(in srgb, var(--team-color), #f7f7f5 84%),
+    #f7f7f5
   );
   color: var(--team-color);
   border-radius: 8px;
@@ -1097,23 +1097,23 @@ svg {
 .player-identity strong {
   display: block;
   font-size: 14px;
-  color: #e0e9f7;
+  color: #161616;
   white-space: nowrap;
   font-weight: 600;
 }
 .player-identity > div > span {
   display: block;
   font-size: 11px;
-  color: #8199b9;
+  color: #606060;
   white-space: nowrap;
   margin-top: 3px;
 }
 .player-identity i {
   padding: 0 4px;
-  color: #465e7a;
+  color: #777;
 }
 .player-identity:hover strong {
-  color: #8cbcff;
+  color: #161616;
 }
 .position {
   display: inline-flex;
@@ -1124,24 +1124,24 @@ svg {
   letter-spacing: 0.035em;
   font-weight: 700;
   border-radius: 4px;
-  color: #98baff;
-  background: #21457466;
+  color: #161616;
+  background: #efefeb66;
 }
 .position.fw {
-  color: #96baff;
-  background: #223d635e;
+  color: #161616;
+  background: #efefeb5e;
 }
 .position.mf {
-  color: #69d9b8;
-  background: #19483e77;
+  color: #176b3d;
+  background: #edf7ef77;
 }
 .position.df {
-  color: #b9a5ef;
-  background: #3b2c5877;
+  color: #161616;
+  background: #efefeb77;
 }
 .position.gk {
-  color: #e6c084;
-  background: #55452955;
+  color: #161616;
+  background: #efefeb55;
 }
 .change {
   display: inline-flex;
@@ -1155,11 +1155,11 @@ svg {
 .sparkline {
   width: 115px;
   height: 34px;
-  color: #5a9ae9;
+  color: #161616;
   display: block;
 }
 .sparkline.negative {
-  color: #bd6f8a;
+  color: #b44030;
 }
 .table-scroll {
   width: 100%;
@@ -1176,22 +1176,22 @@ svg {
 .data-table th {
   font-size: 11px;
   font-weight: 500;
-  color: #819ab9;
+  color: #606060;
   padding: 13px 12px;
-  background: #0a172780;
-  border-bottom: 1px solid #23334a;
+  background: #f7f7f580;
+  border-bottom: 1px solid #c8c8c8;
   white-space: nowrap;
 }
 .data-table td {
   padding: 16px 12px;
-  border-bottom: 1px solid #1d2e447a;
+  border-bottom: 1px solid #c8c8c87a;
   line-height: 1.5;
 }
 .data-table tbody tr:last-child td {
   border-bottom: 0;
 }
 .data-table tbody tr:hover {
-  background: #162b444d;
+  background: #f7f7f54d;
 }
 .data-table th:first-child,
 .data-table td:first-child {
@@ -1202,7 +1202,7 @@ svg {
   padding-right: 24px;
 }
 .data-table .rank-index {
-  color: #6a86a9;
+  color: #606060;
   font-size: 13px;
   font-variant-numeric: tabular-nums;
 }
@@ -1212,7 +1212,7 @@ svg {
 }
 .two-line small {
   display: block;
-  color: #7993b6;
+  color: #606060;
   margin-top: 4px;
   font-size: 11px;
 }
@@ -1228,10 +1228,10 @@ svg {
 }
 .performance-number {
   font-weight: 600;
-  color: #d6e4f9;
+  color: #161616;
 }
 .watch.selected {
-  color: #e3bd70;
+  color: #161616;
 }
 .tabs {
   display: flex;
@@ -1243,7 +1243,7 @@ svg {
 }
 .tabs button {
   position: relative;
-  color: #829bbc;
+  color: #606060;
   background: none;
   white-space: nowrap;
   font-weight: 500;
@@ -1251,7 +1251,7 @@ svg {
   padding: 14px 1px;
 }
 .tabs button.active {
-  color: #a5c9ff;
+  color: #161616;
 }
 .tabs button.active:after {
   content: "";
@@ -1261,17 +1261,17 @@ svg {
   left: 0;
   right: 0;
   border-radius: 1px;
-  background: #609eff;
+  background: #ffe637;
 }
 .tabs button:hover {
-  color: #bfd5f2;
+  color: #161616;
 }
 .browser-tabs {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 0 24px;
-  border-bottom: 1px solid #21334b;
+  border-bottom: 1px solid #c8c8c8;
   gap: 18px;
   min-height: 60px;
 }
@@ -1279,8 +1279,8 @@ svg {
   display: flex;
   gap: 3px;
   padding: 3px;
-  background: #091727;
-  border: 1px solid #20344f;
+  background: #f7f7f5;
+  border: 1px solid #c8c8c8;
   border-radius: 6px;
 }
 .view-switch button {
@@ -1290,12 +1290,12 @@ svg {
   width: 28px;
   height: 26px;
   border-radius: 4px;
-  color: #6c86a8;
+  color: #606060;
   background: none;
 }
 .view-switch button.active {
-  background: #203d60;
-  color: #99c2fa;
+  background: #efefeb;
+  color: #161616;
 }
 .filter-row {
   display: flex;
@@ -1308,14 +1308,14 @@ svg {
   align-items: center;
   gap: 9px;
   padding: 0 12px;
-  border: 1px solid #263b57;
-  background: #0a1729;
+  border: 1px solid #c8c8c8;
+  background: #f7f7f5;
   border-radius: 7px;
-  color: #7898be;
+  color: #606060;
   min-width: 150px;
 }
 .input-search:focus-within {
-  border-color: #5d8bca;
+  border-color: #c8c8c8;
 }
 .input-search input {
   border: 0;
@@ -1349,15 +1349,15 @@ svg {
   padding: 5px 11px;
   font-size: 11px;
   background: transparent;
-  color: #7f9abe;
+  color: #606060;
   border-radius: 5px;
 }
 .position-filters button.active {
-  background: #1a3b66;
-  color: #a4caff;
+  background: #efefeb;
+  color: #161616;
 }
 .result-count {
-  color: #7890ad;
+  color: #606060;
   font-size: 11px;
   margin-left: 10px;
 }
@@ -1365,7 +1365,7 @@ svg {
   display: flex;
   gap: 5px;
   align-items: center;
-  color: #8aa1c0;
+  color: #606060;
 }
 .sort-control select {
   border: 0;
@@ -1380,18 +1380,18 @@ svg {
   padding: 0 24px 22px;
 }
 .player-card {
-  border: 1px solid #263e5c;
+  border: 1px solid #c8c8c8;
   border-radius: 10px;
   overflow: hidden;
   position: relative;
   background:
-    radial-gradient(ellipse at 50% 0, #1c355359, transparent 80%), #0f1f32;
+    radial-gradient(ellipse at 50% 0, #efefeb59, transparent 80%), #f7f7f5;
   transition:
     transform 0.2s,
     border-color 0.2s;
 }
 .player-card:hover {
-  border-color: #4c739f;
+  border-color: #c8c8c8;
   transform: translateY(-3px);
 }
 .player-card-top {
@@ -1420,7 +1420,7 @@ svg {
 }
 .player-card-main > span:not(.player-avatar) {
   font-size: 10px;
-  color: #738eaf;
+  color: #606060;
   margin-top: 3px;
 }
 .player-card-main p {
@@ -1428,7 +1428,7 @@ svg {
   align-items: center;
   gap: 6px;
   font-size: 10px;
-  color: #a1b6d0;
+  color: #606060;
   margin-top: 11px;
 }
 .player-card-main p .team-badge {
@@ -1442,7 +1442,7 @@ svg {
   justify-content: space-between;
   align-items: center;
   padding: 14px 15px;
-  border-top: 1px solid #223853;
+  border-top: 1px solid #c8c8c8;
 }
 .player-card-price strong {
   font-size: 18px;
@@ -1451,7 +1451,7 @@ svg {
 }
 .player-card-price small {
   font-size: 10px;
-  color: #7e9abd;
+  color: #606060;
 }
 .player-card-price .change {
   font-size: 10px;
@@ -1466,35 +1466,35 @@ svg {
   align-items: center;
   justify-content: space-between;
   font-size: 10px;
-  color: #6884a7;
-  background: #0b192a6e;
+  color: #606060;
+  background: #f7f7f56e;
 }
 .player-card-bottom b {
   font-size: 12px;
-  color: #a5c4ed;
+  color: #161616;
   margin-left: 7px;
 }
 .player-card-bottom a {
-  color: #8aadcf;
+  color: #606060;
 }
 .owned-tag {
   position: absolute;
   top: 58px;
   right: 12px;
   font-size: 8px;
-  color: #7fafee;
+  color: #161616;
   display: flex;
   align-items: center;
   gap: 2px;
 }
 .pagination {
-  border-top: 1px solid #1f324b;
+  border-top: 1px solid #c8c8c8;
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 18px 24px;
   font-size: 11px;
-  color: #7d98b8;
+  color: #606060;
 }
 .pagination > div {
   display: flex;
@@ -1505,14 +1505,14 @@ svg {
   min-width: 29px;
   border-radius: 5px;
   background: transparent;
-  color: #829fc5;
+  color: #606060;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 .pagination button.active {
-  background: #214676;
-  color: #abcfff;
+  background: #efefeb;
+  color: #161616;
 }
 .market-highlights {
   display: grid;
@@ -1524,9 +1524,9 @@ svg {
   display: flex;
   justify-content: space-between;
   background:
-    radial-gradient(ellipse at 85% 70%, #183f6a66, transparent 70%),
-    linear-gradient(125deg, #142b48, #102039);
-  border: 1px solid #2e4c6e;
+    radial-gradient(ellipse at 85% 70%, #efefeb66, transparent 70%),
+    linear-gradient(125deg, #efefeb, #f7f7f5);
+  border: 1px solid #c8c8c8;
   border-radius: 11px;
   padding: 23px 25px;
   gap: 20px;
@@ -1537,7 +1537,7 @@ svg {
   line-height: 1.5;
 }
 .market-feature h2 em {
-  color: #8db8ee;
+  color: #161616;
 }
 .market-feature .text-link {
   font-size: 10px;
@@ -1552,7 +1552,7 @@ svg {
   flex: 1;
 }
 .market-feature-chart > span {
-  color: #96b2d4;
+  color: #161616;
   font-size: 11px;
 }
 .market-feature-chart > strong {
@@ -1562,7 +1562,7 @@ svg {
 }
 .market-feature-chart > strong small {
   font-size: 12px;
-  color: #779bc5;
+  color: #606060;
 }
 .market-feature-chart > .change {
   font-size: 11px;
@@ -1576,18 +1576,18 @@ svg {
   padding: 23px 25px;
   position: relative;
   border-radius: 11px;
-  background: #101f32;
-  border: 1px solid #243951;
+  background: #f7f7f5;
+  border: 1px solid #c8c8c8;
   overflow: hidden;
 }
 .market-stat > span {
   font-size: 12px;
-  color: #98aece;
+  color: #606060;
   display: flex;
   justify-content: space-between;
 }
 .market-stat > span svg {
-  color: #56779c;
+  color: #606060;
 }
 .market-stat > strong {
   font-size: 30px;
@@ -1597,13 +1597,13 @@ svg {
 }
 .market-stat strong small {
   font-size: 12px;
-  color: #7995b8;
+  color: #606060;
   padding-left: 7px;
   font-weight: 400;
 }
 .market-stat > p {
   font-size: 10px;
-  color: #708bad;
+  color: #606060;
   margin-top: 4px;
 }
 .mini-bars {
@@ -1617,20 +1617,20 @@ svg {
 .mini-bars i {
   display: block;
   flex: 1;
-  background: linear-gradient(#497ec4, #25405f);
+  background: linear-gradient(#ffe637, #efefeb);
   border-radius: 2px 2px 0 0;
 }
 .ratio-bar {
   width: 100%;
   height: 5px;
   border-radius: 3px;
-  background: #814554;
+  background: #fff0ed;
   margin-top: 32px;
 }
 .ratio-bar > span {
   height: 100%;
   display: block;
-  background: #42b796;
+  background: #edf7ef;
   border-radius: 3px;
 }
 .empty {
@@ -1641,17 +1641,17 @@ svg {
   text-align: center;
   min-height: 230px;
   padding: 34px 20px;
-  color: #7391b8;
+  color: #606060;
   gap: 11px;
 }
 .empty h3 {
   font-size: 15px;
-  color: #b4c9e5;
+  color: #161616;
   margin-top: 7px;
 }
 .empty p {
   font-size: 13px;
-  color: #7792b4;
+  color: #606060;
 }
 .empty .button,
 .empty .text-link {
@@ -1663,7 +1663,7 @@ svg {
   align-items: center;
   padding: 31px 32px;
   background:
-    radial-gradient(ellipse at 75% 0, #1c426b60, transparent 60%), #102035;
+    radial-gradient(ellipse at 75% 0, #efefeb60, transparent 60%), #f7f7f5;
   margin-bottom: 24px;
   position: relative;
 }
@@ -1686,7 +1686,7 @@ svg {
 }
 .player-profile-identity p {
   font-size: 13px;
-  color: #8fa9cb;
+  color: #606060;
   margin: 3px 0 12px;
 }
 .player-profile-price {
@@ -1702,7 +1702,7 @@ svg {
 }
 .player-profile-price > span:not(.change) {
   display: block;
-  color: #809dbc;
+  color: #606060;
   font-size: 12px;
 }
 .player-profile-price > strong {
@@ -1714,7 +1714,7 @@ svg {
 .player-profile-price small {
   font-size: 18px;
   font-weight: 500;
-  color: #91b6e4;
+  color: #161616;
 }
 .detail-layout {
   display: grid;
@@ -1741,28 +1741,28 @@ svg {
 }
 .chart-summary strong small {
   font-size: 13px;
-  color: #7896bc;
+  color: #606060;
   font-weight: 500;
 }
 .chart-summary > div > span {
   display: block;
   font-size: 10px;
-  color: #6884a7;
+  color: #606060;
   margin-top: 3px;
 }
 .chart-summary .tabs {
   gap: 8px;
-  border: 1px solid #233c5b;
+  border: 1px solid #c8c8c8;
   border-radius: 6px;
   padding: 3px;
-  background: #0b1a2c;
+  background: #f7f7f5;
 }
 .chart-summary .tabs button {
   padding: 4px 9px;
   font-size: 10px;
 }
 .chart-summary .tabs button.active {
-  background: #203f64;
+  background: #efefeb;
   border-radius: 4px;
 }
 .chart-summary .tabs button.active:after {
@@ -1779,7 +1779,7 @@ svg {
   flex-direction: column;
   justify-content: space-between;
   font-size: 9px;
-  color: #6481a3;
+  color: #606060;
   width: 48px;
   flex-shrink: 0;
   padding: 10px 0 43px;
@@ -1799,7 +1799,7 @@ svg {
   display: flex;
   justify-content: space-between;
   font-size: 9px;
-  color: #6582a6;
+  color: #606060;
   padding-top: 9px;
 }
 .chart-tooltip {
@@ -1808,8 +1808,8 @@ svg {
   right: 0;
   padding: 5px 10px;
   font-size: 11px;
-  background: #223c5e;
-  color: #d5e7ff;
+  background: #efefeb;
+  color: #161616;
   border-radius: 5px;
 }
 .records-panel {
@@ -1817,7 +1817,7 @@ svg {
 }
 .records-panel > .tabs {
   padding: 0 24px;
-  border-bottom: 1px solid #23364c;
+  border-bottom: 1px solid #c8c8c8;
 }
 .result-badge {
   width: 20px;
@@ -1831,19 +1831,19 @@ svg {
   margin-right: 7px;
 }
 .result-badge.win {
-  background: #1d463f;
-  color: #75d9ba;
+  background: #edf7ef;
+  color: #176b3d;
 }
 .result-badge.draw {
-  background: #3c3c38;
-  color: #d1c28f;
+  background: #f7f7f5;
+  color: #606060;
 }
 .score-pill {
   font-size: 11px;
   padding: 3px 6px;
   border-radius: 4px;
-  color: #8acdb3;
-  background: #20433b;
+  color: #176b3d;
+  background: #f7f7f5;
 }
 .season-stats {
   display: grid;
@@ -1853,7 +1853,7 @@ svg {
 }
 .season-stats span {
   font-size: 12px;
-  color: #8ba5c5;
+  color: #606060;
   display: block;
 }
 .season-stats strong {
@@ -1870,7 +1870,7 @@ svg {
 }
 .analysis-panel p {
   font-size: 14px;
-  color: #a7bdda;
+  color: #161616;
   line-height: 1.9;
 }
 .detail-side > section,
@@ -1885,8 +1885,8 @@ svg {
 }
 .holding-status {
   padding: 10px 12px;
-  background: #172c49;
-  color: #97b8e4;
+  background: #efefeb;
+  color: #161616;
   font-size: 11px;
   border-radius: 6px;
   display: flex;
@@ -1905,7 +1905,7 @@ svg {
   font-size: 13px;
 }
 .summary-list dt {
-  color: #8da5c6;
+  color: #606060;
   white-space: nowrap;
 }
 .summary-list dd {
@@ -1914,14 +1914,14 @@ svg {
   font-weight: 550;
 }
 .summary-list .total {
-  border-top: 1px solid #2b425f;
-  border-bottom: 1px solid #2b425f;
+  border-top: 1px solid #c8c8c8;
+  border-bottom: 1px solid #c8c8c8;
   margin: 9px 0;
   padding: 17px 0;
 }
 .summary-list .total dd {
   font-size: 21px;
-  color: #a0c8ff;
+  color: #161616;
 }
 .summary-list .total dt {
   padding-top: 4px;
@@ -1937,14 +1937,14 @@ svg {
 .performance-big {
   font-size: 48px;
   font-weight: 650;
-  color: #b4d3ff;
+  color: #161616;
   line-height: 1.2;
   margin: 18px 0 20px;
   letter-spacing: -2px;
 }
 .performance-big small {
   font-size: 14px;
-  color: #5d7ca2;
+  color: #606060;
   letter-spacing: 0;
   margin-left: 9px;
   font-weight: 400;
@@ -1952,24 +1952,24 @@ svg {
 .meter {
   height: 5px;
   border-radius: 3px;
-  background: #1c354d;
+  background: #efefeb;
 }
 .meter span {
   height: 100%;
-  background: linear-gradient(90deg, #3565a6, #7db8ff);
+  background: linear-gradient(90deg, #fff, #fff);
   display: block;
   border-radius: 3px;
 }
 .performance-panel p {
   font-size: 11px;
-  color: #7692b4;
+  color: #606060;
   margin-top: 12px;
 }
 .community-cta {
   display: flex;
   gap: 13px;
   padding: 22px;
-  color: #83aada;
+  color: #161616;
   align-items: center;
 }
 .community-cta > div {
@@ -1978,34 +1978,34 @@ svg {
 .community-cta strong {
   font-size: 13px;
   display: block;
-  color: #bfdaff;
+  color: #161616;
 }
 .community-cta span {
   font-size: 10px;
   display: block;
-  color: #7898bf;
+  color: #606060;
   margin-top: 4px;
 }
 .community-cta:hover {
-  border-color: #4b739d;
+  border-color: #c8c8c8;
 }
 .modal {
   width: 480px;
   max-width: calc(100% - 32px);
   max-height: calc(100vh - 50px);
   padding: 27px;
-  border: 1px solid #3c597f;
+  border: 1px solid #c8c8c8;
   border-radius: 14px;
-  background: linear-gradient(130deg, #14263d, #0f1d31);
+  background: linear-gradient(130deg, #f7f7f5, #f7f7f5);
   color: var(--text);
-  box-shadow: 0 30px 90px #0009;
+  box-shadow: 0 30px 90px #00000099;
   position: fixed;
   inset: 0;
   margin: auto;
   overflow-y: auto;
 }
 .modal::backdrop {
-  background: #020811bd;
+  background: #f7f7f5bd;
   backdrop-filter: blur(5px);
 }
 .modal-heading {
@@ -2038,14 +2038,14 @@ svg {
 }
 .trade-player p {
   font-size: 12px;
-  color: #89a3c4;
+  color: #606060;
   margin: 6px 0 10px;
 }
 .form-error {
   font-size: 13px;
-  color: #ffabb5;
-  border: 1px solid #683b50;
-  background: #3e2634;
+  color: #b44030;
+  border: 1px solid #d9a39b;
+  background: #f7f7f5;
   border-radius: 7px;
   padding: 12px;
 }
@@ -2060,31 +2060,31 @@ svg {
   display: flex;
   align-items: center;
   gap: 13px;
-  background: #17344b;
-  border: 1px solid #417077;
-  box-shadow: 0 12px 40px #0008;
-  color: #daefee;
+  background: #efefeb;
+  border: 1px solid #c8c8c8;
+  box-shadow: 0 12px 40px #00000088;
+  color: #161616;
   border-radius: 10px;
   padding: 16px 20px;
   font-size: 13px;
   animation: toast-in 0.2s ease-out;
 }
 .toast > span {
-  color: #74ddbf;
+  color: #176b3d;
   font-size: 18px;
 }
 .toast button {
   margin-left: 14px;
   background: transparent;
-  color: #9dbecf;
+  color: #606060;
   font-size: 21px;
 }
 .toast.error {
-  background: #3c2636;
-  border-color: #795064;
+  background: #f7f7f5;
+  border-color: #d9a39b;
 }
 .toast.error > span {
-  color: #ff9aab;
+  color: #b44030;
 }
 @keyframes toast-in {
   from {
@@ -2106,13 +2106,13 @@ svg {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-bottom: 1px solid #20354e;
+  border-bottom: 1px solid #c8c8c8;
 }
 .squad-toolbar > div {
   display: flex;
   align-items: center;
   gap: 11px;
-  color: #bcd4f4;
+  color: #161616;
 }
 .squad-toolbar strong {
   font-size: 16px;
@@ -2126,14 +2126,14 @@ svg {
   background:
     repeating-linear-gradient(
       0deg,
-      #113335c9 0,
-      #113335c9 11.11%,
-      #133b3dc9 11.11%,
-      #133b3dc9 22.22%
+      #f7f7f5c9 0,
+      #f7f7f5c9 11.11%,
+      #f7f7f5c9 11.11%,
+      #f7f7f5c9 22.22%
     ),
-    radial-gradient(ellipse at center, #1a5350, #092226);
+    radial-gradient(ellipse at center, #efefeb, #f7f7f5);
   margin: 22px;
-  border: 1px solid #2b6261;
+  border: 1px solid #c8c8c8;
   overflow: hidden;
   border-radius: 9px;
   aspect-ratio: 1.1;
@@ -2142,7 +2142,7 @@ svg {
 .pitch-markings {
   position: absolute;
   inset: 20px;
-  border: 1px solid #8ebeba40;
+  border: 1px solid #c8c8c840;
   pointer-events: none;
 }
 .pitch-half {
@@ -2151,7 +2151,7 @@ svg {
   right: 0;
   height: 1px;
   top: 50%;
-  background: #8ebeba40;
+  background: #ffffff40;
 }
 .pitch-circle {
   position: absolute;
@@ -2159,7 +2159,7 @@ svg {
   top: 50%;
   width: 23%;
   aspect-ratio: 1;
-  border: 1px solid #8ebeba40;
+  border: 1px solid #c8c8c840;
   transform: translate(-50%, -50%);
   border-radius: 50%;
 }
@@ -2168,7 +2168,7 @@ svg {
   left: 27%;
   width: 46%;
   height: 17%;
-  border: 1px solid #8ebeba40;
+  border: 1px solid #c8c8c840;
 }
 .penalty.top {
   top: -1px;
@@ -2181,7 +2181,7 @@ svg {
   left: 39%;
   width: 22%;
   height: 6%;
-  border: 1px solid #8ebeba40;
+  border: 1px solid #c8c8c840;
 }
 .goal.top {
   top: -1px;
@@ -2217,40 +2217,40 @@ svg {
   border: 1px solid transparent;
   border-radius: 7px;
   max-width: 26%;
-  color: #d7eeeb;
+  color: #161616;
 }
 .pitch-player.selected {
-  background: #86caff25;
-  border-color: #8bc8ff;
+  background: #ffffff25;
+  border-color: #c8c8c8;
 }
 .pitch-player:hover {
-  background: #69b4b719;
+  background: #ffe63719;
 }
 .pitch-player .player-avatar {
   width: 38px;
   height: 41px;
-  box-shadow: 0 4px 9px #0005;
+  box-shadow: 0 4px 9px #00000055;
 }
 .pitch-player strong {
   font-size: 11px;
-  color: #d9f0ed;
-  text-shadow: 0 2px 4px #000;
+  color: #161616;
+  text-shadow: 0 2px 4px #000000;
   line-height: 1.2;
   white-space: nowrap;
   max-width: 100%;
 }
 .pitch-player small:not(.player-avatar > small) {
   font-size: 9px;
-  color: #8eb5b2;
+  color: #606060;
   line-height: 1.1;
 }
 .pitch-player .empty-slot {
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1px dashed #63928e;
-  color: #95c1ba;
-  background: #1a43475e;
+  border: 1px dashed #afc9b6;
+  color: #176b3d;
+  background: #efefeb5e;
   border-radius: 8px;
   width: 38px;
   height: 41px;
@@ -2302,7 +2302,7 @@ svg {
 }
 .squad-board-footer > div > span {
   display: block;
-  color: #7d99be;
+  color: #606060;
   font-size: 11px;
   margin-bottom: 4px;
 }
@@ -2313,7 +2313,7 @@ svg {
 .squad-board-footer small {
   font-size: 11px;
   font-weight: 400;
-  color: #7091b8;
+  color: #606060;
 }
 .squad-selection {
   display: flex;
@@ -2325,7 +2325,7 @@ svg {
 }
 .squad-selection > .tabs {
   padding: 0 23px;
-  border-bottom: 1px solid #243852;
+  border-bottom: 1px solid #c8c8c8;
   gap: 24px;
 }
 .bench-list {
@@ -2341,7 +2341,7 @@ svg {
   justify-content: space-between;
   gap: 10px;
   padding: 13px 0;
-  border-bottom: 1px solid #20324a;
+  border-bottom: 1px solid #c8c8c8;
 }
 .bench-player:last-child {
   border: 0;
@@ -2369,30 +2369,30 @@ svg {
   gap: 12px;
   align-items: center;
   padding: 20px 23px;
-  border-top: 1px solid #243a54;
+  border-top: 1px solid #c8c8c8;
   margin-top: auto;
-  color: #6e90b8;
+  color: #606060;
 }
 .squad-tip p {
   font-size: 11px;
   line-height: 1.8;
-  color: #8fa9c9;
+  color: #606060;
 }
 .selected-slot-note {
   margin: 0 22px 10px;
   padding: 10px 12px;
-  background: #1a3454;
-  border: 1px solid #325578;
+  background: #efefeb;
+  border: 1px solid #c8c8c8;
   border-radius: 6px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  color: #a3c7ef;
+  color: #161616;
   font-size: 11px;
 }
 .selected-slot-note button {
   background: none;
-  color: #91b9e9;
+  color: #161616;
 }
 .squad-selection > .button {
   margin: 15px 23px;
@@ -2407,7 +2407,7 @@ svg {
 .asset-overview {
   padding: 26px 30px;
   background:
-    radial-gradient(ellipse at top right, #1c3f6259, transparent 70%), #0e2036;
+    radial-gradient(ellipse at top right, #efefeb59, transparent 70%), #f7f7f5;
 }
 .asset-total {
   font-size: 45px;
@@ -2419,7 +2419,7 @@ svg {
 }
 .asset-total small {
   font-size: 24px;
-  color: #779fcf;
+  color: #606060;
   letter-spacing: 0;
   font-weight: 400;
 }
@@ -2433,13 +2433,13 @@ svg {
 .asset-split {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  border-top: 1px solid #27415c;
+  border-top: 1px solid #c8c8c8;
   margin-top: 25px;
   padding-top: 22px;
 }
 .asset-split > div {
   padding-left: 22px;
-  border-left: 1px solid #2b405a;
+  border-left: 1px solid #c8c8c8;
 }
 .asset-split > div:first-child {
   padding: 0;
@@ -2447,7 +2447,7 @@ svg {
 }
 .asset-split span {
   font-size: 11px;
-  color: #87a4c7;
+  color: #606060;
   display: block;
 }
 .asset-split strong {
@@ -2460,7 +2460,7 @@ svg {
 .asset-split small {
   font-size: 10px;
   font-weight: 400;
-  color: #7c9bc1;
+  color: #606060;
 }
 .allocation-panel .section-title {
   padding-top: 25px;
@@ -2486,7 +2486,7 @@ svg {
   width: 112px;
   height: 112px;
   border-radius: 50%;
-  background: #101f32;
+  background: #f7f7f5;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2495,7 +2495,7 @@ svg {
   transform: rotate(30deg);
 }
 .donut svg {
-  color: #668ec1;
+  color: #606060;
   width: 18px;
 }
 .donut strong {
@@ -2504,7 +2504,7 @@ svg {
 .donut small {
   display: block;
   font-size: 10px;
-  color: #758eb1;
+  color: #606060;
   font-weight: 400;
 }
 .allocation-content p {
@@ -2512,12 +2512,12 @@ svg {
   align-items: center;
   gap: 7px;
   font-size: 11px;
-  color: #92a9c6;
+  color: #606060;
   margin-bottom: 12px;
   white-space: nowrap;
 }
 .allocation-content b {
-  color: #d3e3f8;
+  color: #161616;
   margin-left: 10px;
   font-size: 12px;
 }
@@ -2526,10 +2526,10 @@ svg {
   width: 7px;
   height: 7px;
   border-radius: 2px;
-  background: #4288ff;
+  background: #ffe637;
 }
 .legend-dot.secondary {
-  background: #355b89;
+  background: #efefeb;
 }
 .allocation-content .text-link {
   font-size: 10px;
@@ -2551,15 +2551,15 @@ svg {
 .transaction-stats {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  background: linear-gradient(120deg, #142a45, #101f32);
-  border: 1px solid #284263;
+  background: linear-gradient(120deg, #f7f7f5, #f7f7f5);
+  border: 1px solid #c8c8c8;
   border-radius: 12px;
   margin-bottom: 24px;
   padding: 25px 10px;
 }
 .transaction-stats > div {
   padding: 0 26px;
-  border-right: 1px solid #2b4361;
+  border-right: 1px solid #c8c8c8;
 }
 .transaction-stats > div:last-child {
   border: 0;
@@ -2567,7 +2567,7 @@ svg {
 .transaction-stats span {
   display: block;
   font-size: 12px;
-  color: #89a5c9;
+  color: #606060;
 }
 .transaction-stats strong {
   display: block;
@@ -2577,7 +2577,7 @@ svg {
 }
 .transaction-stats small {
   font-size: 13px;
-  color: #7099c8;
+  color: #606060;
   font-weight: 400;
 }
 .trade-type {
@@ -2587,31 +2587,31 @@ svg {
   font-size: 12px;
 }
 .trade-type.buy {
-  color: #7cb2ff;
+  color: #161616;
 }
 .trade-type.sell {
-  color: #d9a0f7;
+  color: #161616;
 }
 .status-pill {
   display: inline-flex;
   padding: 3px 8px;
   border-radius: 5px;
   font-size: 10px;
-  background: #26344b;
-  color: #99b0cd;
+  background: #efefeb;
+  color: #606060;
   white-space: nowrap;
 }
 .status-pill.blue {
-  color: #9bc3fc;
-  background: #213f68;
+  color: #161616;
+  background: #efefeb;
 }
 .status-pill.green {
-  color: #8bd6bc;
-  background: #1a3c36;
+  color: #176b3d;
+  background: #f7f7f5;
 }
 .status-pill.orange {
-  color: #e4b37c;
-  background: #463527;
+  color: #161616;
+  background: #efefeb;
 }
 .date-cell {
   font-size: 11px;
@@ -2624,9 +2624,9 @@ svg {
   padding: 28px 32px;
   border-radius: 12px;
   background:
-    radial-gradient(ellipse at right center, #244b7799, transparent 55%),
-    linear-gradient(110deg, #132743, #112039);
-  border: 1px solid #2b4566;
+    radial-gradient(ellipse at right center, #efefeb99, transparent 55%),
+    linear-gradient(110deg, #f7f7f5, #f7f7f5);
+  border: 1px solid #c8c8c8;
   margin-bottom: 23px;
 }
 .ranking-banner h2 {
@@ -2635,15 +2635,15 @@ svg {
 }
 .ranking-banner p {
   font-size: 11px;
-  color: #8eabc9;
+  color: #606060;
   margin-top: 10px;
 }
 .ranking-banner i {
   padding: 0 8px;
-  color: #597da7;
+  color: #606060;
 }
 .ranking-banner > svg {
-  color: #b2cceb;
+  color: #161616;
   opacity: 0.7;
   stroke-width: 1.2;
   margin-right: 25px;
@@ -2658,18 +2658,18 @@ svg {
 .podium-card {
   text-align: center;
   position: relative;
-  border: 1px solid #2a405d;
+  border: 1px solid #c8c8c8;
   border-radius: 12px;
   background:
-    radial-gradient(ellipse at center top, #203f624d, transparent 70%), #101f32;
+    radial-gradient(ellipse at center top, #efefeb4d, transparent 70%), #f7f7f5;
   padding: 30px 24px 24px;
   min-height: 265px;
 }
 .podium-card.place-1 {
   min-height: 288px;
-  border-color: #567399;
+  border-color: #c8c8c8;
   background:
-    radial-gradient(ellipse at center top, #2f59855e, transparent 80%), #11233b;
+    radial-gradient(ellipse at center top, #efefeb5e, transparent 80%), #f7f7f5;
   padding-top: 38px;
 }
 .podium-place {
@@ -2679,19 +2679,19 @@ svg {
   display: flex;
   align-items: center;
   gap: 5px;
-  color: #657f9f;
+  color: #606060;
 }
 .podium-place span {
   font-size: 11px;
 }
 .place-1 .podium-place {
-  color: #e4c695;
+  color: #161616;
 }
 .place-2 .podium-place {
-  color: #a7bdd8;
+  color: #161616;
 }
 .place-3 .podium-place {
-  color: #b99285;
+  color: #b44030;
 }
 .podium-card .team-badge {
   margin-bottom: 13px;
@@ -2701,12 +2701,12 @@ svg {
 }
 .podium-card > p {
   font-size: 11px;
-  color: #7e9bbd;
+  color: #606060;
   margin-top: 4px;
 }
 .podium-card > strong {
   font-size: 30px;
-  color: #78d8bb;
+  color: #176b3d;
   display: block;
   margin-top: 16px;
   letter-spacing: -1px;
@@ -2716,7 +2716,7 @@ svg {
   margin-left: 2px;
 }
 .podium-asset {
-  color: #6f8fb7;
+  color: #606060;
   font-size: 11px;
   display: block;
   margin-top: 2px;
@@ -2726,9 +2726,9 @@ svg {
   justify-content: space-between;
   align-items: center;
   padding: 17px 23px;
-  border: 1px solid #365e90;
+  border: 1px solid #c8c8c8;
   border-radius: 9px;
-  background: #19365988;
+  background: #efefeb88;
   margin-bottom: 26px;
 }
 .my-rank-strip > div {
@@ -2744,7 +2744,7 @@ svg {
 }
 .my-rank-strip > div:last-child > strong {
   font-size: 24px;
-  color: #b4d4ff;
+  color: #161616;
 }
 .rank-user {
   display: flex;
@@ -2755,7 +2755,7 @@ svg {
   font-size: 13px;
 }
 .my-row {
-  background: #1b3a5d5e !important;
+  background: #efefeb5e !important;
 }
 .ranking-table .inline-meta {
   font-size: 12px;
@@ -2772,8 +2772,8 @@ svg {
   gap: 10px;
 }
 .club-card {
-  background: #101f33;
-  border: 1px solid #243b56;
+  background: #f7f7f5;
+  border: 1px solid #c8c8c8;
   border-radius: 10px;
   padding: 19px 6px 13px;
   display: flex;
@@ -2786,11 +2786,11 @@ svg {
 }
 .club-card:hover {
   transform: translateY(-3px);
-  border-color: #4e719f;
+  border-color: #c8c8c8;
 }
 .club-card.my-club {
-  background: linear-gradient(130deg, #1b3557, #11263f);
-  border-color: #4671a7;
+  background: linear-gradient(130deg, #efefeb, #f7f7f5);
+  border-color: #c8c8c8;
 }
 .club-card strong {
   font-size: 10px;
@@ -2799,11 +2799,11 @@ svg {
 }
 .club-card > span:last-child {
   font-size: 8px;
-  color: #6b8cb7;
+  color: #606060;
   letter-spacing: 0.06em;
 }
 .club-card.my-club > span:last-child {
-  color: #8cbeff;
+  color: #161616;
 }
 .community-layout {
   display: grid;
@@ -2826,11 +2826,11 @@ svg {
   justify-content: space-between;
   gap: 17px;
   padding: 23px 24px;
-  border-top: 1px solid #21344c;
+  border-top: 1px solid #c8c8c8;
   align-items: center;
 }
 .post-row:hover {
-  background: #1a304749;
+  background: #efefeb49;
 }
 .post-row-main {
   min-width: 0;
@@ -2840,12 +2840,12 @@ svg {
   align-items: center;
   gap: 9px;
   font-size: 10px;
-  color: #6f8eb5;
+  color: #606060;
 }
 .category-tag {
   display: inline-block;
-  color: #8eb6ec;
-  background: #1b3453;
+  color: #161616;
+  background: #efefeb;
   border-radius: 4px;
   padding: 3px 7px;
   font-size: 10px;
@@ -2857,18 +2857,18 @@ svg {
   font-size: 15px;
   font-weight: 550;
   margin: 9px 0 10px;
-  color: #dae6f6;
+  color: #161616;
   letter-spacing: -0.015em;
 }
 .post-row h3 > svg {
-  color: #6c8bad;
+  color: #606060;
 }
 .post-byline {
   display: flex;
   gap: 12px;
   align-items: center;
   font-size: 10px;
-  color: #6d89ac;
+  color: #606060;
 }
 .post-byline > span:last-child {
   display: flex;
@@ -2880,7 +2880,7 @@ svg {
   align-items: center;
   gap: 12px;
   font-size: 10px;
-  color: #7f9fc5;
+  color: #606060;
   flex-shrink: 0;
 }
 .post-counts > span {
@@ -2894,7 +2894,7 @@ svg {
   gap: 10px;
   margin: 0 21px;
   padding: 13px 0;
-  border-bottom: 1px solid #1f324b;
+  border-bottom: 1px solid #c8c8c8;
 }
 .trending-lounge:last-child {
   border: 0;
@@ -2902,7 +2902,7 @@ svg {
 }
 .trending-lounge > .rank-index {
   font-size: 11px;
-  color: #607fa5;
+  color: #606060;
   min-width: 17px;
 }
 .trending-lounge > .player-avatar {
@@ -2927,37 +2927,37 @@ svg {
 .trending-lounge > div > span {
   display: block;
   font-size: 10px;
-  color: #6d8eb6;
+  color: #606060;
   margin-top: 2px;
 }
 .trending-lounge > svg {
-  color: #537aaa;
+  color: #606060;
 }
 .community-guide {
   padding: 25px 22px;
-  background: #101e3077;
-  border: 1px solid #233a50;
+  background: #f7f7f577;
+  border: 1px solid #c8c8c8;
   border-radius: 10px;
   margin-top: 22px;
-  color: #799eca;
+  color: #606060;
 }
 .community-guide h3 {
-  color: #a8c5e7;
+  color: #161616;
   font-size: 13px;
   margin: 14px 0 10px;
   line-height: 1.7;
 }
 .community-guide p {
   font-size: 12px;
-  color: #88a4c5;
+  color: #606060;
   line-height: 1.9;
 }
 .community-guide > span {
   font-size: 10px;
-  color: #5e7ca1;
+  color: #606060;
   display: block;
   margin-top: 16px;
-  border-top: 1px solid #263e58;
+  border-top: 1px solid #c8c8c8;
   padding-top: 14px;
 }
 .lounge-banner {
@@ -2967,9 +2967,9 @@ svg {
   margin-bottom: 25px;
   padding: 28px;
   background:
-    radial-gradient(ellipse at right, #27476a55, transparent 60%),
-    linear-gradient(100deg, #162c48, #101e31);
-  border: 1px solid #2b4563;
+    radial-gradient(ellipse at right, #efefeb55, transparent 60%),
+    linear-gradient(100deg, #efefeb, #f7f7f5);
+  border: 1px solid #c8c8c8;
   border-radius: 12px;
 }
 .lounge-banner > div {
@@ -2981,7 +2981,7 @@ svg {
 }
 .lounge-banner p {
   font-size: 12px;
-  color: #92aed0;
+  color: #606060;
 }
 .reading-width {
   max-width: 950px;
@@ -2998,7 +2998,7 @@ svg {
   display: flex;
   align-items: center;
   gap: 12px;
-  border-bottom: 1px solid #2a3d56;
+  border-bottom: 1px solid #c8c8c8;
   padding-bottom: 24px;
 }
 .article-author > div:not(.button-row) {
@@ -3010,28 +3010,28 @@ svg {
 }
 .article-author > div > span {
   font-size: 10px;
-  color: #7d97ba;
+  color: #606060;
   display: block;
   margin-top: 3px;
 }
 .article-author i {
   margin: 0 6px;
-  color: #455f80;
+  color: #777;
 }
 .article-body {
   white-space: pre-wrap;
   font-size: 16px;
   line-height: 2;
-  color: #c1d1e7;
+  color: #161616;
   padding: 34px 0 40px;
   min-height: 220px;
   overflow-wrap: anywhere;
 }
 .attached-trade {
   padding: 21px;
-  border: 1px solid #355579;
+  border: 1px solid #c8c8c8;
   border-radius: 9px;
-  background: #122c4a;
+  background: #efefeb;
   max-width: 400px;
   margin-bottom: 30px;
 }
@@ -3039,7 +3039,7 @@ svg {
   display: flex;
   align-items: center;
   gap: 8px;
-  color: #85b1e9;
+  color: #161616;
   font-size: 11px;
   margin-bottom: 18px;
 }
@@ -3059,7 +3059,7 @@ svg {
 }
 .attached-trade > small {
   display: block;
-  color: #6e96c6;
+  color: #606060;
   font-size: 10px;
   margin-top: 9px;
 }
@@ -3070,9 +3070,9 @@ svg {
   padding-top: 10px;
 }
 .liked {
-  color: #ff9db3 !important;
-  border-color: #6d4666 !important;
-  background: #38273c !important;
+  color: #b44030 !important;
+  border-color: #c8c8c8 !important;
+  background: #f7f7f5 !important;
 }
 .comments-panel {
   margin-top: 22px;
@@ -3083,7 +3083,7 @@ svg {
   align-items: flex-start;
   gap: 13px;
   padding: 20px 25px;
-  border-top: 1px solid #22384f;
+  border-top: 1px solid #c8c8c8;
 }
 .comment > div:not(.button-row) {
   flex: 1;
@@ -3094,13 +3094,13 @@ svg {
 }
 .comment > div > span {
   font-size: 10px;
-  color: #6e8bae;
+  color: #606060;
   margin-left: 12px;
 }
 .comment p {
   font-size: 14px;
   line-height: 1.8;
-  color: #b6cbe7;
+  color: #161616;
   margin-top: 10px;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
@@ -3110,7 +3110,7 @@ svg {
 }
 .comment-form label {
   font-size: 13px;
-  color: #91add0;
+  color: #606060;
   display: block;
   margin-bottom: 10px;
 }
@@ -3128,7 +3128,7 @@ svg {
 }
 .comment-form > div > span {
   font-size: 10px;
-  color: #627fa4;
+  color: #606060;
 }
 .write-form {
   padding: 30px;
@@ -3138,7 +3138,7 @@ svg {
 .onboarding-form > label {
   display: block;
   font-size: 13px;
-  color: #aec4e1;
+  color: #161616;
   margin-bottom: 24px;
   font-weight: 550;
 }
@@ -3165,15 +3165,15 @@ svg {
 .writing-count {
   text-align: right;
   font-size: 11px;
-  color: #6986ac;
+  color: #606060;
   margin-top: -17px;
   margin-bottom: 25px;
 }
 .attachment-label {
-  border: 1px solid #2c4566;
+  border: 1px solid #c8c8c8;
   border-radius: 8px;
   padding: 18px;
-  background: #10263f;
+  background: #f7f7f5;
 }
 .attachment-label > span {
   display: flex;
@@ -3181,7 +3181,7 @@ svg {
   gap: 8px;
 }
 .attachment-label small {
-  color: #6f91bc;
+  color: #606060;
   margin-left: 5px;
   font-weight: 400;
   font-size: 11px;
@@ -3190,7 +3190,7 @@ svg {
   display: flex;
   justify-content: flex-end;
   gap: 10px;
-  border-top: 1px solid #253c58;
+  border-top: 1px solid #c8c8c8;
   padding-top: 23px;
   margin-top: 25px;
 }
@@ -3201,7 +3201,7 @@ svg {
 }
 .auth-visual {
   background:
-    linear-gradient(0deg, #07192fe6, #0a1b330d 70%, #07182ee8),
+    linear-gradient(0deg, #f7f7f5e6, #f7f7f50d 70%, #f7f7f5e8),
     url("/images/stadium-night.webp") 69% center/cover;
   display: flex;
   flex-direction: column;
@@ -3222,11 +3222,11 @@ svg {
   letter-spacing: -2px;
 }
 .auth-visual h1 em {
-  color: #b8d7ff;
+  color: #161616;
 }
 .auth-visual p {
   font-size: 15px;
-  color: #b3c7e2;
+  color: #161616;
   line-height: 1.9;
 }
 .auth-feature {
@@ -3239,13 +3239,13 @@ svg {
   display: flex;
   align-items: center;
   gap: 6px;
-  color: #95b8e6;
+  color: #161616;
   font-size: 11px;
 }
 .auth-photo-caption {
   font-size: 10px;
   letter-spacing: 0.2em;
-  color: #6286b3;
+  color: #606060;
   margin-top: 50px;
 }
 .auth-form-side {
@@ -3253,7 +3253,7 @@ svg {
   flex-direction: column;
   padding: 45px 55px;
   justify-content: space-between;
-  background: radial-gradient(ellipse at right top, #132a43, #081421 60%);
+  background: radial-gradient(ellipse at right top, #f7f7f5, #f7f7f5 60%);
 }
 .auth-form-side > .back-link {
   font-size: 12px;
@@ -3271,7 +3271,7 @@ svg {
   letter-spacing: -1.3px;
 }
 .login-form > p {
-  color: #839fc1;
+  color: #606060;
   font-size: 13px;
   line-height: 1.8;
 }
@@ -3283,24 +3283,24 @@ svg {
   width: 100%;
   margin-top: 35px;
   padding: 13px;
-  border: 1px solid #47617f;
+  border: 1px solid #c8c8c8;
   border-radius: 8px;
-  background: #d3dceb;
-  color: #19324e;
+  background: #fff;
+  color: #777;
   font-size: 14px;
   font-weight: 600;
 }
 .google-button > span {
   font-size: 20px;
   font-weight: 800;
-  color: #3c75d7;
+  color: #161616;
 }
 .google-button:disabled {
   opacity: 0.6;
 }
 .login-form .auth-connection-note {
   font-size: 11px;
-  color: #6e8fb8;
+  color: #606060;
   margin-top: 9px;
   text-align: center;
 }
@@ -3309,7 +3309,7 @@ svg {
   display: flex;
   align-items: center;
   gap: 14px;
-  color: #607e9f;
+  color: #606060;
   font-size: 11px;
 }
 .or-divider:before,
@@ -3317,23 +3317,23 @@ svg {
   content: "";
   height: 1px;
   flex: 1;
-  background: #243953;
+  background: #efefeb;
 }
 .login-note {
   display: flex;
   align-items: flex-start;
   gap: 10px;
-  color: #5b80b0;
+  color: #606060;
   margin-top: 24px;
 }
 .login-note p {
   font-size: 11px;
-  color: #738eb0;
+  color: #606060;
   line-height: 1.9;
 }
 .auth-copyright {
   font-size: 10px;
-  color: #486587;
+  color: #777;
   text-align: center;
   margin-top: 30px;
 }
@@ -3355,7 +3355,7 @@ svg {
 }
 .onboarding-intro p {
   font-size: 13px;
-  color: #8ba6c7;
+  color: #606060;
 }
 .onboarding-form {
   padding: 32px;
@@ -3363,7 +3363,7 @@ svg {
 .onboarding-form > label > small,
 .settings-form label > small {
   font-size: 11px;
-  color: #6d8bb1;
+  color: #606060;
   display: block;
   font-weight: 400;
   margin-top: 9px;
@@ -3375,7 +3375,7 @@ svg {
 }
 .onboarding-form legend {
   font-size: 13px;
-  color: #adc3df;
+  color: #161616;
   margin-bottom: 14px;
 }
 .onboarding-teams {
@@ -3384,8 +3384,8 @@ svg {
   gap: 12px;
 }
 .team-choice {
-  border: 1px solid #2c415c;
-  background: #102035;
+  border: 1px solid #c8c8c8;
+  background: #f7f7f5;
   border-radius: 7px;
   padding: 13px;
   display: flex;
@@ -3403,11 +3403,11 @@ svg {
   opacity: 0;
 }
 .team-choice:focus-within {
-  outline: 2px solid #7ab6ff;
+  outline: 2px solid #c8c8c8;
 }
 .team-choice > span:not(.team-badge) {
   font-size: 12px;
-  color: #a5bddb;
+  color: #161616;
 }
 .team-choice .team-badge {
   width: 29px;
@@ -3415,32 +3415,32 @@ svg {
   font-size: 8px;
 }
 .team-choice.selected {
-  border-color: #5691df;
-  background: #163455;
+  border-color: #c8c8c8;
+  background: #efefeb;
 }
 .team-choice.selected > svg {
   margin-left: auto;
-  color: #8fc3ff;
+  color: #161616;
 }
 .starter-balance {
   display: flex;
   gap: 14px;
   align-items: center;
-  border: 1px solid #2c4c6e;
+  border: 1px solid #c8c8c8;
   border-radius: 8px;
-  background: #132c49;
+  background: #efefeb;
   padding: 18px;
   margin: 29px 0 24px;
-  color: #8ab8f4;
+  color: #161616;
 }
 .starter-balance strong {
   display: block;
   font-size: 13px;
-  color: #c1dcff;
+  color: #161616;
 }
 .starter-balance > div > span {
   font-size: 11px;
-  color: #779fce;
+  color: #606060;
   display: block;
   margin-top: 5px;
 }
@@ -3466,13 +3466,13 @@ svg {
   align-items: center;
   justify-content: center;
   margin: auto;
-  border: 1px solid #6586b5;
-  background: linear-gradient(140deg, #446f9f, #152b47);
+  border: 1px solid #c8c8c8;
+  background: linear-gradient(140deg, #fff, #efefeb);
   border-radius: 50%;
   font-size: 33px;
-  color: #d4e5ff;
+  color: #161616;
   font-weight: 650;
-  box-shadow: 0 0 0 7px #1c355344;
+  box-shadow: 0 0 0 7px #00000044;
 }
 .profile-card h2 {
   font-size: 22px;
@@ -3485,7 +3485,7 @@ svg {
   gap: 11px;
   margin: 24px 0;
   padding-top: 24px;
-  border-top: 1px solid #253b56;
+  border-top: 1px solid #c8c8c8;
 }
 .profile-club strong {
   font-size: 14px;
@@ -3499,11 +3499,11 @@ svg {
 .profile-facts > span {
   display: flex;
   justify-content: space-between;
-  color: #809fbe;
+  color: #606060;
   font-size: 12px;
 }
 .profile-facts b {
-  color: #c0d6f0;
+  color: #161616;
 }
 .profile-card > .button {
   font-size: 12px;
@@ -3529,8 +3529,8 @@ svg {
   align-items: center;
   margin: 0 25px;
   padding: 24px 0;
-  border-top: 1px solid #233851;
-  color: #7293bb;
+  border-top: 1px solid #c8c8c8;
+  color: #606060;
 }
 .settings-row > div {
   flex: 1;
@@ -3539,7 +3539,7 @@ svg {
 .settings-row strong {
   font-size: 13px;
   display: block;
-  color: #c6d9f0;
+  color: #161616;
 }
 .settings-row > div > span {
   font-size: 11px;
@@ -3550,11 +3550,11 @@ svg {
   display: flex;
   gap: 13px;
   align-items: center;
-  border: 1px solid #365273;
-  background: #152d47;
+  border: 1px solid #c8c8c8;
+  background: #efefeb;
   border-radius: 9px;
   padding: 17px 21px;
-  color: #92b5e0;
+  color: #161616;
   margin-bottom: 25px;
 }
 .admin-notice > div {
@@ -3562,37 +3562,37 @@ svg {
 }
 .admin-notice strong {
   font-size: 13px;
-  color: #c4dcfa;
+  color: #161616;
   display: block;
 }
 .admin-notice > div > span {
   font-size: 11px;
-  color: #85a2c5;
+  color: #606060;
   display: block;
   margin-top: 4px;
 }
 .admin-nav {
   display: flex;
   gap: 27px;
-  border-bottom: 1px solid #28405c;
+  border-bottom: 1px solid #c8c8c8;
   margin-bottom: 25px;
   overflow-x: auto;
 }
 .admin-nav > a {
   display: block;
   padding: 0 2px 15px;
-  color: #87a3c6;
+  color: #606060;
   font-size: 13px;
   white-space: nowrap;
   position: relative;
 }
 .admin-nav > a.active {
-  color: #a0c7ff;
+  color: #161616;
 }
 .admin-nav > a.active:after {
   content: "";
   height: 2px;
-  background: #568eee;
+  background: #ffe637;
   position: absolute;
   bottom: 0;
   left: 0;
@@ -3612,10 +3612,10 @@ svg {
   justify-content: space-between;
   align-items: center;
   font-size: 12px;
-  color: #95afd0;
+  color: #606060;
 }
 .admin-stats svg {
-  color: #597fae;
+  color: #606060;
 }
 .admin-stats strong {
   display: block;
@@ -3625,7 +3625,7 @@ svg {
 }
 .admin-stats small {
   font-size: 12px;
-  color: #6d90bd;
+  color: #606060;
   font-weight: 400;
 }
 .admin-columns {
@@ -3639,7 +3639,7 @@ svg {
   align-items: center;
   gap: 13px;
   padding: 18px 23px;
-  border-top: 1px solid #233952;
+  border-top: 1px solid #c8c8c8;
 }
 .job-icon {
   display: flex;
@@ -3647,13 +3647,13 @@ svg {
   justify-content: center;
   width: 37px;
   height: 40px;
-  background: #153d37;
-  color: #77bdae;
+  background: #edf7ef;
+  color: #176b3d;
   border-radius: 7px;
 }
 .job-icon.warning {
-  background: #41382e;
-  color: #d1ad79;
+  background: #f7f7f5;
+  color: #606060;
 }
 .job-overview > div:nth-child(2) {
   flex: 1;
@@ -3665,7 +3665,7 @@ svg {
 .job-overview > div > span {
   display: block;
   font-size: 11px;
-  color: #7e9abd;
+  color: #606060;
   margin-top: 5px;
 }
 .admin-quick > a {
@@ -3673,11 +3673,11 @@ svg {
   align-items: center;
   gap: 15px;
   padding: 22px 24px;
-  border-top: 1px solid #233952;
-  color: #688ebc;
+  border-top: 1px solid #c8c8c8;
+  color: #606060;
 }
 .admin-quick > a:hover {
-  background: #1a304b;
+  background: #efefeb;
 }
 .admin-quick > a > div {
   flex: 1;
@@ -3685,12 +3685,12 @@ svg {
 .admin-quick strong {
   display: block;
   font-size: 13px;
-  color: #bad3f2;
+  color: #161616;
 }
 .admin-quick span {
   font-size: 11px;
   display: block;
-  color: #7899c0;
+  color: #606060;
   margin-top: 5px;
 }
 .audit-panel ul {
@@ -3703,9 +3703,9 @@ svg {
   align-items: center;
   gap: 12px;
   font-size: 12px;
-  color: #8da9cb;
+  color: #606060;
   padding: 13px 0;
-  border-top: 1px solid #263a54;
+  border-top: 1px solid #c8c8c8;
 }
 .audit-panel .empty {
   min-height: 180px;
@@ -3715,12 +3715,12 @@ svg {
   align-items: center;
   justify-content: space-around;
   padding: 24px;
-  border: 1px solid #2b435c;
+  border: 1px solid #c8c8c8;
   border-radius: 10px;
-  background: #102237;
+  background: #f7f7f5;
   margin-bottom: 25px;
   gap: 25px;
-  color: #5178a7;
+  color: #606060;
 }
 .pipeline > div {
   display: flex;
@@ -3732,33 +3732,33 @@ svg {
 }
 .pipeline strong {
   font-size: 13px;
-  color: #a5c5ed;
+  color: #161616;
 }
 .pipeline span {
   display: block;
   width: 100%;
   font-size: 10px;
   text-align: center;
-  color: #6d91bc;
+  color: #606060;
 }
 .error-box {
-  background: #3f2b30;
-  border: 1px solid #5a3e49;
+  background: #f7f7f5;
+  border: 1px solid #c8c8c8;
   padding: 16px;
   border-radius: 7px;
   display: flex;
   align-items: flex-start;
   gap: 10px;
   font-size: 13px;
-  color: #d5a0a5;
+  color: #b44030;
 }
 .review-body {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   font-size: 14px;
   line-height: 1.9;
-  color: #a2b9d6;
-  background: #0b1929;
+  color: #161616;
+  background: #f7f7f5;
   padding: 20px;
   border-radius: 7px;
   margin: 20px 0;
@@ -4227,7 +4227,7 @@ svg {
     grid-column: 1/-1;
   }
   .fixture {
-    border-right: 1px solid #20354b;
+    border-right: 1px solid #c8c8c8;
   }
   .home-squad {
     display: none;
@@ -4504,7 +4504,7 @@ svg {
     display: block;
     position: fixed;
     inset: 0;
-    background: #020914aa;
+    background: #f7f7f5aa;
     z-index: 35;
     backdrop-filter: blur(3px);
   }
@@ -4747,7 +4747,7 @@ svg {
     text-align: left;
     width: 100%;
     padding-top: 18px;
-    border-top: 1px solid #2c4360;
+    border-top: 1px solid #c8c8c8;
   }
   .player-profile-price > .watch {
     right: 0;
@@ -5571,10 +5571,10 @@ svg {
   gap: 10px;
   padding: 13px 17px;
   margin-bottom: 24px;
-  border: 1px solid #2c4565;
+  border: 1px solid #c8c8c8;
   border-radius: 9px;
-  background: #13283f;
-  color: #a9bfdc;
+  background: #f7f7f5;
+  color: #161616;
   font-size: 13px;
   line-height: 1.6;
 }
@@ -5583,11 +5583,11 @@ svg {
 }
 .data-notice > svg {
   flex-shrink: 0;
-  color: #6699df;
+  color: #161616;
 }
 .data-notice.error {
-  border-color: #79505a;
-  background: #31232e;
+  border-color: #d9a39b;
+  background: #f7f7f5;
 }
 .chart-empty {
   position: relative;
@@ -5598,7 +5598,7 @@ svg {
   justify-content: center;
   gap: 12px;
   overflow: hidden;
-  color: #93afd2;
+  color: #606060;
 }
 .chart-empty > svg,
 .chart-empty > strong,
@@ -5621,7 +5621,7 @@ svg {
     to bottom,
     transparent 0,
     transparent 57px,
-    #39526e 58px,
+    #efefeb 58px,
     transparent 59px
   );
 }
@@ -5634,8 +5634,8 @@ svg {
   justify-content: center;
   gap: 14px;
   z-index: 1;
-  color: #a4bfd1;
-  background: #09203080;
+  color: #606060;
+  background: #f7f7f580;
   padding: 15px;
   text-align: center;
 }
@@ -5645,13 +5645,13 @@ svg {
 }
 .pitch-empty > span {
   font-size: 12px;
-  color: #7f9eb7;
+  color: #606060;
 }
 .pitch.compact .pitch-empty > strong {
   font-size: 13px;
 }
 .market-empty-icon {
-  color: #4385d2;
+  color: #606060;
   opacity: 0.5;
   margin: 20px;
   flex-shrink: 0;
@@ -5680,7 +5680,7 @@ svg {
 }
 .pagination > div > span {
   padding: 6px 12px;
-  color: #9db6d4;
+  color: #161616;
 }
 button:disabled {
   cursor: not-allowed;
