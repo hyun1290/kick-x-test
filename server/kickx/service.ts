@@ -18,7 +18,10 @@ export async function readPlatform(
     repository.getPublicData(),
     session ? repository.getMemberData(session.userId) : Promise.resolve(null),
   ]);
-  return { status: "ready", data: { ...publicData, session, member } };
+  const data = { ...publicData, session, member };
+  return repository.source
+    ? { status: "ready", source: repository.source, data }
+    : { status: "ready", data };
 }
 export async function readAdmin(
   repository: KickxRepository,

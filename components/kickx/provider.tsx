@@ -3,10 +3,11 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { CheckCircle2, AlertCircle, X } from "lucide-react";
 import { emptyAdminData, emptyPlatformData } from "@/lib/kickx/data";
 import { apiRequest } from "@/lib/kickx/client";
-import type { DataResponse, DataStatus, PlatformData, Profile } from "@/lib/kickx/types";
+import type { DataResponse, DataSource, DataStatus, PlatformData, Profile } from "@/lib/kickx/types";
 function useResource<T>(url: string, initial: () => T) {
   const [data, setData] = useState(initial);
   const [status, setStatus] = useState<DataStatus>("loading");
+  const [source, setSource] = useState<DataSource | null>(null);
   const [attempt, setAttempt] = useState(0);
   const reload = useCallback(() => setAttempt(a => a + 1), []);
   useEffect(() => {
@@ -23,23 +24,30 @@ function useResource<T>(url: string, initial: () => T) {
         }
         const result = await response.json() as DataResponse<T>;
         if (!["ready", "not-configured"].includes(result.status) || !result.data) throw new Error("Invalid response");
-        if (!controller.signal.aborted) { setData(result.data); setStatus(result.status); }
+        if (!controller.signal.aborted) {
+          setData(result.data);
+          setStatus(result.status);
+          setSource(result.status === "ready" ? result.source ?? "database" : null);
+        }
       })
       .catch(() => { if (!controller.signal.aborted) { setData(initial()); setStatus("error"); } });
     return () => controller.abort();
   }, [url, attempt, initial]);
-  return { data, status, reload, setData };
+  return { data, status, source, reload, setData };
 }
 type Notice = { message: string; kind: "success" | "error" };
 type PlatformContext = {
   data: PlatformData; status: DataStatus; reload: () => void;
+  /** True while the server returns development sample data. Writes stay local and are labeled. */
+  mock: boolean;
   pendingWatch: string[]; setWatched: (id: string, watched: boolean) => Promise<void>;
   updateProfile: (profile: Profile) => void;
   notify: (message: string, kind?: Notice["kind"]) => void;
 };
 const Context = createContext<PlatformContext | null>(null);
 export function PlatformProvider({ children }: { children: ReactNode }) {
-  const { data, status, reload, setData } = useResource("/api/kickx", emptyPlatformData);
+  const { data, status, source, reload, setData } = useResource("/api/kickx", emptyPlatformData);
+  const mock = source === "mock";
   const [notice, setNotice] = useState<Notice | null>(null);
   const [pendingWatch, setPendingWatch] = useState<string[]>([]);
   const locks = useRef(new Set<string>());
@@ -55,26 +63,45 @@ export function PlatformProvider({ children }: { children: ReactNode }) {
   const setWatched = useCallback(async (id: string, watched: boolean) => {
     if (!data.session || status !== "ready" || locks.current.has(id)) return;
     const userId = data.session.userId;
+    const apply = () => setData(current => {
+      if (current.session?.userId !== userId || !current.member) return current;
+      const watchlist = current.member.watchlist.filter(value => value !== id);
+      if (watched) watchlist.push(id);
+      return { ...current, member: { ...current.member, watchlist } };
+    });
+    if (mock) {
+      apply();
+      notify(`${watched ? "관심 선수에 추가했습니다." : "관심 선수에서 해제했습니다."} (예시 모드 · 저장되지 않음)`);
+      return;
+    }
     locks.current.add(id); setPendingWatch([...locks.current]);
     try {
       const result = await apiRequest<{ playerId: string; watched: boolean }>("/api/kickx/watchlist", "PUT", { playerId: id, watched });
       if (result.playerId !== id || result.watched !== watched) throw new Error("저장 상태를 확인하지 못했습니다. 새로고침 후 확인해 주세요.");
-      setData(current => {
-        if (current.session?.userId !== userId || !current.member) return current;
-        const watchlist = current.member.watchlist.filter(value => value !== id);
-        if (watched) watchlist.push(id);
-        return { ...current, member: { ...current.member, watchlist } };
-      });
+      apply();
       notify(watched ? "관심 선수에 추가했습니다." : "관심 선수에서 해제했습니다.");
     } catch (error) {
       notify(error instanceof Error ? error.message : "관심 선수를 저장하지 못했습니다.", "error");
     } finally { locks.current.delete(id); setPendingWatch([...locks.current]); }
-  }, [data.session, status, setData, notify]);
+  }, [data.session, status, mock, setData, notify]);
   const updateProfile = useCallback((profile: Profile) => {
     setData(current => current.session ? { ...current, session: { ...current.session, profile } } : current);
   }, [setData]);
-  const value = useMemo(() => ({ data, status, reload, pendingWatch, setWatched, updateProfile, notify }), [data, status, reload, pendingWatch, setWatched, updateProfile, notify]);
-  return <Context.Provider value={value}>{children}<div className="kx-notice-region" aria-live="polite" aria-atomic="true">{notice && <div className={"kx-toast " + notice.kind}>{notice.kind === "error" ? <AlertCircle size={19}/> : <CheckCircle2 size={19}/>}<span>{notice.message}</span><button type="button" aria-label="알림 닫기" onClick={() => setNotice(null)}><X size={18}/></button></div>}</div></Context.Provider>;
+  const value = useMemo(() => ({ data, status, reload, mock, pendingWatch, setWatched, updateProfile, notify }), [data, status, reload, mock, pendingWatch, setWatched, updateProfile, notify]);
+  return (
+    <Context.Provider value={value}>
+      {children}
+      <div className="kx-notice-region" aria-live="polite" aria-atomic="true">
+        {notice && (
+          <div className={"kx-toast " + notice.kind}>
+            {notice.kind === "error" ? <AlertCircle size={19} /> : <CheckCircle2 size={19} />}
+            <span>{notice.message}</span>
+            <button type="button" aria-label="알림 닫기" onClick={() => setNotice(null)}><X size={18} /></button>
+          </div>
+        )}
+      </div>
+    </Context.Provider>
+  );
 }
 export function usePlatform() {
   const context = useContext(Context);
@@ -86,4 +113,7 @@ export function usePlatform() {
     getLeague: (id: string | null | undefined) => context.data.leagues.find(l => l.id === id),
   }), [context]);
 }
-export function useAdminData() { return useResource("/api/kickx/admin", emptyAdminData); }
+export function useAdminData() {
+  const { data, status, reload } = useResource("/api/kickx/admin", emptyAdminData);
+  return { data, status, reload };
+}

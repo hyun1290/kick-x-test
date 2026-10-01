@@ -1,4 +1,5 @@
-import { CommunityScreen } from "@/components/kickx/community";
+import { redirect } from "next/navigation";
+/** The community is split into club and player communities. */
 export default function Page() {
-  return <CommunityScreen />;
+  redirect("/community/clubs");
 }

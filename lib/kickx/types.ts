@@ -42,6 +42,8 @@ export type Player = {
   analysis: string | null;
   updatedAt: string | null;
   status: string | null;
+  /** Licensed photo URL. Null/undefined renders the illustrated placeholder. */
+  photo?: string | null;
 };
 export type Fixture = {
   id: string;
@@ -198,4 +200,22 @@ export type DataStatus =
   | "error"
   | "unauthorized"
   | "forbidden";
-export type DataResponse<T> = { status: "ready" | "not-configured"; data: T };
+/** "mock" marks development sample data. The UI must always label it as such. */
+export type DataSource = "database" | "mock";
+export type DataResponse<T> = {
+  status: "ready" | "not-configured";
+  data: T;
+  source?: DataSource;
+};
+/** Price quote shown before a trade is confirmed. Produced by the trade service, never computed in the UI. */
+export type TradeQuote = {
+  playerId: string;
+  side: "buy" | "sell";
+  quantity: number;
+  price: number;
+  fee: number | null;
+  settlement: number | null;
+  balance: number | null;
+  balanceAfter: number | null;
+  quotedAt: string;
+};

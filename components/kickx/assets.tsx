@@ -2,175 +2,103 @@
 import Link from "next/link";
 import { useState } from "react";
 import { History, Search, Wallet } from "lucide-react";
-import { dateText, money, seriesForDays } from "@/lib/kickx/data";
+import { dateText, money, percent, seriesForDays } from "@/lib/kickx/data";
 import { usePlatform } from "./provider";
-import {
-  Change,
-  DataEmpty,
-  MemberNotice,
-  PageHeading,
-  PlayerIdentity,
-  PriceChart,
-  SectionTitle,
-  Tabs,
-  TradeButton,
-} from "./ui";
+import { Change, DataEmpty, MemberNotice, PageHeading, PlayerIdentity, PriceChart, StatCard, Tabs, TradeButton } from "./ui";
+
+function signed(value: number | null | undefined) {
+  return value != null && value > 0 ? `+${money(value)}` : money(value);
+}
 export function PortfolioScreen() {
   const { data, getPlayer } = usePlatform();
   const member = data.member?.financialReady === false ? null : data.member;
   const [period, setPeriod] = useState("1개월"),
-    [tab, setTab] = useState("보유 선수");
+    [sort, setSort] = useState("가치 순");
   const total = member?.totalAssets,
     value = member?.playerAssets,
     cash = member?.points;
-  const allocation =
-    total != null && total > 0 && value != null && cash != null
-      ? Math.min(100, Math.max(0, (value / total) * 100))
-      : null;
+  const allocation = total != null && total > 0 && value != null && cash != null ? Math.min(100, Math.max(0, (value / total) * 100)) : null;
   const rows = [...(member?.holdings || [])].sort((a, b) =>
-    tab === "평가손익 순"
-      ? (b.profit ?? -Infinity) - (a.profit ?? -Infinity)
-      : 0,
+    sort === "수익률 순" ? (b.returnRate ?? -Infinity) - (a.returnRate ?? -Infinity)
+      : sort === "손익 순" ? (b.profit ?? -Infinity) - (a.profit ?? -Infinity)
+        : (b.value ?? -Infinity) - (a.value ?? -Infinity),
   );
+  const history = seriesForDays(member?.assetHistory || [], period === "1주" ? 7 : 30);
   return (
     <>
       <PageHeading
         eyebrow="YOUR PORTFOLIO"
         title="내 자산"
-        description="선택의 기록이 쌓여, 나만의 포트폴리오가 됩니다."
-        action={
-          <Link className="button secondary" href="/transactions">
-            <History size={17} />
-            거래 내역
-          </Link>
-        }
+        description="보유 포인트와 선수 평가액, 손익을 한눈에 확인하세요."
+        action={<Link className="button secondary" href="/transactions"><History size={17} />거래 내역</Link>}
       />
       <MemberNotice />
       <div className="portfolio-top">
-        <section className="panel asset-overview">
-          <span className="eyebrow">TOTAL ASSETS</span>
-          <div className="asset-total">
-            {money(total)} <small>P</small>
+        <section className="portfolio-hero">
+          <span className="eyebrow plain">TOTAL ASSETS · 총자산</span>
+          <div className="portfolio-total">
+            <strong className="num">{money(total)}<span className="unit">P</span></strong>
+            <Change value={member?.returnRate} size="lg" />
           </div>
-          <div className="inline-meta">
-            <Change value={member?.returnRate} />
-            <span>자산 수익률</span>
-          </div>
-          <div className="asset-split">
-            {[
-              ["보유 포인트", cash],
-              ["선수 자산", value],
-              ["평가손익", member?.profit],
-            ].map(([label, amount]) => (
-              <div key={String(label)}>
-                <span>{label}</span>
-                <strong>
-                  {money(amount as number | undefined)} <small>P</small>
-                </strong>
-              </div>
-            ))}
-          </div>
+          <p>보유 포인트 + 보유 선수 현재 가치 합계{member?.weeklyRank != null && <> · 주간 랭킹 <b>{member.weeklyRank}위</b></>}</p>
         </section>
-        <section className="panel allocation-panel">
-          <SectionTitle title="자산 구성" />
-          <div className="allocation-content">
-            <div
-              className="donut"
-              style={{
-                background:
-                  allocation == null
-                    ? "#e3e1d9"
-                    : `conic-gradient(#ead11f 0 ${allocation}%, #242424 ${allocation}% 100%)`,
-              }}
-            >
-              <div>
-                <Wallet size={23} />
-                <strong>
-                  {member ? member.holdings.length : "—"}
-                  <small>보유 선수</small>
-                </strong>
-              </div>
-            </div>
-            <div>
-              <p>
-                <span className="legend-dot" />
-                선수 자산{" "}
-                <b>{allocation == null ? "—" : `${allocation.toFixed(1)}%`}</b>
-              </p>
-              <p>
-                <span className="legend-dot secondary" />
-                포인트{" "}
-                <b>
-                  {allocation == null
-                    ? "—"
-                    : `${(100 - allocation).toFixed(1)}%`}
-                </b>
-              </p>
-            </div>
+        <section className="panel allocation">
+          <h2>자산 구성</h2>
+          <div className="allocation-bar" aria-hidden="true">
+            {allocation != null ? <><i style={{ width: `${allocation}%` }} /><i style={{ width: `${100 - allocation}%` }} /></> : <i className="none" />}
           </div>
+          <dl>
+            <div><dt><span className="legend players" />선수 평가액</dt><dd className="num">{money(value)} P<small>{allocation == null ? "—" : `${allocation.toFixed(1)}%`}</small></dd></div>
+            <div><dt><span className="legend points" />보유 포인트</dt><dd className="num">{money(cash)} P<small>{allocation == null ? "—" : `${(100 - allocation).toFixed(1)}%`}</small></dd></div>
+          </dl>
         </section>
       </div>
-      <section className="panel chart-panel asset-chart">
+      <div className="stat-grid portfolio-stats">
+        <StatCard label="보유 포인트" value={money(cash)} unit="P" />
+        <StatCard label="선수 평가액" value={money(value)} unit="P" hint={member ? `${member.holdings.length}명 보유` : undefined} />
+        <StatCard label="총 평가손익" value={<span className={(member?.profit ?? 0) > 0 ? "up" : (member?.profit ?? 0) < 0 ? "down" : ""}>{signed(member?.profit)}</span>} unit="P" hint="매입가 대비" />
+        <StatCard label="수익률" value={<span className={(member?.returnRate ?? 0) > 0 ? "up" : (member?.returnRate ?? 0) < 0 ? "down" : ""}>{percent(member?.returnRate)}</span>} hint="초기 자산 대비" tone="yellow" />
+      </div>
+      <section className="panel">
         <div className="section-title">
           <h2>자산 흐름</h2>
-          <Tabs items={["1주", "1개월"]} value={period} onChange={setPeriod} />
+          <Tabs items={["1주", "1개월"]} value={period} onChange={setPeriod} variant="segment" label="기간 선택" />
         </div>
-        <PriceChart
-          points={seriesForDays(
-            member?.assetHistory || [],
-            period === "1주" ? 7 : 30,
-          )}
-          label="총자산"
-        />
+        {member || data.session ? <PriceChart points={history} label="총자산" /> : <DataEmpty financial entity="자산" />}
       </section>
-      <section className="panel">
-        <div className="browser-tabs">
-          <Tabs
-            items={["보유 선수", "평가손익 순"]}
-            value={tab}
-            onChange={setTab}
-          />
-          <span className="muted">{member ? `${rows.length}명` : "—"}</span>
+      <section className="panel flush">
+        <div className="panel-head">
+          <h2>보유 선수 <span className="muted num">{member ? `${rows.length}명` : ""}</span></h2>
+          <Tabs items={["가치 순", "손익 순", "수익률 순"]} value={sort} onChange={setSort} variant="segment" label="정렬" />
         </div>
         <div className="table-scroll">
-          <table className="data-table">
+          <table className="data-table holdings-table">
             <thead>
               <tr>
                 <th>선수</th>
-                <th className="numeric">수량</th>
-                <th className="numeric">매입 금액</th>
+                <th className="numeric">매입가</th>
                 <th className="numeric">현재 가치</th>
                 <th className="numeric">평가손익</th>
                 <th className="numeric">수익률</th>
+                <th className="hide-md">비중</th>
                 <th>스쿼드</th>
-                <th />
+                <th className="cell-actions" />
               </tr>
             </thead>
             <tbody>
               {rows.map((h) => {
                 const p = getPlayer(h.playerId);
+                const weight = value && h.value != null ? (h.value / value) * 100 : null;
                 return (
                   <tr key={h.id}>
                     <td>{p ? <PlayerIdentity player={p} /> : h.playerName}</td>
-                    <td className="numeric">{money(h.quantity)}</td>
-                    <td className="numeric">{money(h.cost)} P</td>
-                    <td className="numeric">{money(h.value)} P</td>
-                    <td className="numeric">{money(h.profit)} P</td>
-                    <td className="numeric">
-                      <Change value={h.returnRate} />
-                    </td>
-                    <td>
-                      {member?.squad?.slots.includes(h.playerId)
-                        ? "등록"
-                        : "미등록"}
-                    </td>
-                    <td>
-                      <TradeButton
-                        player={p}
-                        side="sell"
-                        className="button secondary small"
-                      />
-                    </td>
+                    <td className="numeric">{money(h.cost)}</td>
+                    <td className="numeric strong">{money(h.value)}</td>
+                    <td className={`numeric ${(h.profit ?? 0) > 0 ? "up" : (h.profit ?? 0) < 0 ? "down" : ""}`}>{signed(h.profit)}</td>
+                    <td className="numeric"><Change value={h.returnRate} /></td>
+                    <td className="hide-md"><span className="weight"><span className="meter"><i style={{ width: `${weight ?? 0}%` }} /></span><small className="num">{weight == null ? "—" : `${weight.toFixed(1)}%`}</small></span></td>
+                    <td>{member?.squad?.slots.includes(h.playerId) ? <span className="tag ink">출전</span> : <span className="tag">벤치</span>}</td>
+                    <td className="cell-actions"><TradeButton player={p} side="sell" className="button secondary small" /></td>
                   </tr>
                 );
               })}
@@ -193,80 +121,32 @@ export function TransactionsScreen() {
     (t) =>
       (tab === "전체" || t.type === (tab === "매입" ? "buy" : "sell")) &&
       t.playerName.toLowerCase().includes(q.toLowerCase()) &&
-      (period === "전체 기간" ||
-        Date.parse(t.date) >= Date.now() - 7 * 86400000),
+      (period === "전체 기간" || Date.parse(t.date) >= Date.now() - (period === "최근 7일" ? 7 : 30) * 86400000),
   );
+  const sum = (type: "buy" | "sell") => (member ? all.filter((t) => t.type === type).reduce((s, t) => s + t.net, 0) : null);
   return (
     <>
       <PageHeading
         eyebrow="YOUR TRADING HISTORY"
         title="거래 내역"
-        description="모든 선택의 순간을 한곳에서 확인하세요."
-        action={
-          <Link className="button secondary" href="/portfolio">
-            내 자산
-          </Link>
-        }
+        description="매입과 매각, 수수료와 정산까지 모든 거래를 기록합니다."
+        action={<Link className="button secondary" href="/portfolio"><Wallet size={17} />내 자산</Link>}
       />
       <MemberNotice />
-      <div className="transaction-stats">
-        <div>
-          <span>조회된 매입 금액</span>
-          <strong>
-            {money(
-              member
-                ? all
-                    .filter((t) => t.type === "buy")
-                    .reduce((sum, t) => sum + t.net, 0)
-                : null,
-            )}{" "}
-            <small>P</small>
-          </strong>
-        </div>
-        <div>
-          <span>조회된 매각 정산</span>
-          <strong>
-            {money(
-              member
-                ? all
-                    .filter((t) => t.type === "sell")
-                    .reduce((sum, t) => sum + t.net, 0)
-                : null,
-            )}{" "}
-            <small>P</small>
-          </strong>
-        </div>
-        <div>
-          <span>거래 건수</span>
-          <strong>
-            {member ? all.length : "—"} <small>건</small>
-          </strong>
-        </div>
+      <div className="stat-grid transaction-stats three">
+        <div className="stat-card"><span className="stat-label">조회된 매입 금액</span><strong className="stat-value num">{money(sum("buy"))} <small className="unit">P</small></strong></div>
+        <div className="stat-card"><span className="stat-label">조회된 매각 정산</span><strong className="stat-value num">{money(sum("sell"))} <small className="unit">P</small></strong></div>
+        <div className="stat-card"><span className="stat-label">거래 건수</span><strong className="stat-value num">{member ? all.length : "—"} <small className="unit">건</small></strong></div>
       </div>
-      <section className="panel">
-        <div className="browser-tabs">
-          <Tabs
-            items={["전체", "매입", "매각"]}
-            value={tab}
-            onChange={setTab}
-          />
-          <div className="button-row">
-            <div className="input-search">
-              <Search size={16} />
-              <input
-                aria-label="거래 선수 검색"
-                placeholder="거래 선수 검색"
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-              />
-            </div>
-            <select
-              aria-label="거래 기간"
-              value={period}
-              onChange={(e) => setPeriod(e.target.value)}
-            >
+      <section className="panel flush">
+        <div className="panel-head">
+          <Tabs items={["전체", "매입", "매각"]} value={tab} onChange={setTab} variant="segment" label="거래 유형" />
+          <div className="toolbar">
+            <label className="input-search"><Search size={16} /><input aria-label="거래 선수 검색" placeholder="거래 선수 검색" value={q} onChange={(e) => setQ(e.target.value)} /></label>
+            <select aria-label="거래 기간" value={period} onChange={(e) => setPeriod(e.target.value)}>
               <option>전체 기간</option>
               <option>최근 7일</option>
+              <option>최근 30일</option>
             </select>
           </div>
         </div>
@@ -289,27 +169,22 @@ export function TransactionsScreen() {
                 const p = getPlayer(t.playerId);
                 return (
                   <tr key={t.id}>
-                    <td className="muted date-cell">{dateText(t.date)}</td>
+                    <td className="muted num">{dateText(t.date)}</td>
                     <td>{p ? <PlayerIdentity player={p} /> : t.playerName}</td>
-                    <td>
-                      <span className={`trade-type ${t.type}`}>
-                        {t.type === "buy" ? "매입" : "매각"}
-                      </span>
-                    </td>
-                    <td className="numeric">{money(t.price)} P</td>
+                    <td><span className={`trade-type ${t.type}`}>{t.type === "buy" ? "매입" : "매각"}</span></td>
+                    <td className="numeric">{money(t.price)}</td>
                     <td className="numeric">{money(t.quantity)}</td>
-                    <td className="numeric">{money(t.fee)} P</td>
-                    <td className="numeric">{money(t.net)} P</td>
-                    <td>{t.status}</td>
+                    <td className="numeric muted">{t.fee ? `−${money(t.fee)}` : money(t.fee)}</td>
+                    <td className="numeric strong">{money(t.net)}</td>
+                    <td><span className="status-pill ok">{t.status}</span></td>
                   </tr>
                 );
               })}
             </tbody>
           </table>
         </div>
-        {!rows.length && (
-          <DataEmpty financial entity="거래 내역" filtered={all.length > 0} />
-        )}
+        {!rows.length && <DataEmpty financial entity="거래 내역" filtered={all.length > 0} />}
+        {rows.length > 0 && <div className="panel-foot"><span className="fine-print">금액 단위 P · 수수료와 정산액은 거래 당시 기록입니다.</span><span className="fine-print num">{rows.length}건</span></div>}
       </section>
     </>
   );

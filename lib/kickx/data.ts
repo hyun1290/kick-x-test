@@ -63,3 +63,16 @@ export function seriesForDays(
 }
 export const unavailableAction =
   "서비스 준비 중입니다. 현재는 조회 화면만 사용할 수 있습니다.";
+/** "3시간 전" style label for recent timestamps; falls back to the date. */
+export function relativeTime(value: string | null | undefined, now = Date.now()) {
+  if (!value || !Number.isFinite(Date.parse(value))) return "—";
+  const diff = Math.max(0, now - Date.parse(value));
+  const minutes = Math.floor(diff / 60000);
+  if (minutes < 1) return "방금 전";
+  if (minutes < 60) return `${minutes}분 전`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}시간 전`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}일 전`;
+  return dateText(value, false);
+}

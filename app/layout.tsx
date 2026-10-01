@@ -3,8 +3,6 @@ import type { Metadata } from "next";
 import { PlatformProvider } from "@/components/kickx/provider";
 import { AppShell } from "@/components/kickx/shell";
 import "./globals.css";
-import "./yellow-playbook.css";
-import "./playbook-details.css";
 export const metadata: Metadata = {
   title: { default: "KICK-X | Football Market", template: "%s | KICK-X" },
   description:

@@ -145,3 +145,13 @@ test("administrator readiness never bypasses authentication or claims a disconne
   assert.equal(result.status,"not-configured");
   assert.deepEqual(repo.calls,["session"]);
 });
+
+test("development sample data is always labeled with its source", async () => {
+  const repo = repository();
+  repo.source = "mock";
+  const result = await readPlatform(repo);
+  assert.equal(result.status, "ready");
+  assert.equal(result.source, "mock");
+  const real = await readPlatform(repository());
+  assert.equal(real.source, undefined);
+});

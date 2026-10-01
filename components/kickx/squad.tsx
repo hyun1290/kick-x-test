@@ -1,19 +1,37 @@
 "use client";
 import { useState } from "react";
-import { Plus, RotateCcw, Save, Shield, X } from "lucide-react";
+import { Plus, RotateCcw, Save, X } from "lucide-react";
 import { money } from "@/lib/kickx/data";
-import type { Position } from "@/lib/kickx/types";
+import type { Player, Position } from "@/lib/kickx/types";
 import { usePlatform } from "./provider";
-import {
-  DataEmpty,
-  DisabledAction,
-  MemberNotice,
-  PageHeading,
-  PlayerAvatar,
-  PlayerIdentity,
-  SectionTitle,
-  Tabs,
-} from "./ui";
+import { Change, DataEmpty, DisabledAction, MemberNotice, PageHeading, PlayerPortrait, PositionBadge, Tabs } from "./ui";
+
+const ROWS: Position[] = ["FW", "MF", "DF", "GK"];
+const MAX_SQUAD = 11;
+function Jersey({ number, empty = false }: { number?: number | null; empty?: boolean }) {
+  return (
+    <svg className={`jersey ${empty ? "jersey-empty" : ""}`} viewBox="0 0 64 60" aria-hidden="true">
+      <path d="M22 4 L12 7 L2 18 L9 28 L15 24 L15 57 L49 57 L49 24 L55 28 L62 18 L52 7 L42 4 C40 9 36 11 32 11 C28 11 24 9 22 4 Z" />
+      {!empty && number != null && <text x="32" y="44" textAnchor="middle">{number}</text>}
+    </svg>
+  );
+}
+function PitchMarkings() {
+  return (
+    <svg className="pitch-lines" viewBox="0 0 680 440" preserveAspectRatio="none" aria-hidden="true">
+      <rect x="10" y="10" width="660" height="420" />
+      <line x1="10" y1="220" x2="670" y2="220" />
+      <circle cx="340" cy="220" r="52" />
+      <circle cx="340" cy="220" r="3" className="fill" />
+      <rect x="200" y="10" width="280" height="78" />
+      <rect x="270" y="10" width="140" height="30" />
+      <rect x="200" y="352" width="280" height="78" />
+      <rect x="270" y="400" width="140" height="30" />
+      <path d="M290 88 A52 52 0 0 0 390 88" />
+      <path d="M290 352 A52 52 0 0 1 390 352" />
+    </svg>
+  );
+}
 export function Pitch({
   slots,
   formation,
@@ -29,96 +47,72 @@ export function Pitch({
 }) {
   const { data, getPlayer } = usePlatform();
   const rule = data.formations.find((f) => f.id === formation);
-  const groups: Position[] = ["FW", "MF", "DF", "GK"];
+  // Unselected illustration: a neutral 4-3-3 silhouette, not a saved or default formation.
+  const positions: Position[] = rule?.positions ?? ["GK", "DF", "DF", "DF", "DF", "MF", "MF", "MF", "FW", "FW", "FW"];
   return (
-    <div className={`pitch ${compact ? "compact" : ""}`}>
-      <div className="pitch-markings" aria-hidden="true">
-        <div className="pitch-half" />
-        <div className="pitch-circle" />
-        <div className="penalty top" />
-        <div className="penalty bottom" />
-        <div className="goal top" />
-        <div className="goal bottom" />
+    <div className={`pitch ${compact ? "compact" : ""} ${rule ? "" : "is-empty"}`}>
+      <PitchMarkings />
+      <div className="pitch-rows">
+        {ROWS.map((position) => (
+          <div className="pitch-row" key={position}>
+            {positions.map((pos, i) => {
+              if (pos !== position) return null;
+              const p = rule ? getPlayer(slots[i]) : undefined;
+              const body = p ? (
+                <>
+                  <Jersey number={p.number} />
+                  <span className="pitch-name">{p.short || p.name}</span>
+                  {!compact && <span className="pitch-value num">{money(p.price)}</span>}
+                </>
+              ) : (
+                <>
+                  <span className="jersey-wrap"><Jersey empty />{rule && !compact && <Plus size={18} className="jersey-plus" />}</span>
+                  {rule && <span className="pitch-name open">{pos}</span>}
+                </>
+              );
+              return onSelect && rule ? (
+                <button
+                  type="button"
+                  className={`pitch-player ${p ? "filled" : ""} ${selected === i ? "selected" : ""}`}
+                  onClick={() => onSelect(i)}
+                  key={i}
+                  aria-label={`${i + 1}번 ${pos} 자리 ${p?.name || "빈 자리"}`}
+                  aria-pressed={selected === i}
+                >
+                  {body}
+                </button>
+              ) : (
+                <div className={`pitch-player ${p ? "filled" : ""}`} key={i}>{body}</div>
+              );
+            })}
+          </div>
+        ))}
       </div>
-      {!rule ? (
-        <div className="pitch-empty">
-          <Shield size={compact ? 23 : 35} />
-          <strong>
-            {data.formations.length
-              ? "포메이션을 선택해 주세요"
-              : "스쿼드 준비 중"}
-          </strong>
-          <span>나만의 라인업을 위한 공간</span>
-        </div>
-      ) : (
-        <div className="pitch-rows">
-          {groups.map((position) => (
-            <div className="pitch-row" key={position}>
-              {rule.positions.map((pos, i) => {
-                if (pos !== position) return null;
-                const p = getPlayer(slots[i]);
-                const body = p ? (
-                  <>
-                    <PlayerAvatar player={p} />
-                    <strong>{p.short || p.name}</strong>
-                    {!compact && <small>{money(p.price)} P</small>}
-                  </>
-                ) : (
-                  <>
-                    <span className="empty-slot">
-                      <Plus size={compact ? 12 : 20} />
-                    </span>
-                    <strong>{pos}</strong>
-                  </>
-                );
-                return onSelect ? (
-                  <button
-                    type="button"
-                    className={`pitch-player ${selected === i ? "selected" : ""}`}
-                    onClick={() => onSelect(i)}
-                    key={i}
-                    aria-label={`${i + 1}번 ${pos} 자리 ${p?.name || "빈 자리"}`}
-                    aria-pressed={selected === i}
-                  >
-                    {body}
-                  </button>
-                ) : (
-                  <div className="pitch-player" key={i}>
-                    {body}
-                  </div>
-                );
-              })}
-            </div>
-          ))}
+      {!rule && !compact && (
+        <div className="pitch-overlay">
+          <strong>{data.formations.length ? "포메이션을 선택해 주세요" : "스쿼드 준비 중"}</strong>
+          <span>보유 선수로 나만의 베스트 11을 구성합니다.</span>
         </div>
       )}
     </div>
   );
 }
 export function SquadScreen() {
-  const { data, getPlayer } = usePlatform();
+  const { data, mock, notify, getPlayer, getTeam } = usePlatform();
   const member = data.member;
-  const [draft, setDraft] = useState<{
-      formationId: string;
-      slots: (string | null)[];
-    } | null>(null),
+  const [draft, setDraft] = useState<{ formationId: string; slots: (string | null)[] } | null>(null),
     [selected, setSelected] = useState<number | null>(null),
     [filter, setFilter] = useState("전체");
   const formation = draft?.formationId || member?.squad?.formationId || "";
   const slots = draft?.slots || member?.squad?.slots || [];
   const rule = data.formations.find((f) => f.id === formation),
     target = selected == null ? null : rule?.positions[selected];
-  const owned = data.players.filter((p) =>
-    member?.holdings.some((h) => h.playerId === p.id),
-  );
-  const safeSlots = slots.map((id) =>
-    owned.some((p) => p.id === id) ? id : null,
-  );
-  const visible = owned.filter(
-    (p) =>
-      (filter === "전체" || p.position === filter) &&
-      (!target || p.position === target),
-  );
+  const owned = data.players.filter((p) => member?.holdings.some((h) => h.playerId === p.id));
+  const safeSlots = slots.map((id) => (owned.some((p) => p.id === id) ? id : null));
+  const filled = safeSlots.filter(Boolean).length;
+  const lineup = safeSlots.map((id) => getPlayer(id)).filter(Boolean) as Player[];
+  const visible = owned.filter((p) => (filter === "전체" || p.position === filter) && (!target || p.position === target));
+  const counts = ROWS.slice().reverse().map((pos) => [pos, rule?.positions.filter((x) => x === pos).length ?? 0, lineup.filter((p) => p.position === pos).length] as const);
   function changeFormation(id: string) {
     const next = data.formations.find((f) => f.id === id);
     if (!next) return;
@@ -126,9 +120,7 @@ export function SquadScreen() {
     setDraft({
       formationId: id,
       slots: next.positions.map((pos) => {
-        const i = pool.findIndex(
-          (playerId) => playerId && getPlayer(playerId)?.position === pos,
-        );
+        const i = pool.findIndex((playerId) => playerId && getPlayer(playerId)?.position === pos);
         if (i < 0) return null;
         const found = pool[i];
         pool[i] = null;
@@ -137,153 +129,125 @@ export function SquadScreen() {
     });
     setSelected(null);
   }
+  function place(p: Player) {
+    if (selected == null || !rule || p.position !== target) return;
+    setDraft({
+      formationId: formation,
+      slots: rule.positions.map((_, i) => (i === selected ? p.id : safeSlots[i] === p.id ? null : safeSlots[i] || null)),
+    });
+    setSelected(null);
+  }
   return (
     <>
       <PageHeading
         eyebrow="BUILD YOUR STARTING XI"
         title="내 스쿼드"
-        description="당신의 선택으로 완성되는 나만의 라인업."
+        description="보유 선수 중 최대 11명으로 나만의 라인업을 완성하세요."
         action={
-          <div className="button-row">
-            <button
-              className="button secondary"
-              disabled={!draft}
-              onClick={() => {
-                setDraft(null);
-                setSelected(null);
-              }}
-            >
-              <RotateCcw size={16} />
-              되돌리기
+          <>
+            <button className="button secondary" disabled={!draft} onClick={() => { setDraft(null); setSelected(null); }}>
+              <RotateCcw size={16} />되돌리기
             </button>
-            <DisabledAction className="button primary">
-              <Save size={17} />
-              스쿼드 저장
-            </DisabledAction>
-          </div>
+            {mock ? (
+              <button className="button primary" disabled={!draft} onClick={() => { notify("스쿼드를 저장했습니다. (예시 모드 · 저장되지 않음)"); }}>
+                <Save size={17} />스쿼드 저장
+              </button>
+            ) : (
+              <DisabledAction className="button primary"><Save size={17} />스쿼드 저장</DisabledAction>
+            )}
+          </>
         }
       />
       <MemberNotice />
       <div className="squad-layout">
-        <section className="panel squad-board">
+        <section className="squad-board">
           <div className="squad-toolbar">
-            <div>
-              <Shield size={20} />
-              <strong>
-                {data.session?.profile?.nickname
-                  ? `${data.session.profile.nickname} FC`
-                  : "내 라인업"}
-              </strong>
-              {draft && <span className="subtle-tag">미저장 편집</span>}
+            <div className="squad-team">
+              <strong>{data.session?.profile?.nickname ? `${data.session.profile.nickname} FC` : "내 라인업"}</strong>
+              {draft && <span className="tag yellow">편집 중 · 미저장</span>}
             </div>
-            <select
-              aria-label="포메이션"
-              value={formation}
-              disabled={!data.formations.length}
-              onChange={(e) => changeFormation(e.target.value)}
-            >
-              <option value="">포메이션 선택</option>
-              {data.formations.map((f) => (
-                <option value={f.id} key={f.id}>
-                  {f.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <Pitch
-            slots={safeSlots}
-            formation={formation || null}
-            selected={selected}
-            onSelect={setSelected}
-          />
-          <div className="squad-board-footer">
-            <div>
+            <div className="squad-count">
               <span>등록 선수</span>
-              <strong>
-                {rule ? safeSlots.filter(Boolean).length : "—"}
-                <small>{rule ? ` / ${rule.positions.length}` : ""}</small>
-              </strong>
+              <strong className="num">{rule ? filled : "—"}<small> / {MAX_SQUAD}</small></strong>
+              <span className="meter yellow" aria-hidden="true"><i style={{ width: `${(filled / MAX_SQUAD) * 100}%` }} /></span>
             </div>
-            <div>
-              <span>저장된 선수단 가치</span>
-              <strong>
-                {money(member?.squad?.value)} <small>P</small>
-              </strong>
-            </div>
-            <div>
-              <span>저장된 Performance</span>
-              <strong>{money(member?.squad?.performance)}</strong>
+            <label className="squad-formation">
+              <span className="sr-only">포메이션</span>
+              <select aria-label="포메이션" value={formation} disabled={!data.formations.length} onChange={(e) => changeFormation(e.target.value)}>
+                <option value="">포메이션 선택</option>
+                {data.formations.map((f) => <option value={f.id} key={f.id}>{f.name}</option>)}
+              </select>
+            </label>
+          </div>
+          <Pitch slots={safeSlots} formation={formation || null} selected={selected} onSelect={(i) => setSelected(selected === i ? null : i)} />
+          <div className="squad-footer">
+            <div><span>라인업 가치</span><strong className="num">{lineup.length ? money(lineup.reduce((s, p) => s + (p.price ?? 0), 0)) : money(member?.squad?.value)}<span className="unit">P</span></strong></div>
+            <div><span>저장된 평균 Performance</span><strong className="num">{money(member?.squad?.performance)}</strong></div>
+            <div className="squad-composition">
+              <span>포지션 구성</span>
+              <span className="squad-pos-list">
+                {counts.map(([pos, need, have]) => (
+                  <span key={pos} className={rule && have < need ? "short" : ""}><PositionBadge position={pos} /><b className="num">{rule ? `${have}/${need}` : "—"}</b></span>
+                ))}
+              </span>
             </div>
           </div>
         </section>
-        <section className="panel squad-selection">
-          <SectionTitle title={target ? `${target} 선수 선택` : "보유 선수"} />
-          {target && (
-            <div className="selected-slot-note">
-              <span>선택한 자리에 선수를 배치하세요.</span>
-              <button
-                type="button"
-                aria-label="선택 취소"
-                onClick={() => setSelected(null)}
-              >
-                <X size={16} />
-              </button>
-            </div>
-          )}
-          <Tabs
-            items={["전체", "FW", "MF", "DF", "GK"]}
-            value={filter}
-            onChange={setFilter}
-          />
-          <div className="bench-list">
-            {visible.map((p) => (
-              <div className="bench-player" key={p.id}>
-                <PlayerIdentity player={p} />
-                <button
-                  type="button"
-                  className="button secondary small"
-                  disabled={selected == null || !rule}
-                  onClick={() => {
-                    if (selected == null || !rule || p.position !== target)
-                      return;
-                    setDraft({
-                      formationId: formation,
-                      slots: rule.positions.map((_, i) =>
-                        i === selected
-                          ? p.id
-                          : safeSlots[i] === p.id
-                            ? null
-                            : safeSlots[i] || null,
-                      ),
-                    });
-                    setSelected(null);
-                  }}
-                >
-                  {safeSlots.includes(p.id) ? "등록" : "배치"}
-                </button>
-              </div>
-            ))}
-            {!visible.length && (
-              <DataEmpty financial entity="보유 선수" filtered={owned.length > 0} />
-            )}
+        <section className="panel squad-bench">
+          <div className="section-title">
+            <h2>{target ? `${target} 선수 선택` : "보유 선수"}<span>{member ? `${owned.length}명` : ""}</span></h2>
           </div>
+          {target ? (
+            <div className="slot-note" role="status">
+              <span><b>{selected! + 1}번 {target}</b> 자리에 배치할 선수를 고르세요.</span>
+              <button type="button" aria-label="선택 취소" className="icon-button" onClick={() => setSelected(null)}><X size={16} /></button>
+            </div>
+          ) : (
+            <p className="slot-hint">피치에서 자리를 먼저 선택하면 해당 포지션 선수만 표시됩니다.</p>
+          )}
+          {!target && <Tabs items={["전체", "FW", "MF", "DF", "GK"]} value={filter} onChange={setFilter} variant="segment" label="포지션 필터" />}
+          <ul className="bench-list">
+            {visible.map((p) => {
+              const inLineup = safeSlots.includes(p.id);
+              return (
+                <li className={`bench-player ${inLineup ? "in-lineup" : ""}`} key={p.id}>
+                  <PlayerPortrait player={p} size="sm" />
+                  <span className="bench-text">
+                    <strong>{p.name}</strong>
+                    <span>{getTeam(p.team)?.name || "—"} · <b className="num">{money(p.price)}</b></span>
+                  </span>
+                  <PositionBadge position={p.position} />
+                  {target ? (
+                    <button type="button" className="button primary small" onClick={() => place(p)}>{inLineup ? "이동" : "배치"}</button>
+                  ) : (
+                    <span className={`bench-state ${inLineup ? "on" : ""}`}>{inLineup ? "출전" : "벤치"}</span>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+          {!visible.length && <DataEmpty financial entity="보유 선수" filtered={owned.length > 0} rows={3} />}
           {selected !== null && safeSlots[selected] && (
             <button
               className="button danger full"
               onClick={() => {
-                setDraft({
-                  formationId: formation,
-                  slots: safeSlots.map((id, i) => (i === selected ? null : id)),
-                });
+                setDraft({ formationId: formation, slots: safeSlots.map((id, i) => (i === selected ? null : id)) });
                 setSelected(null);
               }}
             >
               선택한 자리 비우기
             </button>
           )}
-          <p className="fine-print">
-            스쿼드 저장 서비스 준비 중입니다. 편집 내용은 저장되지 않습니다.
-          </p>
+          {lineup.length > 0 && !target && (
+            <div className="bench-best">
+              <span>라인업 최고 상승</span>
+              {(() => {
+                const best = [...lineup].sort((a, b) => (b.change ?? -Infinity) - (a.change ?? -Infinity))[0];
+                return <strong>{best.name} <Change value={best.change} /></strong>;
+              })()}
+            </div>
+          )}
+          <p className="fine-print">{mock ? "예시 모드 · 편집 내용은 저장되지 않습니다." : "스쿼드 저장 서비스 준비 중입니다. 편집 내용은 저장되지 않습니다."}</p>
         </section>
       </div>
     </>
