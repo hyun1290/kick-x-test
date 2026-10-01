@@ -5,8 +5,9 @@ import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { loadTs } from "./load-ts.mjs";
 const { chromium } = await import(pathToFileURL(resolve(process.env.KICKX_BROWSER_MODULE || "/tmp/kickx-browser", "node_modules/playwright/index.mjs")).href);
-const base = "http://127.0.0.1:3100";
-const server = spawn(process.execPath, ["node_modules/next/dist/bin/next","start","-H","127.0.0.1","-p","3100"], {stdio:["ignore","pipe","pipe"]});
+// NextRequest normalizes loopback IPs to localhost. Use the same canonical origin.
+const base = "http://localhost:3100";
+const server = spawn(process.execPath, ["node_modules/next/dist/bin/next","start","-H","localhost","-p","3100"], {stdio:["ignore","pipe","pipe"]});
 let output = "";
 server.stdout.on("data", chunk => {output += chunk;});
 server.stderr.on("data", chunk => {output += chunk;});

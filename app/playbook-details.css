@@ -168,6 +168,13 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px
 .player-profile { border: 1px solid var(--ink); border-left: 6px solid var(--yellow); }
 .player-profile-price > strong, .asset-total { font-variant-numeric: tabular-nums; letter-spacing: -.035em; }
 .order-panel { border-top: 3px solid var(--ink); }
+.squad-layout .pitch { border-radius: 2px; border-color: #c4c9bd; background: repeating-linear-gradient(0deg,#e7eae1 0,#e7eae1 12.5%,#dfe4d8 12.5%,#dfe4d8 25%); }
+.squad-layout .pitch-markings, .squad-layout .pitch-circle, .squad-layout .penalty, .squad-layout .goal { border-color: #ffffffed; border-width: 2px; }
+.squad-layout .pitch-half { background: #ffffffed; height: 2px; }
+.squad-layout .pitch-empty { background: transparent; color: var(--ink); }
+.squad-layout .pitch-empty::before { content: ""; position: absolute; z-index: -1; width: min(280px,85%); height: 190px; background: #fffffff5; border: 1px solid #c4c9bd; box-shadow: 5px 5px 0 #bdc4b64d; }
+.squad-layout .pitch-empty > svg { width: 27px; height: 27px; color: #686f5e; }
+.squad-layout .pitch-empty > strong { font-weight: 800; }
 .performance-panel { background: #fff9d7; border-color: #ded3a1; }
 .performance-big { color: var(--ink); }
 .asset-overview { background: #fff9d7; border-color: var(--ink); border-left: 6px solid var(--yellow); }
