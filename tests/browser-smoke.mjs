@@ -110,7 +110,7 @@ try {
   await mockPage.goto(base+"/mypage",{waitUntil:"networkidle"});
   await mockPage.getByLabel("닉네임",{exact:true}).fill("새 닉네임");
   await mockPage.getByRole("button",{name:"변경사항 저장"}).click();
-  await mockPage.getByRole("alert").waitFor();
+  await mockPage.getByRole("alert").filter({hasText:"이미 사용 중인 닉네임입니다."}).waitFor();
   assert.equal(await mockPage.getByLabel("닉네임",{exact:true}).inputValue(),"새 닉네임");
   await mockPage.getByRole("button",{name:"변경사항 저장"}).click();
   await mockPage.getByText("프로필을 저장했습니다.",{exact:true}).waitFor();
