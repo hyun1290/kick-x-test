@@ -1,4 +1,7 @@
+import { connection } from "next/server";
 import { getSupabaseConfig } from "@/server/kickx/config";
 import { json } from "@/server/kickx/http";
-export const dynamic = "force-dynamic";
-export async function GET() { return json({ enabled: !!getSupabaseConfig() }); }
+export async function GET() {
+  await connection();
+  return json({ enabled: !!getSupabaseConfig() });
+}
