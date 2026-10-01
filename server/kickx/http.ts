@@ -6,6 +6,9 @@ export class HttpError extends Error {
   constructor(public status: number, message: string) { super(message); }
 }
 export const privateHeaders = { "Cache-Control": "private, no-store", Vary: "Cookie" };
+// Fits a 3,000-character post, its title/metadata and JSON escaping overhead.
+// This is a byte limit; field-level character limits still apply separately.
+export const MAX_JSON_BODY_BYTES = 32 * 1024;
 export function json(data: unknown, status = 200) {
   return Response.json(data, { status, headers: privateHeaders });
 }
@@ -24,7 +27,7 @@ export async function readJson(request: Request): Promise<unknown> {
       const { done, value } = await reader.read();
       if (done) break;
       size += value.byteLength;
-      if (size > 4096) { await reader.cancel(); throw new HttpError(413, "입력 내용이 너무 깁니다."); }
+      if (size > MAX_JSON_BODY_BYTES) { await reader.cancel(); throw new HttpError(413, "입력 내용이 너무 깁니다."); }
       chunks.push(value);
     }
   } finally { reader.releaseLock(); }

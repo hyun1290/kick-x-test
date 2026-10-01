@@ -13,7 +13,7 @@
 | 데이터 | 실제 DB 미연결. `KICKX_MOCK_DATA=true`면 **예시 데이터**로 전 화면 동작 (배지 표시) |
 | 로그인 | Google OAuth·세션·프로필·관심 선수 API는 코드 완료, **Supabase 실제 설정 전** |
 | 거래·자산·스쿼드 저장·랭킹·커뮤니티 쓰기·관리자 작업 | **백엔드 미구현.** 프론트 UI와 연결 지점만 준비됨 |
-| 검증 | `npm run lint` · `npm test`(22개) · `npm run build` · 브라우저 스모크(23경로×2해상도) 통과 |
+| 검증 | `npm run lint` · `npm test`(26개) · `npm run build` · 브라우저 스모크(23경로×2해상도) 통과 |
 
 ---
 
@@ -134,7 +134,7 @@ app/api/kickx/route.ts ──► server/kickx/service.ts (readPlatform/readAdmin
 | POST | `/api/auth/login` · `/api/auth/logout`, GET `/api/auth/status` | Google OAuth |
 
 쓰기 API 공통 규칙(`server/kickx/http.ts`): 동일 출처 검사(`requireOrigin`) → 서버 세션 검증 → 입력 검증 → RLS. **클라이언트가 보낸 userId/role은 절대 사용하지 않는다.**
-⚠ `readJson`은 요청 본문을 **4096바이트로 제한**한다. 게시글(최대 3,000자, 한글은 3바이트)용 API는 이 한도를 별도로 늘려야 한다.
+`readJson`의 요청 본문 한도는 **32KiB(32,768바이트)**다. 한글 3,000자와 제목·메타데이터·JSON 이스케이프 여유를 포함한다. 스트림을 읽으며 실제 바이트 수를 검사하고 초과 요청은 413으로 거부한다. 게시글 API에서도 이 공용 함수를 사용하면 된다. 제목 2–80자·본문 10–3,000자 등의 필드 검증은 `validatePost`로 별도 적용해야 한다. 실제 게시글 등록/수정 API는 아직 미구현이다.
 
 ### 6-2. 새로 필요한 API (제안 형태)
 | 기능 | 제안 | 프론트 연결 위치 |
