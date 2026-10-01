@@ -58,6 +58,13 @@ try {
   const disconnected=await context.request.put(base+"/api/kickx/watchlist",{headers:{origin:base},data:{playerId:"test-player",watched:true}});
   assert.equal(disconnected.status(),503);
   report.checks.push("Disconnected services and cross-origin writes stay blocked");
+  for(const endpoint of ["/api/kickx/players?page=0","/api/kickx/fixtures?day=2026-02-30"]) {
+    assert.equal((await context.request.get(base+endpoint)).status(),400);
+  }
+  for(const endpoint of ["/api/kickx/players","/api/kickx/fixtures","/api/kickx/players/missing"]) {
+    assert.equal((await (await context.request.get(base+endpoint)).json()).status,"not-configured");
+  }
+  report.checks.push("Catalog API validates parameters and keeps disconnected reads explicit");
   await context.close();
 
   // UI-only injected responses: these records never ship in application data or SQL seeds.
@@ -71,6 +78,26 @@ try {
     member:{financialReady:false,points:null,totalAssets:null,playerAssets:null,profit:null,returnRate:null,weeklyRank:null,holdings:[],transactions:[],watchlist:[],assetHistory:[],squad:null},
   };
   await mock.route(/\/api\/kickx$/,route=>route.fulfill({json:{status:"ready",data:state}}));
+  const catalogRequests=[];
+  let failSearch=false;
+  const extra=Array.from({length:24},(_,i)=>({...state.players[0],id:"catalog-"+i,name:"목록 선수 "+i}));
+  await mock.route(/\/api\/kickx\/players\?/,route=>{
+    const url=new URL(route.request().url()),params=url.searchParams;
+    catalogRequests.push(url.search);
+    if(failSearch) {failSearch=false;return route.fulfill({status:500,json:{error:"테스트 목록 조회 오류"}});}
+    const page=Number(params.get("page")||1),size=Number(params.get("size")||12),q=params.get("q")||"";
+    let items=q === "서버에서만 조회" ? extra : state.players;
+    if(params.get("scope")==="watch") items=items.filter(p=>state.member.watchlist.includes(p.id));
+    return route.fulfill({json:{status:"ready",data:{items:items.slice((page-1)*size,page*size),total:items.length,page,size}}});
+  });
+  await mock.route(/\/api\/kickx\/players\/[^?]+$/,route=>{
+    const id=new URL(route.request().url()).pathname.split("/").at(-1);
+    return route.fulfill({json:{status:"ready",data:{player:[...state.players,...extra].find(p=>p.id===id)||null}}});
+  });
+  await mock.route(/\/api\/kickx\/fixtures\?/,route=>{
+    const params=new URL(route.request().url()).searchParams;
+    return route.fulfill({json:{status:"ready",data:{items:[],total:0,page:Number(params.get("page")||1),size:20}}});
+  });
   let watchCalls=0;
   await mock.route("**/api/kickx/watchlist",async route=>{
     watchCalls++;
@@ -93,6 +120,22 @@ try {
   await mockPage.goto(base+"/players?watchlist=1",{waitUntil:"networkidle"});
   assert.ok(await mockPage.getByRole("heading",{name:"CI-only player",exact:true}).isVisible());
   report.checks.push("Saved watchlist feeds the filtered player list");
+  await mockPage.getByRole("button",{name:"전체 선수",exact:true}).click();
+  await mockPage.getByLabel("선수 검색",{exact:true}).fill("서버에서만 조회");
+  await mockPage.getByRole("heading",{name:"목록 선수 0",exact:true}).waitFor();
+  await mockPage.getByRole("button",{name:"다음 페이지",exact:true}).click();
+  await mockPage.getByRole("heading",{name:"목록 선수 12",exact:true}).waitFor();
+  assert.ok(catalogRequests.some(url=>url.includes("page=2")));
+  await mockPage.getByLabel("선수 검색",{exact:true}).fill("");
+  await mockPage.getByRole("heading",{name:"CI-only player",exact:true}).waitFor();
+  failSearch=true;
+  await mockPage.getByLabel("선수 검색",{exact:true}).fill("서버에서만 조회");
+  await mockPage.getByRole("heading",{name:"데이터를 불러오지 못했습니다",exact:true}).waitFor();
+  await mockPage.getByRole("button",{name:"다시 시도",exact:true}).click();
+  await mockPage.getByRole("heading",{name:"목록 선수 0",exact:true}).waitFor();
+  await mockPage.goto(base+"/players/catalog-23",{waitUntil:"networkidle"});
+  await mockPage.getByRole("heading",{name:"목록 선수 23",exact:true}).waitFor();
+  report.checks.push("Server search, second page, retry and direct detail outside bootstrap");
   await mockPage.goto(base+"/transactions",{waitUntil:"networkidle"});
   const totals=await mockPage.locator(".transaction-stats strong").allTextContents();
   assert.ok(totals.length===3&&totals.every(text=>text.includes("—")));

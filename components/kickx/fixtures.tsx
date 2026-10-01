@@ -3,13 +3,15 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { CalendarDays, ChevronLeft, ChevronRight, RotateCcw, Search } from "lucide-react";
 import { usePlatform } from "./provider";
+import { useCatalogPage } from "./catalog";
+import type { Fixture } from "@/lib/kickx/types";
 import { DataEmpty, PageHeading, Tabs, TeamBadge } from "./ui";
 import { dateText } from "@/lib/kickx/data";
 import { fixtureGroup, fixtureStatus, koreanDay } from "@/lib/kickx/fixtures";
 
 const STATES: [string, string][] = [["all", "전체"], ["live", "진행 중"], ["scheduled", "예정"], ["finished", "종료"], ["other", "연기·기타"]];
 export function FixturesScreen() {
-  const { data, status, getTeam, getLeague } = usePlatform();
+  const { data, status:platformStatus, getTeam, getLeague } = usePlatform();
   const [league, setLeague] = useState("all"), [state, setState] = useState("all");
   const [day, setDay] = useState(""), [query, setQuery] = useState(""), [page, setPage] = useState(1);
   const results = useMemo(() => data.fixtures.filter((fixture) => {
@@ -18,9 +20,13 @@ export function FixturesScreen() {
       && (!day || koreanDay(fixture.startsAt) === day)
       && (!query.trim() || [home?.name, home?.english, away?.name, away?.english].filter(Boolean).join(" ").toLowerCase().includes(query.trim().toLowerCase()));
   }).sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt)), [data.fixtures, data.teams, league, state, day, query]);
-  const count = Math.max(1, Math.ceil(results.length / 20)), current = Math.min(page, count);
+  const remote=useCatalogPage<Fixture>("fixtures",{league,state,day,q:query,page,size:20});
+  const status=remote.enabled ? remote.status : platformStatus;
+  const total=remote.enabled ? remote.data.total : results.length;
+  const count=Math.max(1,Math.ceil(total/20)),current=remote.enabled ? page : Math.min(page,count);
+  const visible=remote.enabled ? (status === "ready" ? remote.data.items : []) : results.slice((current-1)*20,current*20);
   const groups = new Map<string, typeof results>();
-  for (const fixture of results.slice((current - 1) * 20, current * 20)) {
+  for (const fixture of visible) {
     const key = koreanDay(fixture.startsAt);
     groups.set(key, [...(groups.get(key) || []), fixture]);
   }
@@ -41,7 +47,7 @@ export function FixturesScreen() {
           <Tabs items={STATES.map(([, label]) => label)} value={stateLabel} onChange={(label) => { setState(STATES.find(([, l]) => l === label)?.[0] ?? "all"); setPage(1); }} label="경기 상태" />
         </div>
         <div className="toolbar fixture-tools">
-          <label className="input-search"><Search size={17} /><input aria-label="경기 구단 검색" placeholder="구단 이름 검색" value={query} onChange={(e) => { setQuery(e.target.value); setPage(1); }} /></label>
+          <label className="input-search"><Search size={17} /><input aria-label="경기 구단 검색" placeholder="구단 이름 검색" maxLength={100} value={query} onChange={(e) => { setQuery(e.target.value); setPage(1); }} /></label>
           <select aria-label="경기 리그" value={league} onChange={(e) => { setLeague(e.target.value); setPage(1); }}>
             <option value="all">모든 리그</option>
             {data.leagues.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
@@ -50,7 +56,7 @@ export function FixturesScreen() {
           <button className="button secondary" disabled={!filtered} onClick={reset}><RotateCcw size={15} />초기화</button>
         </div>
         <p className="fixture-summary" role="status">
-          {status === "ready" ? <><b className="num">{results.length}</b>경기</> : "경기 정보를 준비하고 있습니다."}
+          {status === "ready" ? <><b className="num">{total}</b>경기</> : "경기 정보를 준비하고 있습니다."}
           <span>진행 상태는 마지막 수집 기록을 기준으로 표시합니다.</span>
         </p>
         {[...groups].map(([date, fixtures]) => (
@@ -89,10 +95,10 @@ export function FixturesScreen() {
             </ul>
           </section>
         ))}
-        {!results.length && <DataEmpty entity="경기 일정" filtered={filtered} />}
-        {results.length > 0 && (
+        {!visible.length && <DataEmpty entity="경기 일정" status={status} retry={remote.enabled ? remote.reload : undefined} filtered={filtered} />}
+        {total > 0 && (
           <div className="panel-foot pagination">
-            <span>{`${(current - 1) * 20 + 1}–${Math.min(current * 20, results.length)} / ${results.length}`}</span>
+            <span>{`${(current - 1) * 20 + 1}–${Math.min(current * 20, total)} / ${total}`}</span>
             <div>
               <button aria-label="이전 경기 페이지" disabled={current === 1} onClick={() => setPage(current - 1)}><ChevronLeft size={17} /></button>
               <span className="num">{current} / {count}</span>

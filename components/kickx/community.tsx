@@ -4,9 +4,10 @@ import { useParams, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { ArrowRight, Eye, Flag, Heart, LoaderCircle, Lock, MessageCircle, Paperclip, Pencil, Search, Send, Trash2, Users } from "lucide-react";
 import { dateText, money, relativeTime } from "@/lib/kickx/data";
-import type { Post } from "@/lib/kickx/types";
+import type { Post, Player } from "@/lib/kickx/types";
 import { POST_LIMITS, validatePost, type PostField } from "@/lib/kickx/validation";
 import { usePlatform } from "./provider";
+import { useCatalogPage, useCatalogPlayer } from "./catalog";
 import { BackLink, Change, DataEmpty, DisabledAction, Empty, MemberNotice, Modal, PageHeading, PlayerPortrait, SectionTitle, Tabs, TeamBadge } from "./ui";
 
 const HUB = { club: "/community/clubs", player: "/community/players" } as const;
@@ -102,10 +103,12 @@ export function CommunityHub({ kind }: { kind: "club" | "player" }) {
   const leagueId = data.leagues.find((l) => l.name === league)?.id;
   const clubs = data.teams.filter((t) => league === "전체" || t.leagueId === leagueId);
   const owned = new Set(data.member?.holdings.map((h) => h.playerId));
-  const lounges = data.players
+  const localLounges = data.players
     .filter((p) => `${p.name} ${p.english || ""} ${getTeam(p.team)?.name || ""}`.toLowerCase().includes(q.trim().toLowerCase()))
     .sort((a, b) => count(b.id) - count(a.id) || Math.abs(b.change ?? 0) - Math.abs(a.change ?? 0))
     .slice(0, q ? 24 : 12);
+  const remote=useCatalogPage<Player>("players",{q,size:24,sort:"name"});
+  const lounges=remote.enabled ? (remote.status === "ready" ? remote.data.items : []) : localLounges;
   return (
     <>
       <PageHeading
@@ -169,7 +172,7 @@ export function CommunityHub({ kind }: { kind: "club" | "player" }) {
           <div className="hub-layout">
             <section>
               <div className="section-title">
-                <h2>{q ? "검색 결과" : "지금 뜨거운 선수 라운지"}<span>{q ? `${lounges.length}명` : "게시글 · 변동 순"}</span></h2>
+                <h2>{q ? "검색 결과" : "선수 라운지"}<span>{q ? `${lounges.length}명` : "선수 탐색에서 전체 보기"}</span></h2>
                 <label className="input-search hub-search"><Search size={16} /><input aria-label="선수 라운지 검색" placeholder="선수 이름 검색" value={q} onChange={(e) => setQ(e.target.value)} /></label>
               </div>
               {lounges.length ? (
@@ -188,7 +191,7 @@ export function CommunityHub({ kind }: { kind: "club" | "player" }) {
                     </Link>
                   ))}
                 </div>
-              ) : <div className="panel"><DataEmpty entity="선수 라운지" filtered={!!q && data.players.length > 0} /></div>}
+              ) : <div className="panel"><DataEmpty entity="선수 라운지" status={remote.enabled ? remote.status : status} retry={remote.enabled ? remote.reload : undefined} filtered={!!q} /></div>}
             </section>
             <aside><PopularPosts posts={posts} /></aside>
           </div>
@@ -203,15 +206,17 @@ export function CommunityHub({ kind }: { kind: "club" | "player" }) {
 }
 export function CommunityScreen({ scope }: { scope: "club" | "player" }) {
   const params = useParams();
-  const { data, getPlayer, getTeam, getLeague, status } = usePlatform();
+  const { data, getTeam, getLeague, status } = usePlatform();
   const target = scope === "club" ? String(params.teamId) : String(params.playerId);
+  const detail=useCatalogPlayer(scope === "player" ? target : null);
   const team = scope === "club" ? getTeam(target) : undefined,
-    player = scope === "player" ? getPlayer(target) : undefined;
+    player = scope === "player" ? detail.player : undefined;
   const found = team || player;
   const posts = data.posts.filter((p) => p.scope === scope && p.target === target);
   const isFan = scope === "player" || (!!data.session?.profile?.team && data.session.profile.team === target);
   const writable = !!found && !!data.session && isFan;
-  const squad = team ? data.players.filter((p) => p.team === team.id) : [];
+  const roster=useCatalogPage<Player>("players",{team:team?.id,size:12,sort:"name"});
+  const squad=roster.enabled ? (team && roster.status === "ready" ? roster.data.items : []) : team ? data.players.filter(p=>p.team===team.id) : [];
   return (
     <>
       <BackLink href={HUB[scope]} label={scope === "club" ? "구단 커뮤니티" : "선수 커뮤니티"} />
@@ -233,7 +238,7 @@ export function CommunityScreen({ scope }: { scope: "club" | "player" }) {
         <div className="lounge-hero-stats">
           <div><span>게시글</span><b className="num">{found ? posts.length : "—"}</b></div>
           {player && <div><span>현재 가치</span><b className="num">{money(player.price)} P</b><Change value={player.change} /></div>}
-          {team && <div><span>등록 선수</span><b className="num">{squad.length}</b></div>}
+          {team && <div><span>선수 미리보기</span><b className="num">{squad.length}</b></div>}
         </div>
         <div className="lounge-hero-actions">
           {writable ? (
@@ -266,7 +271,8 @@ export function CommunityScreen({ scope }: { scope: "club" | "player" }) {
                     </li>
                   ))}
                 </ul>
-              ) : <DataEmpty entity="선수" rows={3} />}
+              ) : <DataEmpty entity="선수" status={roster.enabled ? roster.status : status} retry={roster.enabled ? roster.reload : undefined} rows={3} />}
+              {team && roster.enabled && roster.data.total > 12 && <Link className="text-link" href={`/players?team=${encodeURIComponent(team.id)}`}>구단 선수 전체 보기 <ArrowRight size={14} /></Link>}
             </section>
           ) : player ? (
             <section className="panel">

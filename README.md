@@ -66,3 +66,5 @@ CI의 PostgreSQL은 권한 검사용 임시 DB입니다. 실제 Supabase OAuth·
 ## 시각 자산
 
 `public/images/yellow-playbook-reference.png`는 제공된 레퍼런스의 장식용 비주얼입니다. 실제 선수 정보로 사용하지 않습니다. 로컬 Noto Sans KR의 라이선스는 `public/fonts/OFL-NotoSansKR.txt`에 있습니다. 모션 감소 설정에서는 전환·로딩 애니메이션을 끕니다.
+
+축구 원천 수집·검색 API 연결: [docs/football-data.md](docs/football-data.md). 연결 점검은 `npm run connection:check`, 수동 수집은 `npm run data:sync -- <task> ...`.

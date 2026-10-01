@@ -5,7 +5,7 @@
 ## 1. 마이그레이션
 
 1. 사용할 Supabase 프로젝트를 확인합니다.
-2. `supabase/migrations/202610010001_catalog_and_accounts.sql`을 검토하고 SQL Editor 또는 기존 Supabase CLI 마이그레이션 흐름으로 한 번 적용합니다.
+2. `supabase/migrations/`의 SQL을 파일명 순서대로 검토하고 SQL Editor 또는 기존 Supabase CLI 마이그레이션 흐름으로 한 번씩 적용합니다. 이미 적용한 파일은 다시 실행하지 않습니다. 두 번째 파일은 축구 원천 기록·요약·작업 이력·페이지 조회 뷰를 추가합니다.
 3. 같은 이름의 기존 테이블이 있으면 그대로 실행하지 말고 기존 스키마와 대조해 별도 마이그레이션을 만듭니다. 파일은 기존 테이블을 삭제하거나 자동 덮어쓰지 않습니다.
 
 포함 테이블: leagues, teams, players, player_market_snapshots, fixtures, price_history, player_match_records, player_analyses, profiles, user_roles, watchlists.
@@ -43,7 +43,9 @@ Vercel과 로컬 개발 환경에 설정합니다.
 | NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY | publishable 키 또는 기존 anon 키 |
 | KICKX_DATABASE_ENABLED | SQL/OAuth 설정을 마친 뒤 true |
 
-서비스 역할 키는 이 조회·사용자 저장 경로에 필요하지 않습니다. 기존 `NEXT_PUBLIC_SUPABASE_ANON_KEY`도 대체 키 이름으로 지원합니다. 환경변수 변경 후 재배포합니다. 미설정/false 상태에서는 빈 UI와 준비 안내를 유지합니다.
+서비스 역할 키는 이 조회·사용자 저장 경로에 필요하지 않습니다. 수동 수집 CLI에는 별도의 `SUPABASE_SERVICE_ROLE_KEY`와 `API_FOOTBALL_KEY`가 필요합니다. 수집 실행 환경에만 비밀키를 설정합니다. 기존 `NEXT_PUBLIC_SUPABASE_ANON_KEY`도 대체 키 이름으로 지원합니다. 환경변수 변경 후 재배포합니다. 미설정/false 상태에서는 빈 UI와 준비 안내를 유지합니다.
+
+설정 후 `npm run connection:check`로 공개 테이블·목록 뷰 접근과 Google 공급자 활성화를 확인합니다. 이 명령은 설정 존재 여부와 검사 결과만 출력하며 OAuth 리디렉션·실제 회원 쓰기는 아래 통합 시험으로 확인해야 합니다. 축구 적재는 [football-data.md](football-data.md)의 실행 순서를 따릅니다.
 
 ## 4. 실제 계정으로 확인할 흐름
 
@@ -61,6 +63,6 @@ Vercel과 로컬 개발 환경에 설정합니다.
 
 초기 포인트 금액이 미정이므로 프로필 생성 때 지갑/포인트를 생성하지 않습니다. 금융 데이터는 `financialReady: false`로 전달해 거래 합계와 보유 수량도 미확정으로 표시합니다. 거래 API·원장·집계 구현과 함께 이 상태를 바꿔야 합니다.
 
-리그/구단/선수/경기는 실제 데이터만 적재하세요. Performance/가격은 계산 규칙 버전 없이 저장할 수 없게 제약했습니다. 가격 이력은 player_id+recorded_at, 경기 기록은 player_id+fixture_id로 중복을 방지합니다. 경기 정정 재계산과 작업 이력 관리까지 완성한 것은 아닙니다.
+리그/구단/선수/경기는 실제 데이터만 적재하세요. Performance/가격은 계산 규칙 버전 없이 저장할 수 없게 제약했습니다. 가격 이력은 player_id+recorded_at, 경기 기록은 player_id+fixture_id로 중복을 방지합니다. 원천 수집은 응답 단위 트랜잭션·실행 이력·재실행 upsert를 지원합니다. 경기 정정에 따른 계산 결과 재계산과 관리자 재처리 UI는 아직 구현 전입니다.
 
 자료: [Supabase SSR](https://supabase.com/docs/guides/auth/server-side/creating-a-client), [Google 로그인](https://supabase.com/docs/guides/auth/social-login/auth-google), [Redirect URLs](https://supabase.com/docs/guides/auth/redirect-urls), [RLS](https://supabase.com/docs/guides/database/postgres/row-level-security).

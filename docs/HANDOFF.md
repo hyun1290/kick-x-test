@@ -1,7 +1,7 @@
 # KICK-X 작업 인수인계 (HANDOFF)
 
 > 다음 작업자(사람 또는 AI 에이전트)가 이 문서만 읽고 이어서 작업할 수 있도록 정리한 현황입니다.
-> 기준일: 2026-10-01 · 기준 브랜치: `main` (= `claude/tender-knuth-s4t9ub`)
+> 기준일: 2026-10-01 · 기준 브랜치: `main`
 
 ---
 
@@ -13,7 +13,7 @@
 | 데이터 | 실제 DB 미연결. `KICKX_MOCK_DATA=true`면 **예시 데이터**로 전 화면 동작 (배지 표시) |
 | 로그인 | Google OAuth·세션·프로필·관심 선수 API는 코드 완료, **Supabase 실제 설정 전** |
 | 거래·자산·스쿼드 저장·랭킹·커뮤니티 쓰기·관리자 작업 | **백엔드 미구현.** 프론트 UI와 연결 지점만 준비됨 |
-| 검증 | `npm run lint` · `npm test`(26개) · `npm run build` · 브라우저 스모크(23경로×2해상도) 통과 |
+| 검증 | `npm run lint` · `npm test`(42개) · `npm run build` · 브라우저 스모크(23경로×2해상도) 통과 |
 
 ---
 
@@ -22,7 +22,7 @@
 1. **디자인은 Yellow Playbook(노랑·검정·흰색, 상단 가로 메뉴)을 유지한다.** 다크 블루 테마나 왼쪽 사이드바로 바꾸지 않는다. (사용자 확정 사항)
 2. **프레임워크·구조를 갈아엎지 않는다.** Next.js App Router + `components/kickx/*` 구조 유지.
 3. **비즈니스 로직(가격·Performance·수수료·포인트 계산, 거래 체결)은 프론트에서 구현하지 않는다.** 서버가 계산한 값을 표시만 한다.
-4. **예시 데이터는 반드시 예시로 표시한다.** mock 응답에는 `source: "mock"`이 붙고 화면에 "예시 데이터" 배지가 뜬다. 이 규칙을 깨지 않는다.
+4. **사용자가 예시 데이터 사용 범위 제한을 해제했다.** mock 모드를 Production/Preview 구분 없이 사용할 수 있다. 현재 `source: "mock"`과 배지는 데이터 구분용으로 유지한다. DB를 켜면 실제 DB가 우선한다.
 5. **알 수 없는 값은 `—`, 실제 0만 `0`.** `money()`/`percent()`가 null을 `—`로 처리한다. 가짜 0을 만들지 않는다.
 6. **색·간격·글자 크기는 `app/styles/tokens.css` 변수만 사용**하고 페이지마다 하드코딩하지 않는다.
 7. 작업 후 항상 `npm run lint && npm test && npm run build` 통과를 확인한다.
@@ -45,7 +45,7 @@ KICKX_BROWSER_MODULE=<playwright가 설치된 폴더> node tests/browser-smoke.m
 ```
 
 - 스모크 테스트는 **mock이 꺼진 상태**를 기준으로 작성되어 있다(빈 상태·차단된 쓰기 검사). mock을 켠 채 실행하지 않는다.
-- Vercel: `KICKX_MOCK_DATA=true`는 **Preview 환경에만** 설정. Production에는 설정하지 않는다.
+- Vercel: 예시 데이터 사용 범위 제한은 해제됐다. 필요한 환경에서 `KICKX_MOCK_DATA=true`를 사용할 수 있다.
 - DB 연결 시 `KICKX_DATABASE_ENABLED=true` + Supabase URL/publishable key. DB가 켜지면 mock 설정은 자동 무시된다.
 
 ---
@@ -79,7 +79,7 @@ app/api/kickx/route.ts ──► server/kickx/service.ts (readPlatform/readAdmin
 | `lib/kickx/trade.ts` | **거래 연결 지점(TradeService).** 현재 mock/비활성 구현만 있음 |
 | `server/kickx/mock-data.ts` | 예시 데이터(5대 리그 20구단, 47명, 일정, 데모 계정, 게시글, 랭킹, 관리자) |
 | `server/kickx/catalog.ts` · `supabase-repository.ts` | Supabase 조회 어댑터 |
-| `supabase/migrations/202610010001_*.sql` | 11개 테이블 + RLS (카탈로그·프로필·역할·관심 선수) |
+| `supabase/migrations/*.sql` | 카탈로그/계정 11개 + 축구 원천/요약/작업 5개 테이블, RLS, 목록 뷰, 원자적 수집 함수 |
 | `app/styles/*.css` | 디자인 시스템 (아래 4장) |
 
 ---
@@ -106,7 +106,7 @@ app/api/kickx/route.ts ──► server/kickx/service.ts (readPlatform/readAdmin
 | 화면 | 경로 | 프론트 | 백엔드 연결 필요 |
 | --- | --- | --- | --- |
 | 홈 | `/` | 완료 (마켓 보드·자산·스쿼드·경기·관심·급등락·최근 거래) | 카탈로그·자산·스쿼드 조회 |
-| 선수 시장 / 탐색 | `/market` `/players` | 완료 (검색·리그/구단/포지션 필터·정렬·카드/표·페이지) | **서버 검색·페이지네이션**(대량 데이터 전) |
+| 선수 시장 / 탐색 | `/market` `/players` | 완료 (검색·리그/구단/포지션 필터·정렬·카드/표·페이지) | 서버 목록 API 연결 완료. 실제 DB/대량 데이터 시험 필요 |
 | 선수 상세 | `/players/[id]` | 완료 (가치 차트·최근 경기·AI 분석·보유 현황·매입/매각 모달) | 거래 견적/체결, 기록 기간 확장, AI 리포트 |
 | 스쿼드 | `/squad` | 완료 (피치·자리 선택→배치·11명 표시·포지션 구성) | **스쿼드 저장 API** |
 | 내 자산 / 거래 내역 | `/portfolio` `/transactions` | 완료 | 지갑·보유·거래 원장·자산 스냅샷 |
@@ -145,7 +145,7 @@ app/api/kickx/route.ts ──► server/kickx/service.ts (readPlatform/readAdmin
 | 게시글 등록/수정 | `POST /api/kickx/posts`, `PATCH /api/kickx/posts/[id]` `{scope, target, category, title, body, transactionId?}` | `community.tsx` `WritePost.submit` — 서버에서 **`validatePost`를 그대로 재사용** |
 | 댓글/공감/신고/삭제 | `POST /posts/[id]/comments`, `PUT /posts/[id]/like`, `POST /posts/[id]/reports`, `DELETE /posts/[id]` | `PostDetail` |
 | 관리자 | 작업 재처리, 신고 숨김/기각 | `admin.tsx` (DisabledAction 위치) |
-| 목록 분리 | `GET /api/kickx/players?q&league&team&position&sort&page` 등 | 지금은 `/api/kickx` 전체 조회 (20,000행 한도) |
+| 목록 분리 | `GET /api/kickx/players?q&league&team&position&sort&page` 등 | 목록·상세 API 구현 완료. `/api/kickx`는 제한된 미리보기와 리그/구단 메타데이터만 조회 |
 
 `TradeService`를 실제 구현으로 바꾸는 방법: `lib/kickx/trade.ts`에 `apiService`를 추가해 위 API를 호출하고, `tradeService(mock)`에서 실제 모드일 때 반환하도록 교체한다. `quote()`는 현재 동기 함수이므로 실제 구현 시 `Promise<TradeQuote>`로 바꾸고 `TradeDialog`에서 로딩 상태를 추가한다.
 
@@ -156,7 +156,7 @@ app/api/kickx/route.ts ──► server/kickx/service.ts (readPlatform/readAdmin
 | # | 할 일 | 완료 기준 |
 | --- | --- | --- |
 | 1 | **Supabase 실제 연결**: 마이그레이션 적용, Google Provider/Redirect URL, Vercel 환경변수 (`docs/backend-setup.md`) | 로그인→프로필 등록→새로고침→재로그인 유지 |
-| 2 | **API-FOOTBALL 수집**: 리그→구단→선수→경기→선수별 경기 기록 upsert, 외부 ID 보존, 수집 이력 | 하루 호출 한도 내 동작, 중복 적재 없음, 화면 표시와 원본 일치 |
+| 2 | **API-FOOTBALL 수집(수동 CLI 구현 완료, 실제 실행 대기)**: 리그→구단→선수→경기→선수별 경기 기록 upsert, 외부 ID 보존, 수집 이력 | 하루 호출 한도 내 동작, 중복 적재 없음, 화면 표시와 원본 일치 |
 | 3 | **팀 정책 확정** (8장 표) | 문서화된 수치·예시 계산 |
 | 4 | **Performance·가치 계산 엔진**: 포지션별 가중치, 규칙 버전, 가격 이력, 경기 정정 재계산 | 같은 입력 = 같은 결과, 재처리해도 중복 변동 없음 |
 | 5 | **지갑·원장·보유·거래 테이블 + 원자적 체결**: 최초 포인트 1회 지급, 견적/체결 API, 멱등 키 | 동시 주문·중복 요청·잔액 부족·가격 변경·실패 복구 테스트 통과 |
@@ -165,7 +165,7 @@ app/api/kickx/route.ts ──► server/kickx/service.ts (readPlatform/readAdmin
 | 8 | **랭킹 집계**: 자산 스냅샷 → 주간/월간 수익률 | 기간·동률·신규 회원 규칙대로 재현 가능 |
 | 9 | **커뮤니티 테이블·API**: 게시글/댓글/공감/신고, 응원 구단 작성 권한, 본인 거래만 첨부 | 타 구단 팬·타인 거래 첨부 거부 (`validatePost` 서버 재사용) |
 | 10 | **관리자 어댑터**: `getAdminData` 실제 구현, 재처리·신고 처리 API, 감사 로그 | 관리자만 접근, 모든 처리 감사 기록 |
-| 11 | **목록 API 분리**: 선수/경기 서버 검색·페이지네이션 | 5대 리그 전체 적재 후 응답 크기·속도 정상 |
+| 11 | **목록 API 분리(코드 완료, 실데이터 시험 대기)**: 선수/경기 서버 검색·페이지네이션 | 5대 리그 전체 적재 후 응답 크기·속도 정상 |
 | 12 | **AI 가치 분석 리포트**: 저장된 기록 기반 생성, 생성 시각·출처 보존 | 수치를 임의 생성하지 않음 |
 
 ---
@@ -194,3 +194,11 @@ app/api/kickx/route.ts ──► server/kickx/service.ts (readPlatform/readAdmin
 - Tailwind 설정 파일은 남아 있으나 실제 스타일은 `app/styles/*.css`만 사용한다.
 - GitHub에 정리되지 않은 옛 브랜치 2개(`chore/cleanup-starter-template`, `feat/playbook-details-and-account-foundation`)가 있다. 내용은 모두 `main`에 포함되어 있어 삭제해도 된다.
 - 프론트 후속 후보: 거래 견적 로딩 상태(실제 API 연결 시), 댓글 작성 검증 UI, 다크 모드는 **하지 않음**(디자인 방향상).
+
+## 2026-10-01 기반 연결 추가
+
+- 서버 검색·페이지네이션: `catalog-query.ts`, `catalog-pages.ts`, `catalog-http.ts`, `components/kickx/catalog.tsx`. 홈·탐색·시장·일정에 연결. 선수 상세는 목록 밖의 ID도 직접 조회한다.
+- 원천 수집: `npm run data:sync`, `scripts/lib/football.mjs`, `apply_football_batch`. 영구 저장은 서비스 역할만, 가격/Performance 계산은 하지 않는다. 현재 소속은 squads 수집으로 설정한다.
+- `npm run connection:check`: DB 공개 조회와 Google 공급자 활성화 점검. 실제 설정 키가 제공되지 않아 운영 DB 적용·수집·Google 로그인 통합 시험은 미완료다.
+- 자세한 명령, NULL/0·시즌 이적·쿼터·중단 후 재실행은 [football-data.md](football-data.md)를 읽는다.
+- 글쓰기 선수 선택기, 자동 수집 스케줄, 관리자 작업 조회와 가격 정정 재계산은 다음 범위다.

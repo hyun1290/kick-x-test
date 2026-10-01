@@ -6,6 +6,7 @@ import { ArrowRight, ChevronLeft, ChevronRight, LayoutGrid, List, MessageCircle,
 import { dateText, money, seriesForDays } from "@/lib/kickx/data";
 import type { Player } from "@/lib/kickx/types";
 import { usePlatform } from "./provider";
+import { useCatalogPage, useCatalogPlayer } from "./catalog";
 import {
   BackLink,
   Change,
@@ -61,10 +62,10 @@ function PlayerCard({ player }: { player: Player }) {
 }
 export function PlayerList({ market = false }: { market?: boolean }) {
   const sp = useSearchParams();
-  const { data, status, getTeam, getLeague } = usePlatform();
+  const { data, status: platformStatus, getTeam, getLeague } = usePlatform();
   const [q, setQ] = useState(sp.get("q") || ""),
     [league, setLeague] = useState("all"),
-    [team, setTeam] = useState("all"),
+    [team, setTeam] = useState(sp.get("team") || "all"),
     [pos, setPos] = useState("전체");
   const [sort, setSort] = useState(market ? "volume" : "price"),
     [view, setView] = useState(market ? "list" : "grid"),
@@ -72,6 +73,7 @@ export function PlayerList({ market = false }: { market?: boolean }) {
     [page, setPage] = useState(1);
   useEffect(() => {
     setQ(sp.get("q") || "");
+    setTeam(sp.get("team") || "all");
     setTab(sp.get("watchlist") === "1" ? "관심 선수" : "전체 선수");
     setPage(1);
   }, [sp]);
@@ -94,9 +96,11 @@ export function PlayerList({ market = false }: { market?: boolean }) {
       const key = (sort === "price-asc" ? "price" : sort) as "price" | "change" | "performance" | "volume";
       return compareNumber(a[key], b[key], sort === "price-asc");
     });
-  const pageCount = Math.max(1, Math.ceil(results.length / PAGE)),
-    current = Math.min(page, pageCount),
-    visible = results.slice((current - 1) * PAGE, current * PAGE);
+  const remote=useCatalogPage<Player>("players",{q,league,team,position:pos === "전체" ? undefined : pos,sort,page,size:PAGE,scope:({"관심 선수":"watch","보유 선수":"owned","상승 선수":"rising","하락 선수":"falling"} as Record<string,string>)[tab] ?? "all"});
+  const status=remote.enabled ? remote.status : platformStatus;
+  const total=remote.enabled ? remote.data.total : results.length;
+  const pageCount=Math.max(1,Math.ceil(total/PAGE)), current=remote.enabled ? page : Math.min(page,pageCount);
+  const visible=remote.enabled ? (status === "ready" ? remote.data.items : []) : results.slice((current-1)*PAGE,current*PAGE);
   const filtered = !!q || league !== "all" || team !== "all" || pos !== "전체" || tab !== "전체 선수";
   const reset = () => {
     setQ("");
@@ -121,7 +125,7 @@ export function PlayerList({ market = false }: { market?: boolean }) {
             <StatCard label="전체 거래량" value={money(data.market?.volume)} unit="건" hint={data.market?.calculatedAt ? `${dateText(data.market.calculatedAt)} 집계` : "집계 대기"} />
             <StatCard label="상승 선수" value={<span className="up">{money(data.market?.rising)}</span>} unit="명" hint="직전 갱신 대비" />
             <StatCard label="하락 선수" value={<span className="down">{money(data.market?.falling)}</span>} unit="명" hint="직전 갱신 대비" />
-            <StatCard label="거래 가능 선수" value={money(data.players.filter((p) => !p.status && p.price != null).length || null)} unit="명" hint={`전체 ${data.players.length}명`} tone="yellow" />
+            <StatCard label="거래 가능 선수" value={money(data.market ? data.players.filter((p) => !p.status && p.price != null).length || null : null)} unit="명" hint={`전체 ${data.playerTotal ?? data.players.length}명`} tone="yellow" />
           </div>
           {movers.length > 0 && (
             <section className="market-movers" aria-labelledby="market-movers">
@@ -161,7 +165,7 @@ export function PlayerList({ market = false }: { market?: boolean }) {
         <div className="toolbar browser-filters">
           <label className="input-search">
             <Search size={17} />
-            <input aria-label="선수 검색" placeholder="선수 · 구단 · 리그 검색" value={q} onChange={(e) => { setQ(e.target.value); setPage(1); }} />
+            <input aria-label="선수 검색" placeholder="선수 · 구단 · 리그 검색" maxLength={100} value={q} onChange={(e) => { setQ(e.target.value); setPage(1); }} />
           </label>
           <select aria-label="리그 필터" value={league} onChange={(e) => { setLeague(e.target.value); setTeam("all"); setPage(1); }}>
             <option value="all">모든 리그</option>
@@ -186,7 +190,7 @@ export function PlayerList({ market = false }: { market?: boolean }) {
             ))}
           </div>
           <span className="result-count">
-            {status === "ready" ? <><strong className="num">{results.length}</strong>명의 선수</> : "—"}
+            {status === "ready" ? <><strong className="num">{total}</strong>명의 선수</> : "—"}
             {filtered && <button type="button" className="text-link" onClick={reset}><RotateCcw size={13} />필터 초기화</button>}
           </span>
         </div>
@@ -227,10 +231,10 @@ export function PlayerList({ market = false }: { market?: boolean }) {
             </table>
           </div>
         ) : null}
-        {!visible.length && <DataEmpty entity="선수" filtered={data.players.length > 0} rows={6} />}
-        {results.length > 0 && (
+        {!visible.length && <DataEmpty entity="선수" status={status} retry={remote.enabled ? remote.reload : undefined} filtered={filtered} rows={6} />}
+        {total > 0 && (
           <div className="pagination">
-            <span>{(current - 1) * PAGE + 1}–{Math.min(current * PAGE, results.length)} / 총 {results.length}명</span>
+            <span>{(current - 1) * PAGE + 1}–{Math.min(current * PAGE, total)} / 총 {total}명</span>
             <div>
               <button aria-label="이전 페이지" disabled={current === 1} onClick={() => setPage(current - 1)}><ChevronLeft size={16} /></button>
               <span className="num">{current} / {pageCount}</span>
@@ -259,8 +263,9 @@ function PerformanceBars({ player }: { player: Player }) {
 }
 export function PlayerDetail() {
   const params = useParams();
-  const { data, status, mock, getPlayer, getTeam, getLeague } = usePlatform();
-  const p: Player | undefined = getPlayer(String(params.id));
+  const { data, mock, getTeam, getLeague } = usePlatform();
+  const detail = useCatalogPlayer(String(params.id));
+  const {player:p,status} = detail;
   const [period, setPeriod] = useState("1개월"),
     [tab, setTab] = useState("최근 경기");
   const owned = data.member?.holdings.find((h) => h.playerId === p?.id);
@@ -273,7 +278,7 @@ export function PlayerDetail() {
         <section className="panel">
           {status === "ready" ? (
             <Empty title="선수를 찾을 수 없습니다" description="주소가 올바른지 확인하거나 선수 목록에서 다시 찾아보세요." action={<Link className="button primary small" href="/players">선수 탐색</Link>} />
-          ) : <DataEmpty entity="선수" />}
+          ) : <DataEmpty entity="선수" status={status} retry={detail.reload} />}
         </section>
       </>
     );
@@ -312,7 +317,7 @@ export function PlayerDetail() {
       </section>
       <div className="stat-grid detail-stats">
         <StatCard label="최근 Performance" value={money(p.performance)} hint="최근 경기 기준" tone="yellow" />
-        <StatCard label="시즌 득점 · 도움" value={`${money(p.goals)} · ${money(p.assists)}`} />
+        <StatCard label={p.season ? `${p.season} 시즌 득점 · 도움` : "시즌 득점 · 도움"} value={`${money(p.goals)} · ${money(p.assists)}`} />
         <StatCard label="출전 시간" value={money(p.minutes)} unit="분" />
         <StatCard label="거래량" value={money(p.volume)} unit="건" />
       </div>
@@ -351,7 +356,7 @@ export function PlayerDetail() {
                         <tr key={r.id}>
                           <td><div className="two-line"><strong>vs {r.opponent}</strong><small>{dateText(r.playedAt, false)}</small></div></td>
                           <td><span className={`result-tag ${r.result?.includes("승") ? "win" : r.result?.includes("패") ? "loss" : ""}`}>{r.result || "—"}</span></td>
-                          <td className="numeric">{r.minutes ? `${money(r.minutes)}′` : <span className="muted">미출전</span>}</td>
+                          <td className="numeric">{r.minutes == null ? "—" : r.minutes > 0 ? `${money(r.minutes)}′` : <span className="muted">미출전</span>}</td>
                           <td className="numeric">{money(r.goals)}</td>
                           <td className="numeric">{money(r.assists)}</td>
                           <td className="numeric strong">{money(r.performance)}</td>

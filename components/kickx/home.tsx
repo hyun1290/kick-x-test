@@ -6,6 +6,7 @@ import { dateText, money } from "@/lib/kickx/data";
 import { fixtureGroup, fixtureStatus, selectFeaturedFixtures } from "@/lib/kickx/fixtures";
 import type { Player } from "@/lib/kickx/types";
 import { usePlatform } from "./provider";
+import { useCatalogPage } from "./catalog";
 import { Change, DataEmpty, Modal, PlayerIdentity, PlayerPortrait, PositionBadge, Sparkline, TeamBadge, WatchButton } from "./ui";
 import { Pitch } from "./squad";
 import { PlaybookArt } from "./playbook-art";
@@ -106,7 +107,8 @@ function FixturesPanel() {
 }
 function WatchPanel() {
   const { data, getTeam } = usePlatform();
-  const watched = data.players.filter(player => data.member?.watchlist.includes(player.id));
+  const remote=useCatalogPage<Player>("players",{scope:data.session ? "watch" : "all",size:4});
+  const watched=remote.enabled ? (data.session && remote.status === "ready" ? remote.data.items : []) : data.players.filter(player=>data.member?.watchlist.includes(player.id));
   return (
     <section className="dash-panel dash-watch" aria-labelledby="dash-watch">
       <PanelHead title="관심 선수" href="/players?watchlist=1" />
@@ -153,7 +155,7 @@ function MoverList({ title, players, tone }: { title: string; players: Player[];
   );
 }
 export function HomeScreen() {
-  const { data, status } = usePlatform();
+  const { data, status:platformStatus } = usePlatform();
   const [query, setQuery] = useState("");
   const [search, setSearch] = useState("");
   const [position, setPosition] = useState("all");
@@ -174,6 +176,10 @@ export function HomeScreen() {
     if (right == null) return -1;
     return sort === "low" ? left - right : right - left;
   }), [data.players, data.teams, search, position, team, sort]);
+  const remote=useCatalogPage<Player>("players",{q:search,position:position === "all" ? undefined : position,team,sort:sort === "low" ? "price-asc" : sort === "change" || sort === "performance" ? sort : "price",size:Math.min(limit,50)});
+  const status=remote.enabled ? remote.status : platformStatus;
+  const total=remote.enabled ? remote.data.total : results.length;
+  const visible=remote.enabled ? (remote.status === "ready" ? remote.data.items : []) : results.slice(0,limit);
   const known = data.players.filter(p => p.change != null);
   const rising = [...known].filter(p => (p.change ?? 0) > 0).sort((a, b) => (b.change ?? 0) - (a.change ?? 0)).slice(0, 5);
   const falling = [...known].filter(p => (p.change ?? 0) < 0).sort((a, b) => (a.change ?? 0) - (b.change ?? 0)).slice(0, 5);
@@ -195,7 +201,7 @@ export function HomeScreen() {
           <form className="home-search yb-search" onSubmit={event => { event.preventDefault(); update(() => setSearch(query)); }}>
             <label className="home-search-field">
               <Search size={22} />
-              <input aria-label="선수 이름 검색" placeholder="선수 이름을 검색하세요." value={query} onChange={event => setQuery(event.target.value)} />
+              <input aria-label="선수 이름 검색" placeholder="선수 이름을 검색하세요." maxLength={100} value={query} onChange={event => setQuery(event.target.value)} />
               {query && <button aria-label="검색어 지우기" type="button" onClick={() => { setQuery(""); update(() => setSearch("")); }}><X size={16} /></button>}
             </label>
             <select aria-label="포지션" value={position} onChange={event => update(() => setPosition(event.target.value))}>
@@ -218,10 +224,10 @@ export function HomeScreen() {
           <div className="board-caption">
             <div>
               <h2>선수 마켓 보드</h2>
-              <span className="tag outline num">{status === "ready" ? `${results.length}명` : "—"}</span>
+              <span className="tag outline num">{status === "ready" ? `${total}명` : "—"}</span>
               {filtered && (
                 <span className="board-filter" role="status">
-                  검색 결과 <strong>{status === "ready" ? `${results.length}명` : "—"}</strong>
+                  검색 결과 <strong>{status === "ready" ? `${total}명` : "—"}</strong>
                   <button type="button" onClick={reset}>필터 초기화 <X size={13} /></button>
                 </span>
               )}
@@ -242,7 +248,7 @@ export function HomeScreen() {
                 </tr>
               </thead>
               <tbody>
-                {results.slice(0, limit).map(player => (
+                {visible.map(player => (
                   <tr key={player.id}>
                     <td><PlayerIdentity player={player} size="wide" /></td>
                     <td className="hide-sm"><PositionBadge position={player.position} /></td>
@@ -256,13 +262,14 @@ export function HomeScreen() {
               </tbody>
             </table>
           </div>
-          {!results.length && <DataEmpty entity="선수" filtered={filtered} rows={6} />}
-          {results.length > limit && (
-            <button className="board-more" onClick={() => setLimit(value => value + 8)}>
-              선수 더 보기 <span className="num">+{Math.min(8, results.length - limit)}</span><ChevronDown size={16} />
+          {!visible.length && <DataEmpty entity="선수" status={status} retry={remote.enabled ? remote.reload : undefined} filtered={filtered} rows={6} />}
+          {total > limit && limit < 50 && (
+            <button className="board-more" disabled={status === "loading"} onClick={() => setLimit(value => Math.min(value + 8,50))}>
+              선수 더 보기 <span className="num">+{Math.min(8, total - limit)}</span><ChevronDown size={16} />
             </button>
           )}
-          {results.length > 0 && <p className="board-foot">최근 갱신 {dateText(data.updatedAt)} · 가치와 Performance는 KICK-X 내부 지표입니다.</p>}
+          {total > 50 && limit === 50 && <Link className="board-more" href="/players">전체 선수 탐색 <ArrowRight size={16} /></Link>}
+          {total > 0 && <p className="board-foot">최근 갱신 {dateText(data.updatedAt)} · 가치와 Performance는 KICK-X 내부 지표입니다.</p>}
         </section>
         <aside className="home-side" aria-label="나의 축구 대시보드">
           <AssetsPanel />

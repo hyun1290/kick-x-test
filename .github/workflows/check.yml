@@ -46,8 +46,9 @@ jobs:
       - name: SQL migration and role isolation
         run: |
           psql -v ON_ERROR_STOP=1 -f tests/database-bootstrap.sql
-          psql -v ON_ERROR_STOP=1 -f supabase/migrations/202610010001_catalog_and_accounts.sql
+          for migration in supabase/migrations/*.sql; do psql -v ON_ERROR_STOP=1 -f "$migration"; done
           psql -v ON_ERROR_STOP=1 -f tests/database-rls.sql
+          psql -v ON_ERROR_STOP=1 -f tests/database-football.sql
       - name: Browser test dependencies
         run: |
           npm install --prefix /tmp/kickx-browser --no-package-lock @playwright/test@1.56.1
