@@ -198,13 +198,13 @@ export function PlayerList({ market = false }: { market?: boolean }) {
               <thead>
                 <tr>
                   <th>선수</th>
-                  <th>포지션</th>
+                  <th className="hide-sm">포지션</th>
                   <th className="numeric">현재 가치</th>
-                  <th className="numeric">변동</th>
+                  <th className="numeric hide-sm">변동</th>
                   <th className="hide-md">30일 추이</th>
-                  <th className="numeric">Performance</th>
+                  <th className="numeric hide-sm">Performance</th>
                   <th className="numeric hide-md">거래량</th>
-                  <th className="cell-actions">거래</th>
+                  <th className="cell-actions hide-sm">거래</th>
                 </tr>
               </thead>
               <tbody>
@@ -213,13 +213,13 @@ export function PlayerList({ market = false }: { market?: boolean }) {
                   return (
                     <tr key={p.id}>
                       <td><span className="row-identity"><WatchButton id={p.id} /><PlayerIdentity player={p} /></span></td>
-                      <td><PositionBadge position={p.position} /></td>
-                      <td className="numeric strong">{money(p.price)}<span className="unit">P</span></td>
-                      <td className="numeric"><Change value={p.change} /></td>
+                      <td className="hide-sm"><PositionBadge position={p.position} /></td>
+                      <td className="numeric strong">{money(p.price)}<span className="unit">P</span><span className="only-sm"><Change value={p.change} /></span></td>
+                      <td className="numeric hide-sm"><Change value={p.change} /></td>
                       <td className="hide-md"><Sparkline values={p.history.map((v) => v.value)} down={(p.change ?? 0) < 0} /></td>
-                      <td className="numeric">{money(p.performance)}</td>
+                      <td className="numeric hide-sm">{money(p.performance)}</td>
                       <td className="numeric hide-md">{money(p.volume)}</td>
-                      <td className="cell-actions"><TradeButton player={p} side={owned ? "sell" : "buy"} className={`button small ${owned ? "secondary" : "primary"}`} /></td>
+                      <td className="cell-actions hide-sm"><TradeButton player={p} side={owned ? "sell" : "buy"} className={`button small ${owned ? "secondary" : "primary"}`} /></td>
                     </tr>
                   );
                 })}

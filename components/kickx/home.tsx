@@ -233,11 +233,11 @@ export function HomeScreen() {
               <thead>
                 <tr>
                   <th>선수</th>
-                  <th>포지션</th>
+                  <th className="hide-sm">포지션</th>
                   <th className="numeric">현재 가치</th>
-                  <th className="numeric">변동</th>
+                  <th className="numeric hide-sm">변동</th>
                   <th className="hide-md">30일 추이</th>
-                  <th className="numeric">Performance</th>
+                  <th className="numeric hide-sm">Performance</th>
                   <th className="cell-actions">관심</th>
                 </tr>
               </thead>
@@ -245,11 +245,11 @@ export function HomeScreen() {
                 {results.slice(0, limit).map(player => (
                   <tr key={player.id}>
                     <td><PlayerIdentity player={player} size="wide" /></td>
-                    <td><PositionBadge position={player.position} /></td>
-                    <td className="numeric strong yb-price">{money(player.price)}<span className="unit">P</span></td>
-                    <td className="numeric"><Change value={player.change} /></td>
+                    <td className="hide-sm"><PositionBadge position={player.position} /></td>
+                    <td className="numeric strong yb-price">{money(player.price)}<span className="unit">P</span><span className="only-sm"><Change value={player.change} /></span></td>
+                    <td className="numeric hide-sm"><Change value={player.change} /></td>
                     <td className="hide-md"><Sparkline values={player.history.map(point => point.value)} down={(player.change ?? 0) < 0} /></td>
-                    <td className="numeric">{money(player.performance)}</td>
+                    <td className="numeric hide-sm">{money(player.performance)}</td>
                     <td className="cell-actions"><WatchButton id={player.id} /></td>
                   </tr>
                 ))}

@@ -123,6 +123,7 @@
   .account-login { gap: var(--s-3); padding: 0 var(--s-4); font-size: 15px; }
   .main-nav { grid-row: 2; grid-column: 1 / -1; height: 48px; overflow-x: auto; scrollbar-width: none; border-top: var(--border-strong); background: var(--yellow); padding: 0 calc(var(--gutter) - 9px); }
   .main-nav::-webkit-scrollbar { display: none; }
+  .main-nav, .subnav nav { -webkit-mask-image: linear-gradient(90deg, #000 86%, transparent); mask-image: linear-gradient(90deg, #000 86%, transparent); }
   .main-nav a::after { bottom: 8px; }
   .main-nav a[aria-current="page"]::before { display: none; }
   .account-menu { right: var(--gutter); }

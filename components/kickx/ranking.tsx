@@ -69,7 +69,7 @@ export function RankingScreen() {
               <tr>
                 <th>순위</th>
                 <th>사용자</th>
-                <th>응원 구단</th>
+                <th className="hide-sm">응원 구단</th>
                 <th className="numeric">총자산</th>
                 <th className="numeric">{period} 수익률</th>
               </tr>
@@ -85,7 +85,7 @@ export function RankingScreen() {
                       {r.userId === data.session?.userId && <span className="tag yellow">나</span>}
                     </div>
                   </td>
-                  <td><span className="rank-club"><TeamBadge id={r.team} size="small" />{getTeam(r.team)?.name || "—"}</span></td>
+                  <td className="hide-sm"><span className="rank-club"><TeamBadge id={r.team} size="small" />{getTeam(r.team)?.name || "—"}</span></td>
                   <td className="numeric">{money(r.assets)} P</td>
                   <td className="numeric"><Change value={r.returnRate} /></td>
                 </tr>

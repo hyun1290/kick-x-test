@@ -1,10 +1,11 @@
 "use client";
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
-import { useState } from "react";
-import { ArrowRight, Eye, Flag, Heart, Lock, MessageCircle, Paperclip, Pencil, Search, Send, Trash2, Users } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { ArrowRight, Eye, Flag, Heart, LoaderCircle, Lock, MessageCircle, Paperclip, Pencil, Search, Send, Trash2, Users } from "lucide-react";
 import { dateText, money, relativeTime } from "@/lib/kickx/data";
 import type { Post } from "@/lib/kickx/types";
+import { POST_LIMITS, validatePost, type PostField } from "@/lib/kickx/validation";
 import { usePlatform } from "./provider";
 import { BackLink, Change, DataEmpty, DisabledAction, Empty, MemberNotice, Modal, PageHeading, PlayerPortrait, SectionTitle, Tabs, TeamBadge } from "./ui";
 
@@ -390,74 +391,182 @@ export function PostDetail() {
     </div>
   );
 }
+type DraftState = { scope: "club" | "player"; target: string; category: string; title: string; body: string; transaction: string };
+const FIELD_ORDER: PostField[] = ["target", "category", "title", "body", "transaction"];
+const FIELD_LABEL: Record<PostField, string> = { scope: "게시판 종류", target: "대상", category: "주제", title: "제목", body: "내용", transaction: "거래 첨부" };
+function Counter({ value, min, max }: { value: string; min: number; max: number }) {
+  const count = [...value.trim()].length;
+  const tone = count > max ? "over" : count >= max * 0.9 ? "near" : count > 0 && count < min ? "under" : "";
+  return <small className={`char-count num ${tone}`} aria-live="polite">{count.toLocaleString("ko-KR")} / {max.toLocaleString("ko-KR")}</small>;
+}
 export function WritePost() {
   const sp = useSearchParams();
-  const { data } = usePlatform();
+  const { data, status, mock, notify, getTeam, getPlayer } = usePlatform();
   const existing = data.posts.find((p) => p.id === sp.get("edit") && p.authorId === data.session?.userId);
-  const [scopeDraft, setScope] = useState<"club" | "player" | null>(null);
-  const [targetDraft, setTarget] = useState<string | null>(null);
-  const scope = scopeDraft ?? existing?.scope ?? (sp.get("scope") === "player" ? "player" : "club");
-  const target = targetDraft ?? existing?.target ?? sp.get("target") ?? "";
-  const [title, setTitle] = useState<string | null>(null),
-    [body, setBody] = useState<string | null>(null),
-    [category, setCategory] = useState<string | null>(null),
-    [transactionDraft, setTransaction] = useState<string | null>(null);
-  const transaction = transactionDraft ?? existing?.transaction?.id ?? "";
-  const myTeam = data.session?.profile?.team;
-  const targets = scope === "club" ? data.teams.filter((t) => !myTeam || t.id === myTeam) : data.players;
-  const bodyText = body ?? existing?.body ?? "";
+  const myTeam = data.session?.profile?.team ?? null;
+  const initialScope: DraftState["scope"] = existing?.scope ?? (sp.get("scope") === "player" ? "player" : "club");
+  const [draft, setDraft] = useState<DraftState | null>(null);
+  const value: DraftState = draft ?? {
+    scope: initialScope,
+    target: existing?.target ?? sp.get("target") ?? (initialScope === "club" ? myTeam ?? "" : ""),
+    category: existing?.category ?? "",
+    title: existing?.title ?? "",
+    body: existing?.body ?? "",
+    transaction: existing?.transaction?.id ?? "",
+  };
+  const [touched, setTouched] = useState<Partial<Record<PostField, boolean>>>({});
+  const [attempted, setAttempted] = useState(false);
+  const [phase, setPhase] = useState<"edit" | "saving" | "done">("edit");
+  const [serverNote, setServerNote] = useState("");
+  const lock = useRef(false);
+  const summaryRef = useRef<HTMLDivElement>(null);
+  const targets = value.scope === "club" ? data.teams : data.players;
+  const errors = validatePost(value, {
+    myTeam,
+    categories: data.categories,
+    targets: targets.map((t) => t.id),
+    transactions: data.member?.transactions.map((t) => t.id) ?? [],
+  });
+  const errorFields = FIELD_ORDER.filter((f) => errors[f]);
+  const visible = (field: PostField) => (attempted || touched[field]) && errors[field];
+  const dirty = draft !== null && phase === "edit";
+  const isEdit = sp.has("edit");
+  useEffect(() => {
+    if (!dirty) return;
+    const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [dirty]);
+  const update = (patch: Partial<DraftState>) => { setDraft({ ...value, ...patch }); setServerNote(""); };
+  const blur = (field: PostField) => () => setTouched((t) => ({ ...t, [field]: true }));
+  const fieldProps = (field: PostField) => ({
+    id: `post-${field}`,
+    "aria-invalid": !!visible(field),
+    "aria-describedby": `post-${field}-hint${visible(field) ? ` post-${field}-error` : ""}`,
+    onBlur: blur(field),
+    disabled: phase !== "edit",
+  });
+  const fieldError = (field: PostField) => visible(field) ? <p className="field-error" id={`post-${field}-error`}>{errors[field]}</p> : null;
+  async function submit(event: React.FormEvent) {
+    event.preventDefault();
+    setAttempted(true);
+    if (errorFields.length) {
+      requestAnimationFrame(() => summaryRef.current?.focus());
+      return;
+    }
+    if (!mock) {
+      setServerNote("입력 내용은 올바릅니다. 게시글 저장 서비스가 연결되면 등록할 수 있습니다.");
+      return;
+    }
+    if (lock.current) return;
+    lock.current = true;
+    setPhase("saving");
+    await new Promise((resolve) => setTimeout(resolve, 900));
+    setPhase("done");
+    notify(`게시글을 ${isEdit ? "수정" : "등록"}했습니다. (예시 모드 · 저장되지 않음)`);
+  }
+  const hub = HUB[value.scope];
+  const targetName = value.scope === "club" ? getTeam(value.target)?.name : getPlayer(value.target)?.name;
+  const attached = data.member?.transactions.find((t) => t.id === value.transaction);
+  if (phase === "done")
+    return (
+      <div className="reading-width">
+        <section className="panel frame write-done">
+          <span className="trade-done-mark"><Pencil size={28} /></span>
+          <h1>게시글을 {isEdit ? "수정" : "등록"}했습니다</h1>
+          <p>{mock ? "예시 모드에서는 게시글이 실제로 저장되지 않습니다." : "라운지에서 게시글을 확인할 수 있습니다."}</p>
+          <div className="button-row">
+            <Link className="button secondary" href={hub}>{value.scope === "club" ? "구단 커뮤니티" : "선수 커뮤니티"}</Link>
+            {value.target && <Link className="button primary" href={`${hub}/${value.target}`}>{targetName ? `${targetName} 라운지` : "라운지"}로 이동 <ArrowRight size={16} /></Link>}
+          </div>
+        </section>
+      </div>
+    );
   return (
     <div className="reading-width">
-      <BackLink href={HUB[scope]} label={scope === "club" ? "구단 커뮤니티" : "선수 커뮤니티"} />
-      <PageHeading eyebrow="SHARE YOUR PERSPECTIVE" title={sp.has("edit") ? "게시글 수정" : "새 게시글"} description="경기를 본 시선, 선수에 대한 생각, 나의 거래 판단을 나눠보세요." />
+      <BackLink href={hub} label={value.scope === "club" ? "구단 커뮤니티" : "선수 커뮤니티"} />
+      <PageHeading eyebrow="SHARE YOUR PERSPECTIVE" title={isEdit ? "게시글 수정" : "새 게시글"} description="경기를 본 시선, 선수에 대한 생각, 나의 거래 판단을 나눠보세요." />
       <MemberNotice />
-      <form onSubmit={(e) => e.preventDefault()} className="panel frame write-form">
-        <div className="write-scope" role="group" aria-label="게시판 종류">
-          {(["club", "player"] as const).map((value) => (
-            <button key={value} type="button" aria-pressed={scope === value} className={scope === value ? "active" : ""} onClick={() => { setScope(value); setTarget(""); }}>
-              <strong>{value === "club" ? "구단 커뮤니티" : "선수 커뮤니티"}</strong>
-              <span>{value === "club" ? "응원 구단 팬 전용" : "모든 회원"}</span>
+      <form onSubmit={submit} noValidate className="panel frame write-form" aria-busy={phase === "saving"}>
+        {attempted && errorFields.length > 0 && (
+          <div className="error-summary" ref={summaryRef} tabIndex={-1} role="alert" aria-labelledby="error-summary-title">
+            <strong id="error-summary-title">입력 내용을 확인해 주세요 · {errorFields.length}건</strong>
+            <ul>
+              {errorFields.map((f) => (
+                <li key={f}><a href={`#post-${f}`} onClick={(e) => { e.preventDefault(); document.getElementById(`post-${f}`)?.focus(); }}><b>{FIELD_LABEL[f]}</b> {errors[f]}</a></li>
+              ))}
+            </ul>
+          </div>
+        )}
+        <fieldset className="write-scope" disabled={phase !== "edit" || isEdit}>
+          <legend className="sr-only">게시판 종류</legend>
+          {(["club", "player"] as const).map((scope) => (
+            <button key={scope} type="button" aria-pressed={value.scope === scope} className={value.scope === scope ? "active" : ""}
+              onClick={() => update({ scope, target: scope === "club" ? myTeam ?? "" : "" })}>
+              <strong>{scope === "club" ? "구단 커뮤니티" : "선수 커뮤니티"}</strong>
+              <span>{scope === "club" ? "응원 구단 팬 전용" : "모든 회원"}</span>
             </button>
           ))}
-        </div>
+        </fieldset>
         <div className="form-grid">
-          <label>
-            대상 {scope === "club" ? "구단" : "선수"}
-            <select disabled={!targets.length} value={targets.some((t) => t.id === target) ? target : ""} onChange={(e) => setTarget(e.target.value)}>
-              <option value="">대상 선택</option>
-              {targets.map((t) => <option value={t.id} key={t.id}>{t.name}</option>)}
+          <div className={`field ${visible("target") ? "invalid" : ""}`}>
+            <label htmlFor="post-target">대상 {value.scope === "club" ? "구단" : "선수"} <span className="req" aria-hidden="true">*</span></label>
+            <select {...fieldProps("target")} disabled={phase !== "edit" || !targets.length || (value.scope === "club" && !myTeam)} value={targets.some((t) => t.id === value.target) ? value.target : ""} onChange={(e) => update({ target: e.target.value })}>
+              <option value="">{value.scope === "club" ? "구단 선택" : "선수 선택"}</option>
+              {(value.scope === "club" ? data.teams.filter((t) => t.id === myTeam) : data.players).map((t) => <option value={t.id} key={t.id}>{t.name}</option>)}
             </select>
-            {scope === "club" && <small>{myTeam ? "응원 구단 라운지에만 작성할 수 있습니다." : "응원 구단을 설정하면 해당 구단 라운지에 작성할 수 있습니다."}</small>}
-          </label>
-          <label>
-            주제
-            <select disabled={!data.categories.length} value={category ?? existing?.category ?? ""} onChange={(e) => setCategory(e.target.value)}>
+            <small id="post-target-hint">{value.scope === "club" ? (myTeam ? "응원 구단 라운지에만 작성할 수 있습니다." : <>응원 구단이 없습니다. <Link className="text-link" href="/mypage">마이페이지에서 설정</Link></>) : "선수 라운지에 게시됩니다."}</small>
+            {fieldError("target")}
+          </div>
+          <div className={`field ${visible("category") ? "invalid" : ""}`}>
+            <label htmlFor="post-category">주제 <span className="req" aria-hidden="true">*</span></label>
+            <select {...fieldProps("category")} disabled={phase !== "edit" || !data.categories.length} value={value.category} onChange={(e) => update({ category: e.target.value })}>
               <option value="">주제 선택</option>
               {data.categories.map((c) => <option key={c}>{c}</option>)}
             </select>
-          </label>
+            <small id="post-category-hint">경기 리뷰, 선수 분석, 거래 전략 등</small>
+            {fieldError("category")}
+          </div>
         </div>
-        <label>
-          제목
-          <input value={title ?? existing?.title ?? ""} onChange={(e) => setTitle(e.target.value)} placeholder="이야기의 제목을 입력하세요" maxLength={80} />
-        </label>
-        <label>
-          <span className="label-row">내용<small className="num">{bodyText.length} / 3,000</small></span>
-          <textarea value={bodyText} onChange={(e) => setBody(e.target.value)} rows={10} maxLength={3000} placeholder="경기에 대한 생각과 선수에 대한 이야기를 나눠보세요" />
-        </label>
-        <label className="attachment-label">
-          <span className="label-row"><span><Paperclip size={15} /> 내 거래 내역 첨부</span><small>선택</small></span>
-          <select disabled={!data.member?.transactions.length} value={transaction} onChange={(e) => setTransaction(e.target.value)}>
+        <div className={`field ${visible("title") ? "invalid" : ""}`}>
+          <div className="label-row"><label htmlFor="post-title">제목 <span className="req" aria-hidden="true">*</span></label><Counter value={value.title} min={POST_LIMITS.titleMin} max={POST_LIMITS.titleMax} /></div>
+          <input {...fieldProps("title")} value={value.title} onChange={(e) => update({ title: e.target.value })} placeholder="이야기의 제목을 입력하세요" />
+          <small id="post-title-hint">{POST_LIMITS.titleMin}–{POST_LIMITS.titleMax}자</small>
+          {fieldError("title")}
+        </div>
+        <div className={`field ${visible("body") ? "invalid" : ""}`}>
+          <div className="label-row"><label htmlFor="post-body">내용 <span className="req" aria-hidden="true">*</span></label><Counter value={value.body} min={POST_LIMITS.bodyMin} max={POST_LIMITS.bodyMax} /></div>
+          <textarea {...fieldProps("body")} value={value.body} onChange={(e) => update({ body: e.target.value })} rows={11} placeholder="경기에 대한 생각과 선수에 대한 이야기를 나눠보세요" />
+          <small id="post-body-hint">{POST_LIMITS.bodyMin}자 이상 · 근거 있는 의견과 서로에 대한 존중을 부탁드립니다.</small>
+          {fieldError("body")}
+        </div>
+        <div className={`field attachment ${visible("transaction") ? "invalid" : ""}`}>
+          <div className="label-row"><label htmlFor="post-transaction"><Paperclip size={15} /> 내 거래 내역 첨부</label><small>선택</small></div>
+          <select {...fieldProps("transaction")} disabled={phase !== "edit" || !data.member?.transactions.length} value={value.transaction} onChange={(e) => update({ transaction: e.target.value })}>
             <option value="">첨부하지 않음</option>
-            {data.member?.transactions.map((t) => (
-              <option value={t.id} key={t.id}>{t.playerName} · {t.type === "buy" ? "매입" : "매각"} · {money(t.price)} P · {dateText(t.date, false)}</option>
-            ))}
+            {data.member?.transactions.map((t) => <option value={t.id} key={t.id}>{t.playerName} · {t.type === "buy" ? "매입" : "매각"} · {money(t.price)} P · {dateText(t.date, false)}</option>)}
           </select>
-        </label>
+          <small id="post-transaction-hint">{data.member?.transactions.length ? "본인의 거래만 첨부할 수 있으며 게시글에 함께 공개됩니다." : "첨부할 수 있는 거래 내역이 없습니다."}</small>
+          {fieldError("transaction")}
+          {attached && (
+            <div className="attached-trade compact">
+              <span className="attached-label"><Paperclip size={14} />첨부 미리보기</span>
+              <div className="attached-row">
+                <span className={`trade-type ${attached.type}`}>{attached.type === "buy" ? "매입" : "매각"}</span>
+                <strong>{attached.playerName}</strong>
+                <span className="num">{money(attached.price)} P</span>
+                <span className="muted">{dateText(attached.date)}</span>
+              </div>
+            </div>
+          )}
+        </div>
+        {serverNote && <p className="data-notice" role="status"><Lock size={15} />{serverNote}</p>}
         <div className="form-actions">
-          <p className="fine-print">게시글 저장 서비스 준비 중입니다. 입력한 내용은 저장되지 않습니다.</p>
-          <Link className="button secondary" href={HUB[scope]}>취소</Link>
-          <DisabledAction className="button primary"><Pencil size={16} />{sp.has("edit") ? "수정 저장" : "게시글 등록"}</DisabledAction>
+          <p className="fine-print">{mock ? "예시 모드 · 등록해도 실제로 저장되지 않습니다." : status === "ready" && !data.session ? "로그인 후 작성할 수 있습니다." : "게시글 저장 서비스 준비 중입니다."}</p>
+          <Link className="button secondary" href={hub}>취소</Link>
+          <button type="submit" className="button primary" disabled={phase !== "edit" || !data.session} aria-busy={phase === "saving"}>
+            {phase === "saving" ? <><LoaderCircle size={16} className="kx-spin" />등록 중…</> : <><Pencil size={16} />{isEdit ? "수정 저장" : "게시글 등록"}</>}
+          </button>
         </div>
       </form>
     </div>

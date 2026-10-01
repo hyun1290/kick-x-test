@@ -53,7 +53,7 @@ npm run dev
 
 ## 다음 작업
 
-[페이지별 구현 상태](docs/ui-implementation.md) · [DB/OAuth 연결 안내](docs/backend-setup.md) · [다음 개발 단계와 결정표](docs/next-steps.md)
+**[작업 인수인계 · 백엔드 할 일](docs/HANDOFF.md)** · [페이지별 구현 상태](docs/ui-implementation.md) · [DB/OAuth 연결 안내](docs/backend-setup.md) · [다음 개발 단계와 결정표](docs/next-steps.md)
 
 ```sh
 npm run lint
