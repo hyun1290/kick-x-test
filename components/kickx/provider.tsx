@@ -3,14 +3,15 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { CheckCircle2, AlertCircle, X } from "lucide-react";
 import { emptyAdminData, emptyPlatformData } from "@/lib/kickx/data";
 import { apiRequest } from "@/lib/kickx/client";
-import type { DataResponse, DataSource, DataStatus, PlatformData, Profile } from "@/lib/kickx/types";
-function useResource<T>(url: string, initial: () => T) {
+import type { DataResponse, DataSource, DataStatus, PlatformData, Profile, Player } from "@/lib/kickx/types";
+export function useResource<T>(url: string | null, initial: () => T) {
   const [data, setData] = useState(initial);
   const [status, setStatus] = useState<DataStatus>("loading");
   const [source, setSource] = useState<DataSource | null>(null);
   const [attempt, setAttempt] = useState(0);
   const reload = useCallback(() => setAttempt(a => a + 1), []);
   useEffect(() => {
+    if (!url) return;
     const controller = new AbortController();
     setStatus("loading");
     void fetch(url, { signal: controller.signal, cache: "no-store", credentials: "same-origin" })
@@ -37,6 +38,7 @@ function useResource<T>(url: string, initial: () => T) {
 }
 type Notice = { message: string; kind: "success" | "error" };
 type PlatformContext = {
+  cachedPlayers: Player[]; cachePlayers: (players: Player[]) => void;
   data: PlatformData; status: DataStatus; reload: () => void;
   /** True while the server returns development sample data. Writes stay local and are labeled. */
   mock: boolean;
@@ -48,6 +50,12 @@ const Context = createContext<PlatformContext | null>(null);
 export function PlatformProvider({ children }: { children: ReactNode }) {
   const { data, status, source, reload, setData } = useResource("/api/kickx", emptyPlatformData);
   const mock = source === "mock";
+  const [cachedPlayers,setCachedPlayers]=useState<Player[]>([]);
+  const cachePlayers=useCallback((players:Player[])=>setCachedPlayers(current=>{
+    if(!players.length) return current;
+    const ids=new Set(players.map(p=>p.id));
+    return [...current.filter(p=>!ids.has(p.id)),...players].slice(-200);
+  }),[]);
   const [notice, setNotice] = useState<Notice | null>(null);
   const [pendingWatch, setPendingWatch] = useState<string[]>([]);
   const locks = useRef(new Set<string>());
@@ -87,7 +95,7 @@ export function PlatformProvider({ children }: { children: ReactNode }) {
   const updateProfile = useCallback((profile: Profile) => {
     setData(current => current.session ? { ...current, session: { ...current.session, profile } } : current);
   }, [setData]);
-  const value = useMemo(() => ({ data, status, reload, mock, pendingWatch, setWatched, updateProfile, notify }), [data, status, reload, mock, pendingWatch, setWatched, updateProfile, notify]);
+  const value = useMemo(() => ({ cachedPlayers, cachePlayers, data, status, reload, mock, pendingWatch, setWatched, updateProfile, notify }), [cachedPlayers, cachePlayers, data, status, reload, mock, pendingWatch, setWatched, updateProfile, notify]);
   return (
     <Context.Provider value={value}>
       {children}
@@ -108,7 +116,7 @@ export function usePlatform() {
   if (!context) throw new Error("PlatformProvider is required");
   return useMemo(() => ({
     ...context,
-    getPlayer: (id: string | null | undefined) => context.data.players.find(p => p.id === id),
+    getPlayer: (id: string | null | undefined) => context.cachedPlayers.find(p => p.id === id) || context.data.players.find(p => p.id === id),
     getTeam: (id: string | null | undefined) => context.data.teams.find(t => t.id === id),
     getLeague: (id: string | null | undefined) => context.data.leagues.find(l => l.id === id),
   }), [context]);

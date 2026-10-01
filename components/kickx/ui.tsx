@@ -279,12 +279,14 @@ export function DataEmpty({
   entity,
   filtered = false,
   status: supplied,
+  retry,
   financial = false,
   rows = 4,
 }: {
   entity: string;
   filtered?: boolean;
   status?: DataStatus;
+  retry?: () => void;
   financial?: boolean;
   rows?: number;
 }) {
@@ -306,7 +308,7 @@ export function DataEmpty({
         icon={<TriangleAlert size={24} />}
         title="데이터를 불러오지 못했습니다"
         description="네트워크 상태를 확인한 뒤 다시 시도해 주세요."
-        action={!supplied && <button type="button" className="button secondary small" onClick={resource.reload}><RefreshCw size={14} />다시 시도</button>}
+        action={(retry || !supplied) && <button type="button" className="button secondary small" onClick={retry || resource.reload}><RefreshCw size={14} />다시 시도</button>}
       />
     );
   if (status === "unauthorized" || status === "forbidden")

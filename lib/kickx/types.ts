@@ -30,6 +30,7 @@ export type Player = {
   number: number | null;
   country: string | null;
   age: number | null;
+  season?: number | null;
   price: number | null;
   change: number | null;
   performance: number | null;
@@ -143,6 +144,8 @@ export type RankingPeriod = {
   rows: RankingRow[];
 };
 export type PublicData = {
+  /** Total DB catalog count; players below are bounded previews. */
+  playerTotal?: number;
   players: Player[];
   teams: Team[];
   leagues: League[];
