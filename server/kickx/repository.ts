@@ -1,7 +1,7 @@
 import "server-only";
 import { getSupabaseConfig } from "./config";
 import { SupabaseKickxRepository } from "./supabase-repository";
-import { mockMemberData, mockPublicData, mockSession } from "./mock-data";
+import { mockAdminData, mockMemberData, mockPublicData, mockSession } from "./mock-data";
 import { emptyAdminData, emptyPublicData } from "@/lib/kickx/data";
 import type {
   AdminData,
@@ -42,7 +42,7 @@ const unconfiguredRepository: KickxRepository = {
 // Writes are not accepted by the server; the client keeps sample interactions local and labels them.
 const mockRepository: KickxRepository = {
   configured: true,
-  adminConfigured: false,
+  adminConfigured: true,
   source: "mock",
   async getSession() {
     return mockSession;
@@ -54,7 +54,7 @@ const mockRepository: KickxRepository = {
     return mockMemberData();
   },
   async getAdminData() {
-    return emptyAdminData();
+    return mockAdminData();
   },
 };
 export function getKickxRepository(): KickxRepository {

@@ -156,8 +156,6 @@ export function PlayerPortrait({
 }) {
   const { getTeam } = usePlatform();
   const team = getTeam(player.team);
-  const seed = [...player.id].reduce((sum, c) => sum + c.charCodeAt(0), 0);
-  const tilt = (seed % 3) - 1;
   return (
     <span
       className={`portrait ${size}`}
@@ -168,8 +166,7 @@ export function PlayerPortrait({
         // eslint-disable-next-line @next/next/no-img-element
         <img src={player.photo} alt="" />
       ) : (
-        <svg viewBox="0 0 100 100" preserveAspectRatio="xMidYMax slice">
-          <path className="portrait-slash" d={tilt > 0 ? "M-10 92 L74 -6 L112 -6 L22 110 Z" : tilt < 0 ? "M-12 70 L96 -8 L118 10 L4 112 Z" : "M-6 104 L84 -4 L118 -4 L24 112 Z"} />
+        <svg viewBox="0 6 100 94" preserveAspectRatio="xMidYMax meet">
           <path className="portrait-body" d="M18 104 C19 80 31 70 50 69 C69 70 81 80 82 104 Z" />
           <path className="portrait-neck" d="M43 58 L57 58 L58 71 L50 75 L42 71 Z" />
           <ellipse className="portrait-head" cx="50" cy="45" rx="13" ry="15.5" />

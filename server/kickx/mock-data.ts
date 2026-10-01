@@ -7,6 +7,7 @@ import "server-only";
  * Real players are used only so screens look realistic during design work.
  */
 import type {
+  AdminData,
   Comment,
   Fixture,
   Formation,
@@ -324,4 +325,44 @@ export function mockPublicData(now = Date.now()): PublicData {
 export const mockSession: Session = { userId: "demo-user", role: "admin", profile: { nickname: "데모 매니저", team: "ars" } };
 export function mockMemberData(now = Date.now()): MemberData {
   return member(players(now), now);
+}
+
+/** Illustrative operations data for the admin screens (sample only). */
+export function mockAdminData(now = Date.now()): AdminData {
+  const hour = 3_600_000;
+  const jobs: AdminData["jobs"] = [
+    { id: "job-2410", name: "경기 데이터 수집", kind: "collect", target: "프리미어리그 · 맨체스터 시티 vs 토트넘", time: new Date(now - 0.3 * hour).toISOString(), status: "진행 중", success: 14, fail: 0, error: null },
+    { id: "job-2409", name: "선수 가치 갱신", kind: "value", target: "라리가 10라운드 · 38명", time: new Date(now - 2 * hour).toISOString(), status: "완료", success: 38, fail: 0, error: null },
+    { id: "job-2408", name: "Performance 계산", kind: "performance", target: "라리가 10라운드 · 38명", time: new Date(now - 2.4 * hour).toISOString(), status: "완료", success: 38, fail: 0, error: null },
+    { id: "job-2407", name: "경기 데이터 수집", kind: "collect", target: "리그 1 · 파리 생제르맹 vs 마르세유", time: new Date(now - 26 * hour).toISOString(), status: "실패", success: 21, fail: 3, error: "API-FOOTBALL 응답 지연(timeout 30s) · fixture 1204517 선수 기록 3건 누락. 재처리 대기 중." },
+    { id: "job-2406", name: "Performance 계산", kind: "performance", target: "세리에 A 9라운드 · 41명", time: new Date(now - 49 * hour).toISOString(), status: "완료", success: 41, fail: 0, error: null },
+    { id: "job-2405", name: "선수 가치 갱신", kind: "value", target: "세리에 A 9라운드 · 41명", time: new Date(now - 48.5 * hour).toISOString(), status: "완료", success: 41, fail: 0, error: null },
+    { id: "job-2404", name: "경기 데이터 수집", kind: "collect", target: "분데스리가 · 바이에른 뮌헨 vs 도르트문트", time: new Date(now - 74 * hour).toISOString(), status: "완료", success: 28, fail: 0, error: null },
+  ];
+  const users = ["user-1", "user-4", "demo-user", "user-7", "user-2", "user-5"];
+  const picks: [string, string, "buy" | "sell", number][] = [
+    ["yamal", "라민 야말", "buy", 172_300], ["haaland", "엘링 홀란", "sell", 168_400], ["wirtz", "플로리안 비르츠", "buy", 131_800],
+    ["vlahovic", "두산 블라호비치", "sell", 71_800], ["leekangin", "이강인", "buy", 72_900], ["mbappe", "킬리안 음바페", "buy", 178_200],
+    ["salah", "모하메드 살라", "sell", 118_600], ["kimminjae", "김민재", "buy", 78_300],
+  ];
+  const trades: AdminData["trades"] = picks.map(([playerId, playerName, type, price], i) => {
+    const fee = type === "sell" ? Math.round(price * 0.02) : 0;
+    return { id: `TX-${9120 - i}`, userId: users[i % users.length], playerId, playerName, type, quantity: 1, price, fee, net: type === "sell" ? price - fee : price, date: new Date(now - (i * 2.7 + 0.2) * hour).toISOString(), status: "체결" };
+  });
+  const reports: AdminData["reports"] = [
+    { id: "rp-31", postId: "post-2", title: "사카 지금 들어가도 늦지 않았을까요?", reason: "근거 없는 가격 선동 의심", status: "접수", date: new Date(now - 1.5 * hour).toISOString() },
+    { id: "rp-30", postId: "post-6", title: "비르츠 +11%… 고점일까 시작일까", reason: "도배성 게시글", status: "접수", date: new Date(now - 5 * hour).toISOString() },
+    { id: "rp-29", postId: "post-3", title: "더비 3-1, 벨링엄 중원 장악력 미쳤다", reason: "상대 팬 비하 표현", status: "숨김", date: new Date(now - 30 * hour).toISOString() },
+    { id: "rp-28", postId: "post-9", title: "이강인 2경기 연속 공격 포인트", reason: "광고성 링크", status: "기각", date: new Date(now - 52 * hour).toISOString() },
+  ];
+  const audit: AdminData["audit"] = [
+    { id: "au-5", description: "job-2407 재처리 예약 (운영자 admin-01)", date: new Date(now - 20 * hour).toISOString() },
+    { id: "au-4", description: "신고 rp-29 게시글 숨김 처리", date: new Date(now - 29 * hour).toISOString() },
+    { id: "au-3", description: "신고 rp-28 기각 처리", date: new Date(now - 50 * hour).toISOString() },
+    { id: "au-2", description: "세리에 A 9라운드 가치 갱신 승인", date: new Date(now - 48 * hour).toISOString() },
+  ];
+  return {
+    summary: { players: seeds.length, completedJobs: jobs.filter(j => j.status === "완료").length, failedJobs: jobs.filter(j => j.status === "실패").length, pendingReports: reports.filter(r => r.status === "접수").length },
+    jobs, trades, reports, audit,
+  };
 }

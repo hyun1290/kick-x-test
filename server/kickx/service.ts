@@ -33,5 +33,8 @@ export async function readAdmin(
   if (session.role !== "admin") throw new AccessError(403);
   if (repository.adminConfigured === false)
     return { status: "not-configured", data: emptyAdminData() };
-  return { status: "ready", data: await repository.getAdminData() };
+  const data = await repository.getAdminData();
+  return repository.source
+    ? { status: "ready", source: repository.source, data }
+    : { status: "ready", data };
 }

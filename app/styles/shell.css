@@ -36,8 +36,8 @@
 .main-nav a:hover::after { transform: scaleX(0.4); }
 .main-nav a[aria-current="page"]::after { transform: scaleX(1); }
 .main-nav a[aria-current="page"]::before { content: ""; position: absolute; top: 28px; left: 50%; width: 5px; height: 5px; margin-left: -2.5px; background: var(--ink); border-radius: 50%; }
-.masthead-art { position: absolute; z-index: -1; top: 0; right: 170px; width: 360px; height: 100%; opacity: 0.95; clip-path: polygon(16% 0, 100% 0, 100% 100%, 0 100%); }
-.masthead-manifesto { font-size: 9.5px; font-weight: 900; line-height: 1.45; letter-spacing: 0.08em; color: var(--ink); padding-left: var(--s-5); border-left: 1.5px solid var(--ink); white-space: nowrap; }
+.masthead-art { position: absolute; z-index: -1; top: 0; right: 200px; width: 380px; height: 100%; opacity: 0.95; clip-path: polygon(16% 0, 100% 0, 100% 100%, 0 100%); }
+.masthead-manifesto { align-self: stretch; display: flex; flex-direction: column; justify-content: center; margin-right: calc(var(--gutter) * -1); padding: 0 var(--gutter) 0 var(--s-5); background: var(--yellow); border-left: 1.5px solid var(--ink); font-size: 9.5px; font-weight: 900; line-height: 1.45; letter-spacing: 0.08em; color: var(--ink); white-space: nowrap; }
 
 /* Account */
 .account { position: relative; }
