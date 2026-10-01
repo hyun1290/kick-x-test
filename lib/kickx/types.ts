@@ -50,6 +50,8 @@ export type Fixture = {
   away: string;
   startsAt: string;
   status: string;
+  homeScore?: number | null;
+  awayScore?: number | null;
 };
 export type Formation = { id: string; name: string; positions: Position[] };
 export type Transaction = {
@@ -104,6 +106,8 @@ export type Session = {
   profile: Profile | null;
 };
 export type MemberData = {
+  /** False while the ledger/holdings service is not connected. */
+  financialReady?: boolean;
   points: number | null;
   totalAssets: number | null;
   playerAssets: number | null;

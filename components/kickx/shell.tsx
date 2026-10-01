@@ -32,7 +32,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="yb-shell">
       <a className="skip-link" href="#main-content">본문으로 바로가기</a>
-      <div className="yb-edition"><span>14 / YELLOW PLAYBOOK</span><span>REAL FOOTBALL. YOUR GAME.</span></div>
+      <div className="yb-edition"><span>KICK-X / FOOTBALL MARKET</span><span>REAL FOOTBALL. YOUR GAME.</span></div>
       <header className="yb-header">
         <Logo />
         <p className="yb-brand-line">축구를 더 가깝게,<br />선수를 소유하는 새로운 방법.</p>
@@ -43,18 +43,18 @@ export function AppShell({ children }: { children: ReactNode }) {
           })}
         </nav>
         <PlaybookArt variant="header" className="yb-header-art" />
-        <Link href={data.session ? "/mypage" : "/login"} className="yb-login">{data.session ? data.session.profile?.nickname || "내 계정" : "로그인"}<ArrowRight size={24} /></Link>
+        <Link href={data.session ? "/mypage" : "/login"} className="yb-login"><span>{data.session ? data.session.profile?.nickname || "내 계정" : "로그인"}</span><ArrowRight size={24} /></Link>
         <span className="yb-manifesto">PLAYERS<br />MARKET<br />SQUAD<br />COMMUNITY<br />FOR A BIGGER FOOTBALL</span>
       </header>
-      {!isHome && <div className="yb-utility">
-        <nav aria-label="내 활동 메뉴"><Link href="/players">선수 탐색</Link><Link href="/portfolio">내 자산</Link><Link href="/transactions">거래 내역</Link><Link href="/mypage">마이페이지</Link><Link href="/admin">운영 관리</Link></nav>
-        <form onSubmit={submit}><Search size={17} /><input aria-label="선수, 구단, 리그 통합 검색" value={query} onChange={event => setQuery(event.target.value)} placeholder="선수·구단 검색" /><button type="submit">검색</button></form>
+      {<div className={"yb-utility " + (isHome ? "is-home" : "")}>
+        <nav aria-label="내 활동 메뉴"><Link href="/players" aria-current={pathname === "/players" ? "page" : undefined}>선수 탐색</Link><Link href="/fixtures" aria-current={pathname === "/fixtures" ? "page" : undefined}>경기 일정</Link><Link href="/portfolio" aria-current={pathname === "/portfolio" ? "page" : undefined}>내 자산</Link><Link href="/transactions" aria-current={pathname === "/transactions" ? "page" : undefined}>거래 내역</Link><Link href="/mypage" aria-current={pathname === "/mypage" ? "page" : undefined}>마이페이지</Link>{data.session?.role === "admin" && <Link href="/admin">운영 관리</Link>}</nav>
+        {!isHome && <form onSubmit={submit}><Search size={17} /><input aria-label="선수, 구단, 리그 통합 검색" value={query} onChange={event => setQuery(event.target.value)} placeholder="선수·구단 검색" /><button type="submit">검색</button></form>}{isHome && <span className="kx-utility-note">발견하고, 분석하고, 완성하세요.</span>}
       </div>}
       <main id="main-content" className={isHome ? "yb-main" : "yb-content"}>
         {!isHome && <DataNotice status={status} reload={reload} />}
         {children}
       </main>
-      <footer className="yb-footer"><span>© 2026 KICK-X · REAL FOOTBALL. YOUR GAME.</span><nav aria-label="보조 메뉴"><Link href="/players">선수 탐색</Link><Link href="/portfolio">내 자산</Link><Link href="/transactions">거래 내역</Link><Link href="/mypage">마이페이지</Link><Link href="/admin">운영 관리</Link></nav></footer>
+      <footer className="yb-footer"><span>© 2026 KICK-X · REAL FOOTBALL. YOUR GAME.</span><nav aria-label="보조 메뉴"><Link href="/players" aria-current={pathname === "/players" ? "page" : undefined}>선수 탐색</Link><Link href="/fixtures" aria-current={pathname === "/fixtures" ? "page" : undefined}>경기 일정</Link><Link href="/portfolio" aria-current={pathname === "/portfolio" ? "page" : undefined}>내 자산</Link><Link href="/transactions" aria-current={pathname === "/transactions" ? "page" : undefined}>거래 내역</Link><Link href="/mypage" aria-current={pathname === "/mypage" ? "page" : undefined}>마이페이지</Link>{data.session?.role === "admin" && <Link href="/admin">운영 관리</Link>}</nav></footer>
     </div>
   );
 }

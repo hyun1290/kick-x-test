@@ -264,7 +264,7 @@ export function SquadScreen() {
               </div>
             ))}
             {!visible.length && (
-              <DataEmpty entity="보유 선수" filtered={owned.length > 0} />
+              <DataEmpty financial entity="보유 선수" filtered={owned.length > 0} />
             )}
           </div>
           {selected !== null && safeSlots[selected] && (

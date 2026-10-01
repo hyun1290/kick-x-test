@@ -17,7 +17,7 @@ import {
 } from "./ui";
 export function PortfolioScreen() {
   const { data, getPlayer } = usePlatform();
-  const member = data.member;
+  const member = data.member?.financialReady === false ? null : data.member;
   const [period, setPeriod] = useState("1개월"),
     [tab, setTab] = useState("보유 선수");
   const total = member?.totalAssets,
@@ -79,8 +79,8 @@ export function PortfolioScreen() {
               style={{
                 background:
                   allocation == null
-                    ? "#213752"
-                    : `conic-gradient(#4389ff 0 ${allocation}%, #26456d ${allocation}% 100%)`,
+                    ? "#e3e1d9"
+                    : `conic-gradient(#ead11f 0 ${allocation}%, #242424 ${allocation}% 100%)`,
               }}
             >
               <div>
@@ -177,14 +177,14 @@ export function PortfolioScreen() {
             </tbody>
           </table>
         </div>
-        {!rows.length && <DataEmpty entity="보유 선수" />}
+        {!rows.length && <DataEmpty financial entity="보유 선수" />}
       </section>
     </>
   );
 }
 export function TransactionsScreen() {
   const { data, getPlayer } = usePlatform();
-  const member = data.member;
+  const member = data.member?.financialReady === false ? null : data.member;
   const [tab, setTab] = useState("전체"),
     [q, setQ] = useState(""),
     [period, setPeriod] = useState("전체 기간");
@@ -308,7 +308,7 @@ export function TransactionsScreen() {
           </table>
         </div>
         {!rows.length && (
-          <DataEmpty entity="거래 내역" filtered={all.length > 0} />
+          <DataEmpty financial entity="거래 내역" filtered={all.length > 0} />
         )}
       </section>
     </>

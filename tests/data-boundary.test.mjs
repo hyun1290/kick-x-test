@@ -137,3 +137,11 @@ test("charts use stored dates, exclude invalid/future records and do not generat
   );
   assert.deepEqual(data.seriesForDays([], 7, now), []);
 });
+
+test("administrator readiness never bypasses authentication or claims a disconnected service is ready", async () => {
+  const repo = repository({userId:"operator",role:"admin"});
+  repo.adminConfigured = false;
+  const result = await readAdmin(repo);
+  assert.equal(result.status,"not-configured");
+  assert.deepEqual(repo.calls,["session"]);
+});
