@@ -177,7 +177,7 @@ export function PortfolioScreen() {
             </tbody>
           </table>
         </div>
-        {!rows.length && <DataEmpty entity="보유 선수" />}
+        {!rows.length && <DataEmpty financial entity="보유 선수" />}
       </section>
     </>
   );
@@ -308,7 +308,7 @@ export function TransactionsScreen() {
           </table>
         </div>
         {!rows.length && (
-          <DataEmpty entity="거래 내역" filtered={all.length > 0} />
+          <DataEmpty financial entity="거래 내역" filtered={all.length > 0} />
         )}
       </section>
     </>

@@ -96,6 +96,7 @@ try {
   await mockPage.goto(base+"/transactions",{waitUntil:"networkidle"});
   const totals=await mockPage.locator(".transaction-stats strong").allTextContents();
   assert.ok(totals.length===3&&totals.every(text=>text.includes("—")));
+  assert.ok(await mockPage.getByRole("heading",{name:"거래 내역 정보를 준비하고 있습니다",exact:true}).isVisible());
   report.checks.push("Unconnected finance remains unknown after login");
   let profileCalls=0;
   await mock.route("**/api/kickx/profile",async route=>{
@@ -113,7 +114,7 @@ try {
   assert.equal(await mockPage.getByLabel("닉네임",{exact:true}).inputValue(),"새 닉네임");
   await mockPage.getByRole("button",{name:"변경사항 저장"}).click();
   await mockPage.getByText("프로필을 저장했습니다.",{exact:true}).waitFor();
-  assert.equal(await mockPage.locator(".profile-card h2").innerText(),"새 닉네임");
+  assert.ok(await mockPage.getByRole("heading",{name:"새 닉네임",exact:true}).isVisible());
   report.checks.push("Profile errors preserve input; confirmed saves update the account");
   await mock.close();
   assert.deepEqual(errors,[],"Browser JavaScript errors");

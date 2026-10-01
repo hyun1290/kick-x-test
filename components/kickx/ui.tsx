@@ -194,13 +194,18 @@ export function DataEmpty({
   entity,
   filtered = false,
   status: supplied,
+  financial = false,
 }: {
   entity: string;
   filtered?: boolean;
   status?: DataStatus;
+  financial?: boolean;
 }) {
   const resource = usePlatform();
-  const status = supplied || resource.status;
+  const status = supplied || (financial && resource.status === "ready"
+    ? !resource.data.session ? "unauthorized"
+      : !resource.data.member || resource.data.member.financialReady === false ? "not-configured" : "ready"
+    : resource.status);
   if (status === "loading")
     return (
       <div className="empty kx-loading-state" role="status" aria-busy="true">
@@ -229,7 +234,7 @@ export function DataEmpty({
     );
   return (
     <Empty
-      title={filtered ? "검색 결과가 없습니다" : status === "not-configured" ? `${entity} 정보를 준비하고 있습니다` : `아직 등록된 ${entity} 정보가 없습니다`}
+      title={status === "not-configured" ? `${entity} 정보를 준비하고 있습니다` : filtered ? "검색 결과가 없습니다" : `아직 등록된 ${entity} 정보가 없습니다`}
       description={
         status === "not-configured"
           ? "데이터가 준비되면 이곳에 표시됩니다."
