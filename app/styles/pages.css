@@ -611,6 +611,14 @@ button.pitch-player:hover { transform: translateY(-3px); }
 .admin-alert b { font-weight: 900; }
 .admin-alert .text-link { margin-left: auto; color: var(--down); }
 .admin-section { margin-bottom: var(--s-8); }
+.manual-ingestion { padding: var(--s-6); margin-bottom: var(--s-8); }
+.manual-ingestion > p { margin: 0 0 var(--s-4); }
+.manual-ingestion-actions { display: flex; flex-wrap: wrap; gap: var(--s-3); margin: var(--s-5) 0; }
+.manual-ingestion-progress { border-top: var(--border); padding-top: var(--s-4); }
+.manual-ingestion-progress progress { display: block; width: 100%; height: 12px; accent-color: var(--ink); }
+.manual-ingestion-progress code { overflow-wrap: anywhere; }
+.manual-ingestion-progress .summary-list dd { text-align: right; }
+.manual-ingestion-warnings { padding-left: 20px; font-size: var(--fs-small); }
 .pipeline { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; border: var(--border-strong); counter-reset: step; }
 .pipeline-step { position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: var(--s-3); padding: var(--s-5) var(--s-5) var(--s-5) var(--s-6); background: var(--surface); }
 .pipeline-step + .pipeline-step { border-left: var(--border); }

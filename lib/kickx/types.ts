@@ -169,7 +169,19 @@ export type PlatformData = PublicData & {
   session: Session | null;
   member: MemberData | null;
 };
+export type IngestionRun = {
+  id: string; status: "running" | "paused" | "completed" | "cancelled";
+  started_at: string; updated_at: string; finished_at: string | null;
+  total_tasks: number; completed_tasks: number; warnings: number; requests: number; rows_written: number;
+  error_code: string | null; retry_at: string | null; remaining: number | null; lease_until: string | null;
+};
+export type IngestionState = {
+  enabled: boolean; reason: string | null; latest: IngestionRun | null;
+  current: { label: string; kind: string } | null;
+  warnings: { label: string; warning: string }[]; runs: IngestionRun[];
+};
 export type AdminData = {
+  ingestion?: IngestionState;
   summary: {
     players: number | null;
     completedJobs: number | null;

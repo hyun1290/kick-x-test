@@ -50,6 +50,7 @@ jobs:
           psql -v ON_ERROR_STOP=1 -f tests/database-rls.sql
           psql -v ON_ERROR_STOP=1 -f tests/database-football.sql
           psql -v ON_ERROR_STOP=1 -f tests/database-bsd.sql
+          psql -v ON_ERROR_STOP=1 -f tests/database-bulk.sql
       - name: Browser test dependencies
         run: |
           npm install --prefix /tmp/kickx-browser --no-package-lock @playwright/test@1.56.1
