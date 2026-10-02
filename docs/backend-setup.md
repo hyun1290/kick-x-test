@@ -1,11 +1,11 @@
 # DB와 로그인 연결 안내
 
-이 문서는 2026-10-01 추가한 첫 연결 단계의 안내입니다. 코드는 준비됐지만 실제 프로젝트 설정과 DB 적용은 별도입니다. 비밀키를 채팅이나 GitHub에 올리지 마세요.
+이 문서는 2026-10-01 추가한 첫 연결 단계의 안내입니다. 사용자는 기존 환경변수·SQL·Google 설정 완료를 보고했습니다. 실제 로그인/저장 유지 검증과 새 BSD 마이그레이션 적용은 별도로 확인합니다. 비밀키를 채팅이나 GitHub에 올리지 마세요.
 
 ## 1. 마이그레이션
 
 1. 사용할 Supabase 프로젝트를 확인합니다.
-2. `supabase/migrations/`의 SQL을 파일명 순서대로 검토하고 SQL Editor 또는 기존 Supabase CLI 마이그레이션 흐름으로 한 번씩 적용합니다. 이미 적용한 파일은 다시 실행하지 않습니다. 두 번째 파일은 축구 원천 기록·요약·작업 이력·페이지 조회 뷰를 추가합니다.
+2. `supabase/migrations/`의 SQL을 파일명 순서대로 검토하고 SQL Editor 또는 기존 Supabase CLI 마이그레이션 흐름으로 한 번씩 적용합니다. 이미 적용한 파일은 다시 실행하지 않습니다. 두 번째 파일은 축구 원천 기록·요약·작업 이력·페이지 조회 뷰를 추가하며, 세 번째 파일은 BSD 식별자·원천/표준 통계·사진·부분 합계를 추가합니다.
 3. 같은 이름의 기존 테이블이 있으면 그대로 실행하지 말고 기존 스키마와 대조해 별도 마이그레이션을 만듭니다. 파일은 기존 테이블을 삭제하거나 자동 덮어쓰지 않습니다.
 
 포함 테이블: leagues, teams, players, player_market_snapshots, fixtures, price_history, player_match_records, player_analyses, profiles, user_roles, watchlists.
@@ -43,7 +43,7 @@ Vercel과 로컬 개발 환경에 설정합니다.
 | NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY | publishable 키 또는 기존 anon 키 |
 | KICKX_DATABASE_ENABLED | SQL/OAuth 설정을 마친 뒤 true |
 
-서비스 역할 키는 이 조회·사용자 저장 경로에 필요하지 않습니다. 수동 수집 CLI에는 별도의 `SUPABASE_SERVICE_ROLE_KEY`와 `API_FOOTBALL_KEY`가 필요합니다. 수집 실행 환경에만 비밀키를 설정합니다. 기존 `NEXT_PUBLIC_SUPABASE_ANON_KEY`도 대체 키 이름으로 지원합니다. 환경변수 변경 후 재배포합니다. 미설정/false 상태에서는 빈 UI와 준비 안내를 유지합니다.
+서비스 역할 키는 이 조회·사용자 저장 경로에 필요하지 않습니다. 수동 수집 CLI에는 별도의 `SUPABASE_SERVICE_ROLE_KEY`와 `BSD_API_KEY`가 필요합니다. 수집 실행 환경에만 비밀키를 설정합니다. 기존 `NEXT_PUBLIC_SUPABASE_ANON_KEY`도 대체 키 이름으로 지원합니다. 환경변수 변경 후 재배포합니다. 미설정/false 상태에서는 빈 UI와 준비 안내를 유지합니다.
 
 설정 후 `npm run connection:check`로 공개 테이블·목록 뷰 접근과 Google 공급자 활성화를 확인합니다. 이 명령은 설정 존재 여부와 검사 결과만 출력하며 OAuth 리디렉션·실제 회원 쓰기는 아래 통합 시험으로 확인해야 합니다. 축구 적재는 [football-data.md](football-data.md)의 실행 순서를 따릅니다.
 

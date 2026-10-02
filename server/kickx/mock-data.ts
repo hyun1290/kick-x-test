@@ -334,7 +334,7 @@ export function mockAdminData(now = Date.now()): AdminData {
     { id: "job-2410", name: "경기 데이터 수집", kind: "collect", target: "프리미어리그 · 맨체스터 시티 vs 토트넘", time: new Date(now - 0.3 * hour).toISOString(), status: "진행 중", success: 14, fail: 0, error: null },
     { id: "job-2409", name: "선수 가치 갱신", kind: "value", target: "라리가 10라운드 · 38명", time: new Date(now - 2 * hour).toISOString(), status: "완료", success: 38, fail: 0, error: null },
     { id: "job-2408", name: "Performance 계산", kind: "performance", target: "라리가 10라운드 · 38명", time: new Date(now - 2.4 * hour).toISOString(), status: "완료", success: 38, fail: 0, error: null },
-    { id: "job-2407", name: "경기 데이터 수집", kind: "collect", target: "리그 1 · 파리 생제르맹 vs 마르세유", time: new Date(now - 26 * hour).toISOString(), status: "실패", success: 21, fail: 3, error: "API-FOOTBALL 응답 지연(timeout 30s) · fixture 1204517 선수 기록 3건 누락. 재처리 대기 중." },
+    { id: "job-2407", name: "경기 데이터 수집", kind: "collect", target: "리그 1 · 파리 생제르맹 vs 마르세유", time: new Date(now - 26 * hour).toISOString(), status: "실패", success: 21, fail: 3, error: "BSD 응답 지연(timeout 20s) · fixture 1204517 선수 기록 3건 누락. 재처리 대기 중." },
     { id: "job-2406", name: "Performance 계산", kind: "performance", target: "세리에 A 9라운드 · 41명", time: new Date(now - 49 * hour).toISOString(), status: "완료", success: 41, fail: 0, error: null },
     { id: "job-2405", name: "선수 가치 갱신", kind: "value", target: "세리에 A 9라운드 · 41명", time: new Date(now - 48.5 * hour).toISOString(), status: "완료", success: 41, fail: 0, error: null },
     { id: "job-2404", name: "경기 데이터 수집", kind: "collect", target: "분데스리가 · 바이에른 뮌헨 vs 도르트문트", time: new Date(now - 74 * hour).toISOString(), status: "완료", success: 28, fail: 0, error: null },

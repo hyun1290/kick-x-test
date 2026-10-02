@@ -31,6 +31,8 @@ export type Player = {
   country: string | null;
   age: number | null;
   season?: number | null;
+  statsScope?: string | null;
+  importedMatches?: number | null;
   price: number | null;
   change: number | null;
   performance: number | null;

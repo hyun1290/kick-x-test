@@ -1,73 +1,67 @@
-# 축구 데이터 수집과 서버 조회
+# BSD 수집과 실제 연결
 
-2026-10-01 기반 연결. 실제 API 키와 Supabase 프로젝트는 별도 설정한다. 수집은 사이트 방문과 분리된 수동 CLI로 실행하며, 브라우저에 공급자 키나 서비스 역할 키를 보내지 않는다.
+기준: 2026-10-02. 축구 제공자는 BSD 무료 Football REST API로 확정했다. v2를 기본으로 사용하고 페널티킥 선방은 v1 `/api/player-stats/`로 보완한다. 기존 화면·검색·페이지네이션은 유지한다. 거래는 시스템 상대이며 사용자 수요가 가격을 결정하지 않는다.
 
-## 연결 순서
+## 적용 순서
 
-1. `docs/backend-setup.md`에 따라 모든 SQL 마이그레이션을 순서대로 적용한다.
-2. 실행 환경의 `.env.local`에 `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `API_FOOTBALL_KEY`를 설정한다. 비밀키는 `NEXT_PUBLIC_` 접두사를 사용하지 않는다. 수동 CLI를 실행할 컴퓨터에만 수집 비밀키를 둬도 된다.
-3. API-FOOTBALL 계정에서 대상 리그 ID와 사용할 수 있는 시즌을 확인한다. 시즌은 자동 추정하지 않는다. 아래 `39`, `2025`는 실행 형태 예이며 계정에서 접근 가능한 값으로 바꾼다.
-4. 원본 확인 → DB 적재 → 현재 선수단 → 경기 → 경기별 선수 기록 순서로 진행한다.
+1. 이미 적용한 `202610010001`, `202610010002`는 재실행하지 않는다. 새 `supabase/migrations/202610020001_bsd_ingestion.sql`을 SQL Editor 또는 기존 마이그레이션 흐름으로 한 번 적용한다. 기존 `af-` 행과 참조는 보존하며 자동 삭제/병합하지 않는다.
+2. 수집 실행 컴퓨터의 `.env.local`에 `BSD_API_KEY`, `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`를 설정한다. 브라우저용 키는 기존 publishable/anon 키를 유지한다. 수집 키를 `NEXT_PUBLIC_`로 만들지 않는다. 방문자가 페이지를 열 때 외부 API를 호출하지 않는다.
+3. `npm ci` 후 `npm run connection:check`로 카탈로그/새 BSD 열/Google Provider 상태를 확인한다. 사용자에게 기존 SQL·환경·Google 설정 완료 보고가 있었으며, 이번 작업 환경에는 키가 전달되지 않아 운영 검증은 별도로 남아 있다.
+4. 아래 읽기 전용 discovery로 리그와 시즌 ID를 얻는다. API-FOOTBALL 리그 ID나 연도를 BSD ID 대신 넣지 않는다.
+5. 한 경기 dry-run → 현재 구단·선수단 적재 → 같은 경기 저장 → DB/API/화면 비교 → 동일 명령 재실행 순으로 확인한다. 시즌 전체 수집은 소량 적재 확인 후 진행한다.
 
-```sh
-# DB에 쓰지 않고 공급자 응답의 모양/시즌/coverage 확인. API 호출은 실제로 소비한다.
-npm run data:sync -- leagues --league=39 --season=2025 --dry-run
-# DB 기록. 모두 명시적인 리그와 시즌을 사용한다.
-npm run data:sync -- teams --league=39 --season=2025
-npm run data:sync -- players --league=39 --season=2025 --page=1 --pages=3 --budget=5
-# 앞 출력의 nextPage가 4라면 이어서 실행한다. 같은 페이지 재실행도 안전하다.
-npm run data:sync -- players --league=39 --season=2025 --page=4 --pages=3 --budget=5
-# 현재 소속은 시즌 출전 기록이 아니라 현재 선수단 endpoint로 설정한다.
-npm run data:sync -- squads --league=39 --season=2025 --team=팀_ID
-npm run data:sync -- fixtures --league=39 --season=2025 --from=2025-08-01 --to=2025-08-08
-# 위에서 저장한 경기 ID를 사용한다.
-npm run data:sync -- matches --league=39 --season=2025 --fixture=경기_ID
-# 공개 조회 테이블/뷰, Google 공급자 활성화 확인. 값이나 비밀키를 출력하지 않는다.
-npm run connection:check
+## CLI
+
+아래는 실행 예시다. `LEAGUE_ID`, `SEASON_ID`, `TEAM_ID`, `EVENT_ID`를 discovery와 BSD 응답에서 확인한 숫자로 바꾼다. `--season-id`는 제공자 시즌 ID이고 DB의 표시용 `season`은 응답의 시작 연도다.
+
+```bash
+npm run data:sync -- discover --limit=200 --pages=1 --budget=2
+npm run data:sync -- seasons --league=LEAGUE_ID --budget=2
+npm run data:sync -- leagues --league=LEAGUE_ID --season-id=SEASON_ID --budget=5 --dry-run
+npm run data:sync -- teams --league=LEAGUE_ID --season-id=SEASON_ID --limit=200 --pages=1 --budget=5 --dry-run
+npm run data:sync -- squads --league=LEAGUE_ID --season-id=SEASON_ID --team=TEAM_ID --budget=10 --dry-run
+npm run data:sync -- fixtures --league=LEAGUE_ID --season-id=SEASON_ID --from=2026-09-19 --to=2026-09-21 --limit=50 --pages=1 --budget=5 --dry-run
+npm run data:sync -- matches --league=LEAGUE_ID --season-id=SEASON_ID --fixture=EVENT_ID --budget=50 --dry-run
 ```
 
-각 실행은 `/leagues` 응답으로 시즌과 coverage를 먼저 확인한다. 기본 호출 예산은 실행당 10회, 페이지 수는 1, 호출 간격은 6.5초다. 페이지 수를 늘려도 예산/공급자 잔여 쿼터가 먼저 적용된다. HTTP 200의 `errors`도 실패로 처리하며 자동 재시도로 호출을 소비하지 않는다. 플레이어 페이지의 `paging.current/total`을 검증한다. 경기 날짜 창은 최대 31일이다. API 키 권한·실제 응답의 접근 시즌은 운영 계정에서 시험해야 한다.
+`discover`, `seasons`는 DB 없이 읽기만 한다. 다른 명령의 `--dry-run`은 실제 BSD 요청·정규화를 수행하되 DB에 쓰지 않는다. DB 저장 시 해당 명령에서 `--dry-run`을 제거한다. `players`는 `--team=TEAM_ID`가 필수인 현재 팀 선수 프로필 목록이다. BSD에는 API-FOOTBALL 방식의 리그별 선수 시즌 목록이 없으므로 시즌 합계를 만들어 넣지 않는다.
 
-`--dry-run`은 DB 쓰기를 하지 않으며, 실제 API 호출 비용을 소비한다. 경기 기록 dry run은 경기 메타데이터도 공급자에서 조회한다. 일반 경기 기록 적재는 저장된 경기의 리그·시즌·양 팀을 확인한다. 잘못된 선수나 팀 관계가 있으면 응답 단위 트랜잭션 전체를 취소한다.
+목록 작업(discover/teams/players/fixtures)은 `--offset`, `--limit`(최대 200), `--pages`로 제어한다. 한 실행 예산은 `--budget`(기본 10, 최대 500)이며 재시도도 포함한다. 출력의 `nextOffset`이 남으면 동일 조건과 그 offset으로 이어간다. 성공적으로 저장한 페이지 뒤에만 커서를 전진시킨다. fixture 날짜 범위는 UTC 날짜, 최대 31일 간격이다. 화면의 날짜 구분은 기존 한국 시간 기준을 유지한다.
 
-## 저장 데이터
+경기 작업은 리그·시즌 확인 → 경기 상세 → 선수 통계 → 라인업 → incidents → v1 보완의 순서다. 확인된 라인업에 없는 선수는 프로필을 추가 조회한다. 여러 v1 페이지를 모두 읽고 정상화한 뒤 한 RPC로 저장한다. 중간에 예산/네트워크 오류가 발생하면 해당 경기의 일부만 저장하지 않는다. 경기 작업 중단 시 같은 EVENT_ID를 재실행한다.
 
-| 위치 | 용도 |
-| --- | --- |
-| leagues / teams / players / fixtures | 공개 카탈로그와 현재 선수단 정보 |
-| football_league_seasons | 시즌별 제공 지표 coverage (비공개) |
-| football_player_seasons | 선수·리그·구단·시즌별 원천 통계 JSON (비공개) |
-| football_match_stats | 선수·경기별 원천 통계 JSON (비공개) |
-| player_season_summaries | 최신 적재 시즌의 실제 득점·도움·시간 요약 (공개) |
-| player_match_records | 날짜·상대·결과·실제 출전 기록 (공개), Performance는 계산 엔진 담당 |
-| football_sync_jobs | 실행 결과·호출 수·다음 페이지·일반화한 오류 코드 (비공개) |
+## 저장 계약
 
-고정 ID는 `af-<공급자 ID>`이며 `external_id`도 보존한다. 이미 같은 외부 ID를 다른 내부 ID로 적재했다면 먼저 매핑을 정리해야 한다. 충돌을 자동 덮어쓰지 않는다. NULL은 미제공, 0은 실제 값이다. 영문 이름을 원본 그대로 저장하며 한국어 이름·색·사진 정책은 별도로 정한다. 사진은 이번 수집에서 저장/노출하지 않는다.
+- 내부 ID `bsd-<BSD id>`, 숫자 `external_id`, `provider='bsd'`. 기존 외부 ID 고유 제약은 `(provider, external_id)`로 전환해 같은 숫자의 `af-`와 충돌하지 않는다. 기존 자료를 실제 BSD 인물과 연결하려면 별도의 확인된 매핑이 필요하다.
+- `football_league_seasons.provider_season_id`, `fixtures.provider_season_id`에 BSD 시즌 ID를 보존한다. 같은 리그·시작 연도에 두 시즌 ID가 들어오면 자동 덮어쓰지 않고 거부한다.
+- `football_match_stats.stats`는 원본 flat BSD JSON. `legacy_stats`는 v1 원본. `normalized`는 `version`, `values`, 항목별 `quality`, `calculation_ready`를 가진 공급자 중립 통계다.
+- `football_event_sources`는 경기 상세·라인업·득점/교체/카드 incidents·v1/v2 응답을 보존한다. 목록 재조회는 기존 세부 원천을 지우지 않는다. 이 테이블과 원천 통계/작업 이력은 공개 API에 노출하지 않는다.
+- `apply_bsd_batch`는 service_role만 실행한다. 참조·선수 경기 당시 팀·완성된 경기 snapshot을 확인하고 원본/표준/공개 기록을 한 트랜잭션으로 저장한다. BSD 수집을 직렬화해 경기 간 합계 갱신 경합을 막는다.
+- 동일 경기 재실행은 player/fixture 키로 교체한다. 정상적인 비어 있지 않은 전체 통계 snapshot은 정정으로 빠진 선수의 이전 기록도 제거한다. 비어 있는 응답은 기존 기록을 자동 삭제하지 않는다.
+- `player_season_summaries`의 BSD 합계는 `stats_scope='imported_matches'`, `matches_imported`를 가진 부분 합계다. 화면은 “수집된 N경기”로 표시한다. 하나라도 미확인인 지표의 전체 합계는 null이다.
+- 과거 경기 팀/포지션/등번호로 현재 선수단을 덮어쓰지 않는다. 현재 소속은 squads/현재 팀 players 작업에서만 바꾼다. 과거 경기에서 발견한 팀에는 현재 리그 소속을 임의로 붙이지 않는다.
+- BSD 사진은 `/img/player/{id}/?sor=true&bg=transparent`로 연결한다. 이미지 204/실패 시 기존 일러스트로 돌아간다.
+- 가격/Performance/지갑/거래는 이 importer가 채우지 않는다. 공급자 rating/market_value도 KICK-X 값으로 복사하지 않는다.
 
-시즌 이적 통계는 구단별로 분리한다. 최신 시즌의 대상 리그 기록을 합산해 요약을 재계산하므로 같은 페이지를 다시 가져와도 누적되지 않는다. 시즌 기록 수집은 현재 소속을 덮어쓰지 않으며 `/players/squads` 수집이 현재 소속을 설정한다. 현재 소속을 아직 수집하지 않은 선수는 최신 시즌에 제공된 리그로 검색할 수 있다. squads 실행은 해당 구단이 요청 리그·시즌의 팀 목록에 있는지 먼저 확인한다. 현재 선수단에서 사라진 선수의 소속 해제·여러 리그 간 이적 확정은 추가 동기화 정책이 필요하다.
+## 미제공 통계 처리
 
-`apply_football_batch`는 서비스 역할만 실행할 수 있고, 응답 하나를 원자적으로 저장한다. 같은 선수를 동시에 적재할 때 잠금을 사용한다. 작업 이력 갱신 전 프로세스가 종료되면 같은 페이지를 다시 실행하면 된다. 원천 정정 시 기존 행을 갱신하지만 계산 엔진의 Performance·가격 재계산은 다음 단계다. 공급자 rating을 KICK-X Performance로 복사하지 않는다.
+BSD 공식 PlayerStatV2Schema는 미제공 카운터를 0으로 반환할 수 있다고 명시한다. 따라서 원본 0은 보존하되 내부에는 null + `unverified_zero`로 둔다. 양수는 `reported`, 미존재/null은 `missing`, 양수 페널티 선방은 `legacy_v1`이다. 단순히 응답 키가 있다는 이유로 전체 제공 여부를 확정하지 않는다.
 
-## 조회 API
+성공 크로스는 `accurate_cross`, 성공 태클은 `won_tackle`, 패스 성공은 `accurate_pass`다. 30회/85% 조건은 계산 엔진에서 적용한다. 클린시트·출전 중 실점·자책골/카드 재조정은 라인업/incident 완전성과 출전 구간을 검증한 뒤 계산해야 한다. 현재는 null과 `calculation_ready=false`로 남긴다. 특히 GK 실점을 DF에게 복사하지 않는다. 이는 가치 계산 단계의 선행 검증 과제다.
 
-| API | 지원 |
-| --- | --- |
-| GET /api/kickx | 리그·구단 메타데이터와 제한된 홈 미리보기, 실제 선수 총수, 현재 회원 |
-| GET /api/kickx/players | q, league, team, position, sort, scope, page, size |
-| GET /api/kickx/players/:id | 해당 선수, 최근 20경기, 최근 31일 가격 이력 최대 1,000개, 저장된 분석 |
-| GET /api/kickx/fixtures | q, league, state, day, page, size |
+## 예산·오류
 
-페이지 응답은 `{status, data:{items,total,page,size}}` 형태다. 기본 선수 12개·경기 20개, 최대 50개다. 검색/필터 후 전체 수를 집계하며 동률은 ID로 정렬하고 NULL은 뒤로 보낸다. 검색의 `%`, `_`, `\`는 검색 문자열로 처리한다. 날짜 필터는 대한민국 자정부터 다음 자정 직전까지다. 응답은 개인 쿠키에 따라 달라질 수 있어 `private, no-store`다.
+공식 무료 일일 한도는 7,500회, UTC 자정 초기화다. `RateLimit` 구조화 헤더를 라이브러리로 파싱하고 429의 `taster_exhausted`(일일 한도)/순간 제한을 구분한다. `Retry-After`는 안전한 숫자만 기록한다. 429에서는 대기 상태로 종료하고 알려준 시간 이후 재실행한다. 5xx/네트워크는 최대 세 번, 모든 시도를 예산에 포함한다. 키나 원천 오류 본문은 로그에 출력하지 않는다. 고정 호스트와 리다이렉트 거부로 키 유출을 막는다.
 
-`scope=watch`는 서버 검증 회원만 사용하며 DB의 RLS를 적용한 본인 관심 선수 관계에서 검색한다. 일반 회원이 타인 ID를 입력해 조회할 수 없다. 보유 선수(`scope=owned`)는 금융 연결 전 `not-configured`다.
+수집 이력에 provider/요청 횟수/행 처리 횟수/next_offset/오류/재개 대기를 남긴다. 동시 실행의 계정 전체 일일 예산을 이 CLI만으로 중앙 예약하는 기능은 없다. 자동 실행과 계정 단위 예산 예약은 수동 적재 검증 후 추가한다.
 
-선수 탐색·시장·경기 화면과 홈 검색은 실제 DB 모드에서 서버 목록 API를 사용한다. 상세/선수 라운지는 직접 상세 조회한다. 구단 로스터와 선수 라운지 미리보기는 각각 12/24개로 제한한다. 전체는 선수 탐색에서 검색한다. 글쓰기의 선수 선택 양식은 아직 부트스트랩 미리보기를 사용하므로 실제 커뮤니티 API를 구현할 때 검색형 선택기로 확장한다. mock 모드에서는 기존 로컬 상호작용을 유지한다.
+## 확인할 실제 흐름
 
-## 남은 운영 확인
+- BSD 응답의 선수 ID·경기 ID·팀·분·득점/도움·사진이 DB와 `/api/kickx/players`, `/api/kickx/players/{bsd-id}`, `/api/kickx/fixtures`에 맞는지 비교한다.
+- 같은 경기 저장을 반복해 기록 개수·분 합계가 증가하지 않는지 확인한다.
+- 이미지 실패/null 표시, 한국 날짜 경계, 검색·포지션·리그 필터를 확인한다.
+- Google 실제 로그인→프로필/관심 목록 저장→재로그인 유지와 계정 간 격리는 별도 운영 검증이다.
 
-- 실제 5대 리그·접근 가능 시즌·결측 지표를 소량 dry run으로 확인한다.
-- 계정 전체가 공유하는 하루 쿼터는 공급자 대시보드에서도 확인한다. CLI 예산은 다른 도구의 호출까지 통제하지 않는다.
-- 아직 자동 예약 실행·관리자 작업 대시보드·영구 실패 복구 큐는 없다. 우선 수동 수집을 검증한 뒤 운영 주기를 정한다.
-- 실데이터가 충분해지면 검색 쿼리 성능과 Supabase 비용을 측정한다. 현재 부분 문자열 검색의 별도 전문 검색 인덱스는 없다.
+로컬 검증: 단위 검사, 추가 SQL의 권한/재수집/정정/부분 합계 검사, build, 화면 검사를 실행한다. 주입 응답과 임시 DB 통과를 운영 BSD/Supabase 적재 완료라고 표현하지 않는다.
 
-공식 참고: [API-FOOTBALL v3](https://www.api-football.com/documentation-v3), [쿼터와 페이지네이션](https://www.api-football.com/news/post/how-to-optimize-api-sports-calls-and-quota-usage), [Supabase range](https://supabase.com/docs/reference/javascript/using-modifiers-range).
+공식 자료: [BSD Football](https://sports.bzzoiro.com/docs/football/), [Events](https://sports.bzzoiro.com/docs/football/events/), [Teams/Players](https://sports.bzzoiro.com/docs/football/teams-players/), [Limits](https://sports.bzzoiro.com/docs/conventions/), [Images](https://sports.bzzoiro.com/docs/images/), [OpenAPI schema](https://sports.bzzoiro.com/api/schema/).

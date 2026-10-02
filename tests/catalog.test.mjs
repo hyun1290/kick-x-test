@@ -45,3 +45,9 @@ test("large bootstrap catalogs stay bounded and never read every price history o
  assert.equal(result.playerTotal,1800);assert.equal(result.players.length,24);
  assert.equal(calls.some(c=>["price_history","player_match_records","player_analyses"].includes(c[0])),false);
 });
+test("BSD photos and partial imported-match scope cross the public catalog contract",async()=>{
+ const result=await readCatalog(clientFor({player_catalog:[{id:'bsd-9',name:'BSD player',photo:'https://sports.bzzoiro.com/img/player/9/?sor=true&bg=transparent',stats_scope:'imported_matches',matches_imported:2,season:2026,goals:null,minutes:180}]}));
+ assert.equal(result.players[0].photo,'https://sports.bzzoiro.com/img/player/9/?sor=true&bg=transparent');
+ assert.equal(result.players[0].statsScope,'imported_matches');assert.equal(result.players[0].importedMatches,2);
+ assert.equal(result.players[0].goals,null);assert.equal(result.players[0].price,null);
+});
