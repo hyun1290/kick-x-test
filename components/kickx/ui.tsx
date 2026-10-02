@@ -156,15 +156,16 @@ export function PlayerPortrait({
 }) {
   const { getTeam } = usePlatform();
   const team = getTeam(player.team);
+  const [failedPhoto, setFailedPhoto] = useState<string | null>(null);
   return (
     <span
       className={`portrait ${size}`}
       style={{ "--team-color": teamColor(team?.color) } as CSSProperties}
       aria-hidden="true"
     >
-      {player.photo ? (
+      {player.photo && failedPhoto !== player.photo ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={player.photo} alt="" />
+        <img src={player.photo} alt="" loading="lazy" onError={() => setFailedPhoto(player.photo ?? null)} />
       ) : (
         <svg viewBox="0 6 100 94" preserveAspectRatio="xMidYMax meet">
           <path className="portrait-body" d="M18 104 C19 80 31 70 50 69 C69 70 81 80 82 104 Z" />

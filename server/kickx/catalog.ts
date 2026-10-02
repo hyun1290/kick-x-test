@@ -33,10 +33,12 @@ function ageAt(birthDate: unknown, now: Date) {
 }
 export function mapPlayer(row: Row, snapshot?: Row): Player {
   const position = ["GK","DF","MF","FW"].includes(String(row.position)) ? row.position as Position : null;
+  const photo = text(row.photo);
   return {
     id:required(row.id),name:required(row.name),english:text(row.english),short:text(row.short_name),
     team:text(row.team_id),position,number:number(row.shirt_number),country:text(row.country),age:ageAt(row.birth_date,new Date()),
-    season:number(row.season),price:number(snapshot?.price),change:number(snapshot?.change_percent),performance:number(snapshot?.performance),volume:number(snapshot?.volume),
+    photo:photo && /^https:\/\/sports\.bzzoiro\.com\/img\/player\/[0-9]+\//.test(photo) ? photo : null,
+    season:number(row.season),statsScope:text(row.stats_scope),importedMatches:number(row.matches_imported),price:number(snapshot?.price),change:number(snapshot?.change_percent),performance:number(snapshot?.performance),volume:number(snapshot?.volume),
     goals:number(snapshot?.goals),assists:number(snapshot?.assists),minutes:number(snapshot?.minutes),history:[],records:[],analysis:null,
     updatedAt:text(snapshot?.market_updated_at) || text(snapshot?.updated_at) || text(row.updated_at),status:text(row.trade_status),
   };

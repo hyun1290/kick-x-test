@@ -8,7 +8,7 @@
 - 홈 검색·정렬·점진적 목록 표시, 선수 탐색/상세, 자산·선수단·커뮤니티·운영 화면과 빈 상태를 제공합니다.
 - **Google OAuth 시작/콜백/로그아웃, 검증된 세션 조회, 프로필 등록·변경, 관심 선수 추가·해제, 공개 축구 데이터 조회 어댑터**를 구현했습니다.
 - **11개 테이블의 초기 SQL 마이그레이션과 RLS**를 제공합니다. 실제 Supabase 프로젝트에 자동 적용하지 않습니다.
-- 초기 포인트 지급, 거래/원장, 스쿼드 저장, 랭킹 집계, 커뮤니티 저장, 관리자 작업, API-FOOTBALL 수집·가치 계산·AI 생성은 아직 연결되지 않았습니다.
+- 초기 포인트 지급, 거래/원장, 스쿼드 저장, 랭킹 집계, 커뮤니티 저장, 관리자 작업, 가치 계산·AI 생성은 아직 연결되지 않았습니다. BSD 수동 수집 어댑터·추가 마이그레이션은 구현했으며 운영 DB 실적재 검증은 별도입니다.
 
 코드 구현과 운영 연결은 다릅니다. 환경변수만 넣기 전에 SQL과 Google 공급자/리다이렉트를 설정해야 합니다. 기본값은 미연결이며 예시 선수·잔액·거래·회원 데이터를 채우지 않습니다.
 
@@ -49,7 +49,7 @@ npm run dev
 
 ## 디자인 시스템
 
-`app/styles/`에 토큰 → 기본 요소 → 공통 컴포넌트 → 셸 → 페이지 순으로 정리했습니다. 색상·간격·글자 크기·모서리는 `tokens.css`의 변수만 사용합니다. 공통 UI는 `components/kickx/ui.tsx`(StatCard, Change, PositionBadge, PlayerPortrait, Tabs, PriceChart, Modal, 거래 확인 모달, Empty/Skeleton/DataNotice)에 있습니다. 선수 사진은 라이선스가 확인될 때까지 일러스트 플레이스홀더를 사용합니다(`Player.photo`).
+`app/styles/`에 토큰 → 기본 요소 → 공통 컴포넌트 → 셸 → 페이지 순으로 정리했습니다. 색상·간격·글자 크기·모서리는 `tokens.css`의 변수만 사용합니다. 공통 UI는 `components/kickx/ui.tsx`(StatCard, Change, PositionBadge, PlayerPortrait, Tabs, PriceChart, Modal, 거래 확인 모달, Empty/Skeleton/DataNotice)에 있습니다. 선수 사진은 BSD Image API를 `Player.photo`에 연결하며 미제공/실패 시 일러스트 플레이스홀더를 사용합니다.
 
 ## 다음 작업
 

@@ -136,6 +136,15 @@ try {
   await mockPage.goto(base+"/players/catalog-23",{waitUntil:"networkidle"});
   await mockPage.getByRole("heading",{name:"목록 선수 23",exact:true}).waitFor();
   report.checks.push("Server search, second page, retry and direct detail outside bootstrap");
+  state.players[0].photo="https://sports.bzzoiro.com/img/player/9/";
+  state.players[0].statsScope="imported_matches";
+  state.players[0].importedMatches=2;
+  await mock.route("https://sports.bzzoiro.com/img/player/9/",route=>route.fulfill({status:204}));
+  await mockPage.goto(base+"/players/test-player",{waitUntil:"networkidle"});
+  await mockPage.getByText("수집된 2경기 득점 · 도움",{exact:true}).waitFor();
+  await mockPage.locator(".detail-photo .portrait svg").waitFor();
+  assert.equal(await mockPage.locator(".detail-photo .portrait img").count(),0);
+  report.checks.push("BSD missing photo falls back; imported-match totals are labeled explicitly");
   await mockPage.goto(base+"/transactions",{waitUntil:"networkidle"});
   const totals=await mockPage.locator(".transaction-stats strong").allTextContents();
   assert.ok(totals.length===3&&totals.every(text=>text.includes("—")));

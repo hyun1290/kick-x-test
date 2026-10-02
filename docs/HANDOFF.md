@@ -1,3 +1,5 @@
+> 2026-10-02 BSD 업데이트: 수집 CLI와 새 SQL은 BSD로 전환했다. [football-data.md](football-data.md)가 최신 실행 계약이다. 사용자 거래 상대는 시스템이고 수요/거래량은 가격을 직접 정하지 않는다. AI 분석은 필수다. 기존 설정 완료 보고가 있지만 이번 환경의 비밀키 부재로 운영 실적재/로그인 통합 검증은 남아 있다. 과거 표의 예시 금액/수수료는 확정 정책이 아니다.
+
 # KICK-X 작업 인수인계 (HANDOFF)
 
 > 다음 작업자(사람 또는 AI 에이전트)가 이 문서만 읽고 이어서 작업할 수 있도록 정리한 현황입니다.
@@ -89,7 +91,7 @@ app/api/kickx/route.ts ──► server/kickx/service.ts (readPlatform/readAdmin
 - 파일 순서: `tokens.css → base.css → components.css → shell.css → pages.css` (`app/globals.css`가 import).
 - 주요 토큰: `--yellow #ffe23a`, `--ink #111110`, `--paper`, `--surface`, `--line`, `--up/--down`(+bg), 포지션 색 `--pos-*`, 간격 `--s-*`(4px 단위), `--radius-1(2px)`, `--border-strong(2px ink)`.
 - 상승/하락은 **색 + ▲/▼ 기호 + 스크린리더 텍스트**를 함께 쓴다(`<Change>`).
-- 선수 사진: 라이선스 미확정이라 `PlayerPortrait`가 일러스트 플레이스홀더를 그린다. `Player.photo`에 URL이 오면 사진을 쓴다.
+- 선수 사진: BSD Image API를 연결한다. `Player.photo`가 없거나 이미지 204/실패 시 일러스트 플레이스홀더를 쓴다.
 - 반응형 클래스: `hide-md`(≤900 숨김), `hide-sm`(≤640 숨김), `only-sm`(≤640에서만 표시). 모바일 표는 줄바꿈 없이 가로 스크롤.
 
 **이미 겪은 함정 (재발 주의)**
@@ -115,7 +117,7 @@ app/api/kickx/route.ts ──► server/kickx/service.ts (readPlatform/readAdmin
 | 게시글 상세 | `/community/posts/[postId]` | 완료 (첨부 거래·댓글 목록) | 댓글/공감/신고/삭제 API |
 | 글쓰기 | `/community/write` | **완료 (검증 UI: 필드별 오류·오류 요약·글자 수·이탈 경고·완료 화면)** | **게시글 등록/수정 API** |
 | 마이페이지 · 로그인 · 온보딩 | `/mypage` `/login` `/onboarding` | 완료 (프로필 저장은 실제 API 연결됨) | Supabase OAuth 실제 설정 |
-| 경기 일정 | `/fixtures` | 완료 | API-FOOTBALL 수집 |
+| 경기 일정 | `/fixtures` | 완료 | BSD 수집 |
 | 관리자 4종 | `/admin` `/admin/data` `/admin/trades` `/admin/community` | 완료 (컨트롤룸 디자인·파이프라인 상태·로그·정산·신고 검토) | 관리자 조회 어댑터, 재처리/숨김/기각 API |
 
 모든 쓰기 버튼은 **실제 모드에서 비활성**(또는 "서비스 준비 중" 안내), **mock 모드에서는 화면에서만 동작하고 "저장되지 않음"을 표시**한다.
@@ -156,7 +158,7 @@ app/api/kickx/route.ts ──► server/kickx/service.ts (readPlatform/readAdmin
 | # | 할 일 | 완료 기준 |
 | --- | --- | --- |
 | 1 | **Supabase 실제 연결**: 마이그레이션 적용, Google Provider/Redirect URL, Vercel 환경변수 (`docs/backend-setup.md`) | 로그인→프로필 등록→새로고침→재로그인 유지 |
-| 2 | **API-FOOTBALL 수집(수동 CLI 구현 완료, 실제 실행 대기)**: 리그→구단→선수→경기→선수별 경기 기록 upsert, 외부 ID 보존, 수집 이력 | 하루 호출 한도 내 동작, 중복 적재 없음, 화면 표시와 원본 일치 |
+| 2 | **BSD 수집(수동 CLI 구현 완료, 실제 실행 대기)**: 리그→구단→선수→경기→선수별 경기 기록 upsert, 외부 ID 보존, 수집 이력 | 하루 호출 한도 내 동작, 중복 적재 없음, 화면 표시와 원본 일치 |
 | 3 | **팀 정책 확정** (8장 표) | 문서화된 수치·예시 계산 |
 | 4 | **Performance·가치 계산 엔진**: 포지션별 가중치, 규칙 버전, 가격 이력, 경기 정정 재계산 | 같은 입력 = 같은 결과, 재처리해도 중복 변동 없음 |
 | 5 | **지갑·원장·보유·거래 테이블 + 원자적 체결**: 최초 포인트 1회 지급, 견적/체결 API, 멱등 키 | 동시 주문·중복 요청·잔액 부족·가격 변경·실패 복구 테스트 통과 |
@@ -175,14 +177,14 @@ app/api/kickx/route.ts ──► server/kickx/service.ts (readPlatform/readAdmin
 | 항목 | 현재 화면/예시 값 | 결정 필요 |
 | --- | --- | --- |
 | 초기 포인트 | 예시 1,300,000 P (mock만) | 지급액, 1회 지급 조건 |
-| 판매 수수료 | 예시 2% (mock만) | 기본 수수료, 거래량 기반 차등 기준 |
+| 판매 수수료 | 예시 2% (mock만) | 모든 선수 공통 판매 수수료율 |
 | 거래 방식 | 1명 단위 즉시 체결 UI | 수량 단위, 가격 유효 시간, 동일 선수 다중 보유 |
 | Performance | 0–100 표기 (mock) | 포지션별 지표·가중치, 미출전 처리 |
 | 가치 변동 | 직전 갱신 대비 % | 점수→가격 공식, 상·하한 |
 | 포메이션 | 4-3-3, 4-4-2, 4-2-3-1, 3-5-2 (mock) | 허용 포메이션 목록 |
 | 랭킹 | 초기 자산 대비 수익률 | 기간 경계(KST), 동률, 신규 회원 |
 | 커뮤니티 | 구단 라운지는 응원 구단 팬만 작성, 제목 2–80자, 본문 10–3,000자 | 구단 변경 제한, 길이·이미지·신고 처리 기준 |
-| 선수 사진 | 일러스트 플레이스홀더 | 라이선스 있는 출처 사용 여부 |
+| 선수 사진 | 일러스트 플레이스홀더 | BSD 이미지 연결, 미제공/실패 시 플레이스홀더 |
 
 ---
 

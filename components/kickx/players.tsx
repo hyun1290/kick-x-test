@@ -317,7 +317,7 @@ export function PlayerDetail() {
       </section>
       <div className="stat-grid detail-stats">
         <StatCard label="최근 Performance" value={money(p.performance)} hint="최근 경기 기준" tone="yellow" />
-        <StatCard label={p.season ? `${p.season} 시즌 득점 · 도움` : "시즌 득점 · 도움"} value={`${money(p.goals)} · ${money(p.assists)}`} />
+        <StatCard label={p.statsScope === "imported_matches" ? `수집된 ${p.importedMatches ?? 0}경기 득점 · 도움` : p.season ? `${p.season} 시즌 득점 · 도움` : "시즌 득점 · 도움"} value={`${money(p.goals)} · ${money(p.assists)}`} />
         <StatCard label="출전 시간" value={money(p.minutes)} unit="분" />
         <StatCard label="거래량" value={money(p.volume)} unit="건" />
       </div>

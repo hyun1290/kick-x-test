@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createFootballClient, normalizeBatch, parseSyncArgs } from "../scripts/lib/football.mjs";
+import { createFootballClient, normalizeBatch, parseSyncArgs } from "../scripts/lib/api-football-legacy.mjs";
 const envelope=(response=[],paging={current:1,total:1},errors=[])=>new Response(JSON.stringify({errors,response,paging}),{headers:{"x-ratelimit-requests-remaining":"99"}});
 const context={league:39,season:2025};
 test("provider HTTP 200 errors are failures, not successful empty imports",async()=>{
