@@ -3,10 +3,10 @@ import type { KickxRepository } from "./repository";
 import type { MemberData, Session } from "@/lib/kickx/types";
 import { createRequestClient } from "./supabase";
 import { readCatalog } from "./catalog";
-import { emptyAdminData } from "@/lib/kickx/data";
+import { readOperations } from "./ingestion";
 export class SupabaseKickxRepository implements KickxRepository {
   readonly configured = true;
-  readonly adminConfigured = false;
+  readonly adminConfigured = true;
   private client = createRequestClient();
   private session: Promise<Session | null> | null = null;
   getSession() {
@@ -51,5 +51,8 @@ export class SupabaseKickxRepository implements KickxRepository {
       profit: null, returnRate: null, weeklyRank: null, holdings: [], transactions: [],
       watchlist, assetHistory: [], squad: null };
   }
-  async getAdminData() { return emptyAdminData(); }
+  async getAdminData() {
+    if ((await this.getSession())?.role !== "admin") throw new Error("Admin identity required");
+    return readOperations();
+  }
 }

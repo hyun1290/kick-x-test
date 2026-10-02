@@ -5,6 +5,7 @@ import { AlertTriangle, ArrowRight, Calculator, Database, FileClock, Flag, Refre
 import { dateText, money, relativeTime } from "@/lib/kickx/data";
 import type { AdminData, DataStatus } from "@/lib/kickx/types";
 import { useAdminData } from "./provider";
+import { ManualIngestion } from "./ingestion";
 import { DataEmpty, DataNotice, DisabledAction, MockBadge, Modal, StatCard, Tabs } from "./ui";
 
 const nav = [
@@ -160,6 +161,7 @@ export function DataAdmin() {
   return (
     <AdminFrame active="/admin/data" status={status} reload={reload} eyebrow="DATA OPERATIONS" title="데이터 관리" description="경기 데이터 수집 → Performance 계산 → 선수 가치 갱신 작업 상태를 확인합니다.">
       <section className="admin-section"><Pipeline jobs={data.jobs} /></section>
+      <ManualIngestion initial={data.ingestion} reload={reload} />
       <section className="panel flush">
         <div className="panel-head">
           <Tabs items={["전체", "완료", "실패", "진행 중"]} value={tab} onChange={setTab} variant="segment" label="작업 상태" />
@@ -202,7 +204,7 @@ export function DataAdmin() {
             <div><dt>성공 / 실패</dt><dd>{money(job.success)} / {money(job.fail)}</dd></div>
           </dl>
           <pre className="log-block">{job.error || "저장된 오류 내용이 없습니다."}</pre>
-          <p className="fine-print">재처리는 수집·계산 서비스 연결 후 사용할 수 있습니다.</p>
+          <p className="fine-print">5대 리그 수집은 위의 수동 갱신에서 이어서 실행할 수 있습니다. 개별 작업 재처리와 계산은 아직 지원하지 않습니다.</p>
           <div className="modal-actions">
             <button className="button secondary" onClick={() => setSelected(null)}>닫기</button>
             <DisabledAction className="button primary"><RefreshCw size={15} />재처리 요청</DisabledAction>

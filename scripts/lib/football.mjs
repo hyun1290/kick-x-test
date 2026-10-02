@@ -115,7 +115,7 @@ export function normalizeMatchBundle({detail,stats,lineups,incidents,legacy=[],p
   batch.sources=[{fixture_id:externalId(event),detail,player_stats:stats,lineups,incidents,legacy_stats:legacy}];
   return batch;
 }
-export function createFootballClient({key,budget=10,delay=1100,fetchImpl=fetch,wait=ms=>new Promise(r=>setTimeout(r,ms))}) {
+export function createFootballClient({key,budget=10,delay=1100,timeoutMs=20000,fetchImpl=fetch,wait=ms=>new Promise(r=>setTimeout(r,ms))}) {
   let requests=0,remaining=null;
   const checkedUrl=endpoint=>{
     const url=new URL(endpoint,HOST);
@@ -134,7 +134,7 @@ export function createFootballClient({key,budget=10,delay=1100,fetchImpl=fetch,w
         if(requests) await wait(delay*(attempt+1));
         requests++;
         let response;
-        try { response=await fetchImpl(url,{headers:{Authorization:`Token ${key}`},signal:AbortSignal.timeout(20000),redirect:"error"}); }
+        try { response=await fetchImpl(url,{headers:{Authorization:`Token ${key}`},signal:AbortSignal.timeout(timeoutMs),redirect:"error"}); }
         catch {if(attempt<2) continue;throw new SyncError("PROVIDER_NETWORK_ERROR");}
         const quota=response.headers.get("ratelimit");
         if(quota!=null) {

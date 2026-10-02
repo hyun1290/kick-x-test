@@ -168,6 +168,47 @@ try {
   await mockPage.getByText("프로필을 저장했습니다.",{exact:true}).waitFor();
   assert.ok(await mockPage.getByRole("heading",{name:"새 닉네임",exact:true}).isVisible());
   report.checks.push("Profile errors preserve input; confirmed saves update the account");
+
+  // Manual ingestion makes no mutation on page load; pause finishes the in-flight step.
+  state.session.role="admin";
+  const ingestion={enabled:true,reason:null,latest:null,current:null,warnings:[],runs:[]};
+  const admin=loadTs("../lib/kickx/data.ts").emptyAdminData();
+  await mock.route(/\/api\/kickx\/admin$/,route=>route.fulfill({json:{status:"ready",data:{...admin,ingestion}}}));
+  const actions=[];
+  let stepStarted;
+  let observedStep=new Promise(resolve=>{stepStarted=resolve;});
+  await mock.route("**/api/kickx/admin/ingestion",async route=>{
+    const {action}=route.request().postDataJSON();actions.push(action);
+    if(action==="start") ingestion.latest={id:"00000000-0000-0000-0000-000000000001",status:"running",started_at:"2026-10-02T10:00:00Z",updated_at:"2026-10-02T10:00:00Z",finished_at:null,total_tasks:2,completed_tasks:0,warnings:0,requests:0,rows_written:0,error_code:null,retry_at:null,remaining:7400,lease_until:null};
+    if(action==="resume") ingestion.latest.status="running";
+    if(action==="pause") ingestion.latest.status="paused";
+    if(action==="step") {
+      stepStarted();await new Promise(resolve=>setTimeout(resolve,350));
+      ingestion.latest.completed_tasks++;ingestion.latest.requests++;ingestion.latest.rows_written+=40;
+      if(ingestion.latest.completed_tasks===2) ingestion.latest.status="completed";
+    }
+    return route.fulfill({json:{...ingestion,actionState:action==="step"?"progress":action}});
+  });
+  await mockPage.goto(base+"/admin/data",{waitUntil:"networkidle"});
+  assert.deepEqual(actions,[]);
+  await mockPage.getByRole("button",{name:"5대 리그 데이터 갱신",exact:true}).click();
+  await observedStep;
+  await mockPage.getByRole("button",{name:"일시 중지",exact:true}).click();
+  await mockPage.getByRole("button",{name:"이어서 실행",exact:true}).waitFor();
+  assert.deepEqual(actions,["start","step","pause"]);
+  await mockPage.reload({waitUntil:"networkidle"});
+  assert.equal(ingestion.latest.completed_tasks,1);assert.deepEqual(actions,["start","step","pause"]);
+  observedStep=new Promise(resolve=>{stepStarted=resolve;});
+  await mockPage.getByRole("button",{name:"이어서 실행",exact:true}).click();
+  await observedStep;
+  await mockPage.getByText("수집 완료",{exact:true}).waitFor();
+  assert.deepEqual(actions,["start","step","pause","resume","step"]);
+  for(const width of [1440,390]) {
+    await mockPage.setViewportSize({width,height:900});
+    assert.ok(await mockPage.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
+    await mockPage.screenshot({path:`test-artifacts/admin-ingestion-${width}.png`,fullPage:true});
+  }
+  report.checks.push("Admin starts only on click; pause and reload retain checkpoint; explicit resume completes");
   await mock.close();
   assert.deepEqual(errors,[],"Browser JavaScript errors");
   report.checks.push("No browser JavaScript errors");
