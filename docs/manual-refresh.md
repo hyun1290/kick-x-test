@@ -82,6 +82,18 @@ npm run data:sync:all -- --status
 
 CLI는 Ctrl+C로 현재 단계 후 중지한다. 오류 코드는 키/원본 오류 본문 없이 출력된다. 정상 완료는 종료 코드 0, 중지/다른 작업 진행 중은 2, 설정/실행 오류는 1이다.
 
+### 첫 리그에서 `INVALID_EXTERNAL_ID`로 중지된 경우
+
+2026-10-03 수정 전 코드는 현재 시즌 응답을 평탄한 객체로 읽었다. BSD 공식 OpenAPI의 실제 계약은 `{league_id, season: {...}}`이며, 수정된 코드는 리그 ID를 확인하고 `season.id`를 사용한다. 현재 시즌이 없거나 날짜가 잘못된 응답은 적재하지 않고 중지한다. 원본 응답도 함께 보존한다.
+
+최신 `main`을 받은 뒤 아래 **전체 PowerShell 명령**으로 기존 작업을 재개한다. 환경변수 변경·SQL 재실행·작업 삭제는 필요하지 않다. 저장된 `seasons` 체크포인트부터 이어진다.
+
+```powershell
+cd C:\next\kickx
+git pull --ff-only origin main
+npm run data:sync:all -- --resume
+```
+
 ## 5. 수집하는 데이터
 
 | 대상 | 수집 범위 |

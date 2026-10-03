@@ -11,6 +11,8 @@ const statistics = { event_id: 100, count: 1, player_stats: [{ event_id: 100, pl
 const lineup = { event_id: 100, lineup_status: "confirmed", lineups: { home: { team_id: 1, players: [player], substitutes: [] } } };
 const incidents = { event_id: 100, incidents: [{ type: "goal", minute: 20, player_id: 8, is_home: true }] };
 const legacy = [{ event: { id: 100 }, player: { id: 9 }, penalty_save: 1 }];
+// CurrentSeasonV2Schema and _SeasonSchema from BSD's /api/schema/?format=json.
+const currentSeason = { league_id: 1, season: { id: 1058, name: "2026/27", year: 2026, start_date: "2026-08-01", end_date: "2027-06-30", is_current: true, stages: [] } };
 test("bulk discovers the five current seasons and partitions the complete calendar without gaps", async () => {
   assert.deepEqual(initialTasks().map(t => t.payload.league), [1, 3, 4, 5, 6]);
   const windows = seasonWindows("2026-08-01", "2027-06-30");
@@ -20,13 +22,44 @@ test("bulk discovers the five current seasons and partitions the complete calend
     if (i) assert.equal(Date.parse(windows[i].from) - Date.parse(windows[i - 1].to), 86400000);
   }
   for (const pair of [["2026-02-30", "2026-03-01"], ["2027-06-01", "2026-08-01"], ["2025-01-01", "2027-01-01"]]) assert.throws(() => seasonWindows(...pair), /INVALID_SEASON_DATES/);
-  const api = { get: async path => path.endsWith("/season/") ? { id: 1058, year: 2026, start_date: "2026-08-01", end_date: "2027-06-30", is_current: true } : { id: 1, name: "Test league" } };
+  const api = { get: async path => path.endsWith("/season/") ? currentSeason : { id: 1, name: "Test league" } };
   const checkpoint = await processBulkTask(api, initialTasks()[0], "2026-10-02");
   assert.equal(checkpoint.done, false); assert.equal(checkpoint.batch, null);
   const done = await processBulkTask(api, { kind: "league", payload: checkpoint.payload }, "2026-10-02");
   assert.equal(done.batch.coverage[0].provider_season_id, 1058);
   assert.equal(done.children.length, windows.length + 1);
+  assert.deepEqual(done.entities[0].raw.currentSeason, currentSeason);
   await assert.rejects(processBulkTask(api, { kind: "league", payload: checkpoint.payload }, "2028-01-01"), /CURRENT_SEASON_UNAVAILABLE/);
+});
+test("current season response rejects foreign leagues, absent seasons and invalid calendar data before scheduling writes", async () => {
+  const job = { kind: "league", payload: { league: 1, phase: "seasons", detail: { id: 1, name: "Test league" } } };
+  const cases = [
+    [{ ...currentSeason, league_id: 3 }, "UNEXPECTED_LEAGUE"],
+    [{ league_id: 1, season: null }, "CURRENT_SEASON_UNAVAILABLE"],
+    [{ league_id: 1 }, "INVALID_CURRENT_SEASON_RESPONSE"],
+    [{ league_id: 1, season: [] }, "INVALID_CURRENT_SEASON_RESPONSE"],
+    [{ ...currentSeason, season: { ...currentSeason.season, id: "1058" } }, "INVALID_EXTERNAL_ID"],
+    [{ ...currentSeason, season: { ...currentSeason.season, is_current: false } }, "CURRENT_SEASON_UNAVAILABLE"],
+    [{ ...currentSeason, season: { ...currentSeason.season, start_date: null } }, "INVALID_SEASON_DATES"],
+    [{ ...currentSeason, season: { ...currentSeason.season, start_date: "2026-02-30" } }, "INVALID_SEASON_DATES"],
+  ];
+  for (const [response, code] of cases) await assert.rejects(processBulkTask({ get: async () => response }, job, "2026-10-03"), new RegExp(code));
+});
+test("worker resumes a stored seasons checkpoint and commits the wrapped BSD response", async () => {
+  const calls = [];
+  const db = { rpc: async (name, data) => {
+    calls.push({ name, data });
+    return { data: name === "claim_football_bulk" ? { state: "claimed", token: "lease", task: { kind: "league", label: "프리미어리그", payload: { league: 1, phase: "seasons", detail: { id: 1, name: "Test league" } } }, today: "2026-10-03" } : null };
+  } };
+  const result = await stepBulkRun(db, "run", "secret", { fetchImpl: async url => {
+    assert.equal(new URL(url).pathname, "/api/v2/leagues/1/season/");
+    return Response.json(currentSeason);
+  } });
+  assert.equal(result.state, "progress");
+  assert.equal(calls.at(-1).name, "finish_football_bulk");
+  assert.equal(calls.at(-1).data.outcome.batch.coverage[0].provider_season_id, 1058);
+  assert.ok(calls.at(-1).data.outcome.children.some(t => t.kind === "teams"));
+  assert.equal(calls.filter(c => c.name === "fail_football_bulk").length, 0);
 });
 test("roster refresh detaches only after a complete nonempty snapshot; team paging preserves membership", async () => {
   const job = { kind: "teams", label: "teams", payload: { context, offset: 0, seen: [] } };

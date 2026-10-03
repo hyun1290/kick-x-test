@@ -47,9 +47,13 @@
 - ESLint, TypeScript/프로덕션 build, 단위 테스트 **63개** 통과.
 - 임시 PGlite에서 4개 마이그레이션과 계정 RLS·기존 수집·BSD 정정/중복·전체 수집 SQL 검사 통과. GitHub CI에는 같은 SQL을 PostgreSQL 17에서 검사하도록 연결했다.
 - Chromium에서 **23경로×PC/모바일 2해상도** 확인. 관리자 수동 시작→현재 요청 후 중지→페이지 새로고침→명시적 재개→완료 흐름과 가로 넘침/JS 오류 없음 확인.
-- 의존성 수정 후 `npm audit`: 알려진 경고 0건(점검 당시 결과).
+- 이전 의존성 수정 직후의 `npm audit`은 0건이었지만, 2026-10-03 재점검에서는 `braces`의 깊은 패턴 처리 취약점과 이를 사용하는 개발 도구까지 7개 high 경고가 보고됐다. 사용자 PC는 8건을 보고했다. 당시 최신 `braces` 3.0.3에도 패치가 없으며, `npm audit fix --force`가 제안하는 Tailwind 4 전환/ESLint 설정 하향은 이번 수집 오류 수정에 포함하지 않는다. [공식 공지](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm). 실제 입력 패턴을 받는 경로와 패치 가능 여부는 별도 확인할 과제다.
 - 새 CLI를 운영 키 없는 환경에서 실행했을 때 `MISSING_INGESTION_DATABASE_CONFIG`로 정상 차단됨. 실제 BSD 전체 수집·운영 DB 반영을 했다는 의미가 아니다.
 
 브라우저 관리자 흐름은 테스트용 응답으로 확인했고, SQL은 임시 DB로 검증했다. 실제 사용자 DB에서의 전체 호출/누락률·Google 로그인·배포 서버 환경 설정은 별도 확인이 필요하다. 키는 채팅에 붙이지 않고 사용자 실행 환경에 유지한다.
 
 구체적인 실행: [manual-refresh.md](manual-refresh.md). 남은 기능과 결정표: [next-steps.md](next-steps.md).
+
+## 첫 전체 수집 오류 보정 (2026-10-03)
+
+사용자 실행은 첫 리그의 현재 시즌 조회 후 `INVALID_EXTERNAL_ID`, `rows_written=0`으로 중지됐다. 코드가 문서의 시즌 객체 예제를 전체 응답으로 가정한 것이 원인이다. 공개 OpenAPI의 `CurrentSeasonV2Schema`와 대조해 `{league_id, season}` 구조로 수정했고, 다른 리그/현재 시즌 없음/잘못된 ID·날짜를 검증하도록 보완했다. 65개 단위 테스트·린트·프로덕션 빌드가 통과했다. 기존 큐의 `seasons` 단계 재개와 DB 저장 요청도 회귀 테스트로 검증했다. 운영 키를 사용한 재개 결과는 사용자 실행 후 확인해야 한다.

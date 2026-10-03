@@ -36,15 +36,20 @@ export async function processBulkTask(api, job, today) {
       assertId(detail.id, p.league, "UNEXPECTED_LEAGUE");
       return advance({ ...p, detail, phase: "seasons" });
     }
-    const selected = await api.get(`/api/v2/leagues/${p.league}/season/`);
+    // OpenAPI CurrentSeasonV2Schema wraps the active season and echoes the league ID.
+    const currentSeason = await api.get(`/api/v2/leagues/${p.league}/season/`);
+    assertId(currentSeason?.league_id, p.league, "UNEXPECTED_LEAGUE");
+    const selected = currentSeason.season;
+    if (selected === null) throw new SyncError("CURRENT_SEASON_UNAVAILABLE");
+    if (!selected || typeof selected !== "object" || Array.isArray(selected)) throw new SyncError("INVALID_CURRENT_SEASON_RESPONSE");
     externalId(selected.id);
-    if (selected.is_current === false || selected.start_date > today || selected.end_date < today) throw new SyncError("CURRENT_SEASON_UNAVAILABLE");
+    const windows = seasonWindows(selected.start_date, selected.end_date);
+    if (selected.is_current !== true || selected.start_date > today || selected.end_date < today) throw new SyncError("CURRENT_SEASON_UNAVAILABLE");
     const seasons = { league_id: p.league, seasons: [selected] };
     const context = { league: p.league, seasonId: selected.id, seasonYear: selected.year, leagueName: p.detail.name };
-    const windows = seasonWindows(selected.start_date, selected.end_date);
     const batch = normalizeBatch("leagues", { ...p.detail, season: seasons }, context);
     return result(batch, [task(`teams:${p.league}:0`, "teams", 10, { context, offset: 0, seen: [] }, `${p.detail.name} 구단`), ...windows.map(w => fixtureTask(context, w))], {
-      entities: [source("league", p.league, { detail: p.detail, seasons })],
+      entities: [source("league", p.league, { detail: p.detail, currentSeason, seasons })],
     });
   }
   const c = p.context;
