@@ -2,15 +2,19 @@
 import { Select } from "./select";
 import { useLeagueOptions } from "./options";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useMemo, useState, type CSSProperties } from "react";
 import { CalendarDays, ChevronLeft, ChevronRight, RotateCcw, Search } from "lucide-react";
 import { usePlatform } from "./provider";
 import { useCatalogPage } from "./catalog";
 import type { Fixture } from "@/lib/kickx/types";
-import { DataEmpty, PageHeading, Tabs, TeamBadge } from "./ui";
+import { DataEmpty, LeagueMark, PageHeading, Tabs, TeamBadge } from "./ui";
+import { clubIdentity } from "@/lib/kickx/club-identity";
 import { dateText } from "@/lib/kickx/data";
 import { fixtureGroup, fixtureStatus, koreanDay } from "@/lib/kickx/fixtures";
 
+const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
+/** Weekday for a KST calendar day string (YYYY-MM-DD). */
+const weekday = (day: string) => { const d = new Date(day + "T00:00:00Z"); return Number.isNaN(d.getTime()) ? "" : WEEKDAYS[d.getUTCDay()]; };
 const STATES: [string, string][] = [["all", "전체"], ["live", "진행 중"], ["scheduled", "예정"], ["finished", "종료"], ["other", "연기·기타"]];
 export function FixturesScreen() {
   const { data, status:platformStatus, getTeam, getLeague } = usePlatform();
@@ -62,7 +66,9 @@ export function FixturesScreen() {
         {[...groups].map(([date, fixtures]) => (
           <section className="match-day" key={date}>
             <h2>
-              {date.replaceAll("-", ". ")}
+              <span className="match-day-date num">{date.slice(5).replace("-", ".")}</span>
+              <span className={`match-day-week ${["토", "일"].includes(weekday(date)) ? "weekend" : ""}`}>{weekday(date)}요일</span>
+              <span className="match-day-year num">{date.slice(0, 4)}</span>
               {date === today && <span className="tag yellow">오늘</span>}
               <small className="num">{fixtures.length}경기</small>
             </h2>
@@ -71,17 +77,19 @@ export function FixturesScreen() {
                 const group = fixtureGroup(fixture.status);
                 const scored = fixture.homeScore != null && fixture.awayScore != null;
                 const homeWin = scored && fixture.homeScore! > fixture.awayScore!, awayWin = scored && fixture.awayScore! > fixture.homeScore!;
+                const homeId = clubIdentity(getTeam(fixture.home)), awayId = clubIdentity(getTeam(fixture.away));
+                const tint = { "--home": homeId?.primary ?? "var(--line-2)", "--away": awayId?.primary ?? "var(--line-2)" } as CSSProperties;
                 return (
-                  <li className={`match-row ${group}`} key={fixture.id}>
+                  <li className={`match-row ${group}`} key={fixture.id} style={tint}>
                     <div className="match-meta">
                       <time dateTime={fixture.startsAt} className="num">{dateText(fixture.startsAt).split(" ").slice(-1).join(" ")}</time>
-                      <span>{getLeague(fixture.leagueId)?.name || "리그 정보 없음"}</span>
+                      <span><LeagueMark league={getLeague(fixture.leagueId)} size="sm" />{getLeague(fixture.leagueId)?.name || "리그 정보 없음"}</span>
                     </div>
                     <Link href={"/community/clubs/" + fixture.home} className={`match-team home ${awayWin ? "lost" : ""}`}>
                       <span>{getTeam(fixture.home)?.name || "구단 정보 없음"}</span>
                       <TeamBadge id={fixture.home} />
                     </Link>
-                    <div className="match-score">
+                    <div className={`match-score ${scored ? "scored" : ""}`}>
                       <strong className="num">{scored ? `${fixture.homeScore} : ${fixture.awayScore}` : "VS"}</strong>
                       <span className={`match-status ${group}`}>{fixtureStatus(fixture.status)}</span>
                     </div>

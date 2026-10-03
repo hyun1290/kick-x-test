@@ -7,7 +7,7 @@ import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { ArrowRight, Eye, Flag, Heart, LoaderCircle, Lock, MessageCircle, Paperclip, Pencil, Search, Send, Trash2, Users } from "lucide-react";
 import { dateText, money, relativeTime } from "@/lib/kickx/data";
 import type { Post, Player } from "@/lib/kickx/types";
-import { leagueIdentity } from "@/lib/kickx/club-identity";
+import { clubIdentity, leagueIdentity } from "@/lib/kickx/club-identity";
 import { POST_LIMITS, validatePost, type PostField } from "@/lib/kickx/validation";
 import { usePlatform } from "./provider";
 import { useCatalogPage, useCatalogPlayer } from "./catalog";
@@ -17,6 +17,12 @@ const HUB = { club: "/community/clubs", player: "/community/players" } as const;
 function useTargetName() {
   const { getTeam, getPlayer } = usePlatform();
   return (post: Post) => (post.scope === "club" ? getTeam(post.target)?.name : getPlayer(post.target)?.name) || "—";
+}
+/** Club crest for club posts, or the player's club crest for player posts. */
+function PostTarget({ post, name }: { post: Post; name: string }) {
+  const { getPlayer } = usePlatform();
+  const crest = post.scope === "club" ? post.target : getPlayer(post.target)?.team ?? null;
+  return <span className="post-target"><ClubCrest id={crest} size="small" />{post.scope === "player" && <span className="post-target-kind">선수</span>}{name}</span>;
 }
 function PostList({ posts, filtered, showTarget = true }: { posts: Post[]; filtered?: boolean; showTarget?: boolean }) {
   const targetName = useTargetName();
@@ -28,7 +34,7 @@ function PostList({ posts, filtered, showTarget = true }: { posts: Post[]; filte
             <div className="post-row-main">
               <div className="post-meta">
                 <span className="category-tag">{p.category}</span>
-                {showTarget && <span className="post-target">{targetName(p)}</span>}
+                {showTarget && <PostTarget post={p} name={targetName(p)} />}
               </div>
               <h3>{p.title}{p.transaction && <span className="tag outline"><Paperclip size={12} />거래 첨부</span>}</h3>
               <p className="post-preview">{p.body}</p>
@@ -214,7 +220,7 @@ export function CommunityHub({ kind }: { kind: "club" | "player" }) {
               {lounges.length ? (
                 <div className="lounge-grid">
                   {lounges.map((p) => (
-                    <Link className="lounge-card hover-lift" href={`/community/players/${p.id}`} key={p.id}>
+                    <Link className="lounge-card hover-lift" href={`/community/players/${p.id}`} key={p.id} style={{ "--club": clubIdentity(getTeam(p.team))?.primary ?? "var(--ink)" } as CSSProperties}>
                       <PlayerPortrait player={p} size="md" />
                       <span className="lounge-card-text">
                         <strong>{p.name}</strong>
@@ -253,10 +259,13 @@ export function CommunityScreen({ scope }: { scope: "club" | "player" }) {
   const writable = !!found && !!data.session && isFan;
   const roster=useCatalogPage<Player>("players",{team:team?.id,size:12,sort:"name"});
   const squad=roster.enabled ? (team && roster.status === "ready" ? roster.data.items : []) : team ? data.players.filter(p=>p.team===team.id) : [];
+  const heroIdentity = clubIdentity(team ?? getTeam(player?.team));
+  const heroStyle = heroIdentity ? ({ "--club": heroIdentity.primary, "--club-2": heroIdentity.secondary } as CSSProperties) : undefined;
   return (
     <>
       <BackLink href={HUB[scope]} label={scope === "club" ? "구단 커뮤니티" : "선수 커뮤니티"} />
-      <section className={`lounge-hero ${scope}`}>
+      <section className={`lounge-hero ${scope}`} style={heroStyle}>
+        <span className="lounge-hero-code" aria-hidden="true">{heroIdentity?.code ?? ""}</span>
         <div className="lounge-hero-mark">
           {team ? <TeamBadge id={team.id} size="large" /> : player ? <PlayerPortrait player={player} size="lg" /> : <MessageCircle size={36} />}
         </div>

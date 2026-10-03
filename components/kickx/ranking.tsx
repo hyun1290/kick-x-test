@@ -1,9 +1,17 @@
 "use client";
 import { Select } from "./select";
-import { useState } from "react";
+import { useState, type CSSProperties } from "react";
+import { Medal } from "lucide-react";
+import { clubIdentity, luminance } from "@/lib/kickx/club-identity";
 import { dateText, money } from "@/lib/kickx/data";
 import { usePlatform } from "./provider";
 import { Change, DataEmpty, PageHeading, Tabs, TeamBadge } from "./ui";
+const MEDALS = ["GOLD", "SILVER", "BRONZE"];
+/** Avatar tinted with the supporter's club colour (presentation only). */
+function avatarStyle(team: Parameters<typeof clubIdentity>[0]) {
+  const id = clubIdentity(team);
+  return id ? ({ background: id.primary, color: luminance(id.primary) > 0.45 ? "#111110" : "#FFFFFF" } as CSSProperties) : undefined;
+}
 export function RankingScreen() {
   const { data, getTeam } = usePlatform();
   const [period, setPeriod] = useState("주간"),
@@ -31,6 +39,7 @@ export function RankingScreen() {
           {top.map((r) => (
             <li className={`podium-card place-${r.rank}`} key={r.userId}>
               <span className="podium-rank num">{String(r.rank).padStart(2, "0")}</span>
+              <span className="podium-medal"><Medal size={14} />{MEDALS[r.rank - 1] ?? `${r.rank}위`}</span>
               <div className="podium-user">
                 <TeamBadge id={r.team} size="large" />
                 <div>
@@ -78,7 +87,7 @@ export function RankingScreen() {
                   <td className={`rank-index num ${r.rank <= 3 ? "top" : ""}`}>{r.rank}</td>
                   <td>
                     <div className="rank-user">
-                      <span className="rank-avatar">{r.nickname.slice(0, 1)}</span>
+                      <span className="rank-avatar" style={avatarStyle(getTeam(r.team))}>{r.nickname.slice(0, 1)}</span>
                       <strong>{r.nickname}</strong>
                       {r.userId === data.session?.userId && <span className="tag yellow">나</span>}
                     </div>

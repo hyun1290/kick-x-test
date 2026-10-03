@@ -1,6 +1,7 @@
 "use client";
 import { Select } from "./select";
-import { useState } from "react";
+import { useState, type CSSProperties } from "react";
+import { clubIdentity, luminance } from "@/lib/kickx/club-identity";
 import { Plus, RotateCcw, Save, X } from "lucide-react";
 import { money } from "@/lib/kickx/data";
 import type { Player, Position } from "@/lib/kickx/types";
@@ -9,10 +10,18 @@ import { Change, DataEmpty, DisabledAction, MemberNotice, PageHeading, PlayerPor
 
 const ROWS: Position[] = ["FW", "MF", "DF", "GK"];
 const MAX_SQUAD = 11;
-function Jersey({ number, empty = false }: { number?: number | null; empty?: boolean }) {
+/** Kit colours from the presentation-only club identity; the number keeps readable contrast. */
+function kit(team: Parameters<typeof clubIdentity>[0]) {
+  const id = clubIdentity(team);
+  if (!id) return undefined;
+  const ink = Math.abs(luminance(id.primary) - luminance(id.secondary)) > 0.25 ? id.secondary : luminance(id.primary) > 0.4 ? "#111110" : "#FFFFFF";
+  return { "--kit": id.primary, "--kit-2": ink } as CSSProperties;
+}
+function Jersey({ number, empty = false, style }: { number?: number | null; empty?: boolean; style?: CSSProperties }) {
   return (
-    <svg className={`jersey ${empty ? "jersey-empty" : ""}`} viewBox="0 0 64 60" aria-hidden="true">
+    <svg className={`jersey ${empty ? "jersey-empty" : ""}`} viewBox="0 0 64 60" aria-hidden="true" style={style}>
       <path d="M22 4 L12 7 L2 18 L9 28 L15 24 L15 57 L49 57 L49 24 L55 28 L62 18 L52 7 L42 4 C40 9 36 11 32 11 C28 11 24 9 22 4 Z" />
+      {!empty && <path className="jersey-trim" d="M22 4 C24 9 28 11 32 11 C36 11 40 9 42 4" />}
       {!empty && number != null && <text x="32" y="44" textAnchor="middle">{number}</text>}
     </svg>
   );
@@ -46,7 +55,7 @@ export function Pitch({
   selected?: number | null;
   onSelect?: (i: number) => void;
 }) {
-  const { data, getPlayer } = usePlatform();
+  const { data, getPlayer, getTeam } = usePlatform();
   const rule = data.formations.find((f) => f.id === formation);
   // Unselected illustration: a neutral 4-3-3 silhouette, not a saved or default formation.
   const positions: Position[] = rule?.positions ?? ["GK", "DF", "DF", "DF", "DF", "MF", "MF", "MF", "FW", "FW", "FW"];
@@ -61,7 +70,7 @@ export function Pitch({
               const p = rule ? getPlayer(slots[i]) : undefined;
               const body = p ? (
                 <>
-                  <Jersey number={p.number} />
+                  <Jersey number={p.number} style={kit(getTeam(p.team))} />
                   <span className="pitch-name">{p.short || p.name}</span>
                   {!compact && <span className="pitch-value num">{money(p.price)}</span>}
                 </>
