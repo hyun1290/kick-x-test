@@ -1,14 +1,17 @@
 "use client";
+import { Select } from "./select";
+import { simple, useTeamOptions } from "./options";
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { ArrowRight, Eye, Flag, Heart, LoaderCircle, Lock, MessageCircle, Paperclip, Pencil, Search, Send, Trash2, Users } from "lucide-react";
 import { dateText, money, relativeTime } from "@/lib/kickx/data";
 import type { Post, Player } from "@/lib/kickx/types";
+import { leagueIdentity } from "@/lib/kickx/club-identity";
 import { POST_LIMITS, validatePost, type PostField } from "@/lib/kickx/validation";
 import { usePlatform } from "./provider";
 import { useCatalogPage, useCatalogPlayer } from "./catalog";
-import { BackLink, Change, DataEmpty, DisabledAction, Empty, MemberNotice, Modal, PageHeading, PlayerPortrait, SectionTitle, Tabs, TeamBadge } from "./ui";
+import { BackLink, Change, ClubCrest, LeagueMark, useClub, DataEmpty, DisabledAction, Empty, MemberNotice, Modal, PageHeading, PlayerPortrait, SectionTitle, Tabs, TeamBadge } from "./ui";
 
 const HUB = { club: "/community/clubs", player: "/community/players" } as const;
 function useTargetName() {
@@ -62,10 +65,7 @@ function PostBrowser({ posts, showTarget = true }: { posts: Post[]; showTarget?:
       </div>
       <div className="toolbar post-tools">
         <label className="input-search"><Search size={16} /><input aria-label="게시글 검색" value={q} onChange={(e) => setQ(e.target.value)} placeholder="제목, 내용, 작성자 검색" /></label>
-        <select aria-label="게시글 정렬" value={sort} onChange={(e) => setSort(e.target.value)}>
-          <option>최신순</option>
-          <option>인기순</option>
-        </select>
+        <Select label="게시글 정렬" value={sort} onChange={setSort} options={simple(["최신순", "인기순"])} variant="compact" />
       </div>
       <PostList posts={visible} filtered={posts.length > 0} showTarget={showTarget} />
     </section>
@@ -91,6 +91,24 @@ function PopularPosts({ posts }: { posts: Post[] }) {
         </ol>
       ) : <DataEmpty entity="인기 게시글" rows={3} />}
     </section>
+  );
+}
+function ClubTile({ id, mine, posts }: { id: string; mine: boolean; posts: number }) {
+  const { team, identity } = useClub(id);
+  if (!team) return null;
+  return (
+    <Link className={`club-tile ${mine ? "mine" : ""}`} href={`/community/clubs/${id}`} style={{ "--club": identity?.primary, "--club-2": identity?.secondary } as CSSProperties}>
+      <span className="club-tile-band" aria-hidden="true" />
+      <span className="club-tile-code" aria-hidden="true">{identity?.code}</span>
+      <ClubCrest id={id} size="large" />
+      <strong>{team.name}</strong>
+      {team.english && team.english !== team.name && <span className="club-tile-sub">{team.english}</span>}
+      <span className="club-tile-foot">
+        <small className="num"><MessageCircle size={12} />{posts}</small>
+        <span className="club-tile-go">라운지 <ArrowRight size={13} /></span>
+      </span>
+      {mine && <span className="tag yellow">MY CLUB</span>}
+    </Link>
   );
 }
 export function CommunityHub({ kind }: { kind: "club" | "player" }) {
@@ -139,19 +157,37 @@ export function CommunityHub({ kind }: { kind: "club" | "player" }) {
               <div className="section-title">
                 <h2>구단 라운지<span>{data.teams.length ? `${clubs.length}개 구단` : ""}</span></h2>
               </div>
-              <Tabs items={["전체", ...data.leagues.map((l) => l.name)]} value={league} onChange={setLeague} label="리그 선택" />
+              <div className="league-switch" role="group" aria-label="리그 선택">
+                {["전체", ...data.leagues.map((l) => l.name)].map((name) => {
+                  const l = data.leagues.find((x) => x.name === name);
+                  const n = l ? data.teams.filter((t) => t.leagueId === l.id).length : data.teams.length;
+                  return (
+                    <button key={name} type="button" aria-pressed={league === name} className={league === name ? "active" : ""} onClick={() => setLeague(name)}>
+                      {l ? <LeagueMark league={l} size="sm" /> : <span className="league-all">ALL</span>}
+                      <span>{l ? name : "전체 리그"}</span>
+                      <small className="num">{n}</small>
+                    </button>
+                  );
+                })}
+              </div>
               {clubs.length ? (
-                <div className="club-grid">
-                  {clubs.map((t) => (
-                    <Link className={`club-tile hover-lift ${t.id === myTeam?.id ? "mine" : ""}`} href={`/community/clubs/${t.id}`} key={t.id}>
-                      <TeamBadge id={t.id} size="large" />
-                      <strong>{t.name}</strong>
-                      <span>{t.english}</span>
-                      <small className="num">게시글 {count(t.id)}</small>
-                      {t.id === myTeam?.id && <span className="tag yellow">MY CLUB</span>}
-                    </Link>
-                  ))}
-                </div>
+                (league === "전체" ? data.leagues.filter((l) => clubs.some((t) => t.leagueId === l.id)) : [data.leagues.find((l) => l.name === league)!]).map((l) => {
+                  const mark = leagueIdentity(l);
+                  const group = clubs.filter((t) => t.leagueId === l.id);
+                  return (
+                    <section key={l.id} className="club-league" style={{ "--league": mark?.color, "--league-ink": mark?.ink } as CSSProperties}>
+                      <header className="club-league-head">
+                        <LeagueMark league={l} size="lg" />
+                        <strong>{l.name}</strong>
+                        {mark?.country && <span>{mark.country}</span>}
+                        <small className="num">{group.length}개 구단 · 게시글 {group.reduce((sum, t) => sum + count(t.id), 0)}</small>
+                      </header>
+                      <div className="club-grid">
+                        {group.map((t) => <ClubTile key={t.id} id={t.id} mine={t.id === myTeam?.id} posts={count(t.id)} />)}
+                      </div>
+                    </section>
+                  );
+                })
               ) : <div className="panel"><DataEmpty entity="구단 라운지" status={status === "ready" && data.teams.length ? "ready" : undefined} filtered={data.teams.length > 0} /></div>}
             </section>
             <aside><PopularPosts posts={posts} /></aside>
@@ -427,6 +463,7 @@ export function WritePost() {
   const lock = useRef(false);
   const summaryRef = useRef<HTMLDivElement>(null);
   const targets = value.scope === "club" ? data.teams : data.players;
+  const clubTargets = useTeamOptions(null).filter((o) => o.value === myTeam);
   const errors = validatePost(value, {
     myTeam,
     categories: data.categories,
@@ -517,19 +554,17 @@ export function WritePost() {
         <div className="form-grid">
           <div className={`field ${visible("target") ? "invalid" : ""}`}>
             <label htmlFor="post-target">대상 {value.scope === "club" ? "구단" : "선수"} <span className="req" aria-hidden="true">*</span></label>
-            <select {...fieldProps("target")} disabled={phase !== "edit" || !targets.length || (value.scope === "club" && !myTeam)} value={targets.some((t) => t.id === value.target) ? value.target : ""} onChange={(e) => update({ target: e.target.value })}>
-              <option value="">{value.scope === "club" ? "구단 선택" : "선수 선택"}</option>
-              {(value.scope === "club" ? data.teams.filter((t) => t.id === myTeam) : data.players).map((t) => <option value={t.id} key={t.id}>{t.name}</option>)}
-            </select>
+            <Select id="post-target" invalid={!!visible("target")} describedBy={`post-target-hint${visible("target") ? " post-target-error" : ""}`} onBlur={blur("target")}
+              disabled={phase !== "edit" || !targets.length || (value.scope === "club" && !myTeam)} value={targets.some((t) => t.id === value.target) ? value.target : ""}
+              onChange={(target) => update({ target })} placeholder={value.scope === "club" ? "구단 선택" : "선수 선택"}
+              options={value.scope === "club" ? clubTargets : data.players.map((p) => ({ value: p.id, label: p.name, hint: getTeam(p.team)?.name, icon: <ClubCrest id={p.team} size="small" /> }))} />
             <small id="post-target-hint">{value.scope === "club" ? (myTeam ? "응원 구단 라운지에만 작성할 수 있습니다." : <>응원 구단이 없습니다. <Link className="text-link" href="/mypage">마이페이지에서 설정</Link></>) : "선수 라운지에 게시됩니다."}</small>
             {fieldError("target")}
           </div>
           <div className={`field ${visible("category") ? "invalid" : ""}`}>
             <label htmlFor="post-category">주제 <span className="req" aria-hidden="true">*</span></label>
-            <select {...fieldProps("category")} disabled={phase !== "edit" || !data.categories.length} value={value.category} onChange={(e) => update({ category: e.target.value })}>
-              <option value="">주제 선택</option>
-              {data.categories.map((c) => <option key={c}>{c}</option>)}
-            </select>
+            <Select id="post-category" invalid={!!visible("category")} describedBy={`post-category-hint${visible("category") ? " post-category-error" : ""}`} onBlur={blur("category")}
+              disabled={phase !== "edit" || !data.categories.length} value={value.category} onChange={(category) => update({ category })} placeholder="주제 선택" options={simple(data.categories)} />
             <small id="post-category-hint">경기 리뷰, 선수 분석, 거래 전략 등</small>
             {fieldError("category")}
           </div>
@@ -548,10 +583,9 @@ export function WritePost() {
         </div>
         <div className={`field attachment ${visible("transaction") ? "invalid" : ""}`}>
           <div className="label-row"><label htmlFor="post-transaction"><Paperclip size={15} /> 내 거래 내역 첨부</label><small>선택</small></div>
-          <select {...fieldProps("transaction")} disabled={phase !== "edit" || !data.member?.transactions.length} value={value.transaction} onChange={(e) => update({ transaction: e.target.value })}>
-            <option value="">첨부하지 않음</option>
-            {data.member?.transactions.map((t) => <option value={t.id} key={t.id}>{t.playerName} · {t.type === "buy" ? "매입" : "매각"} · {money(t.price)} P · {dateText(t.date, false)}</option>)}
-          </select>
+          <Select id="post-transaction" invalid={!!visible("transaction")} describedBy={`post-transaction-hint${visible("transaction") ? " post-transaction-error" : ""}`} onBlur={blur("transaction")}
+            disabled={phase !== "edit" || !data.member?.transactions.length} value={value.transaction} onChange={(transaction) => update({ transaction })} placeholder="첨부하지 않음"
+            options={[{ value: "", label: "첨부하지 않음" }, ...(data.member?.transactions.map((t) => ({ value: t.id, label: `${t.playerName} · ${t.type === "buy" ? "매입" : "매각"}`, hint: `${money(t.price)} P · ${dateText(t.date, false)}` })) ?? [])]} />
           <small id="post-transaction-hint">{data.member?.transactions.length ? "본인의 거래만 첨부할 수 있으며 게시글에 함께 공개됩니다." : "첨부할 수 있는 거래 내역이 없습니다."}</small>
           {fieldError("transaction")}
           {attached && (

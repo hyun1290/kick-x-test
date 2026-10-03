@@ -27,6 +27,7 @@ import { dateText, money, percent, unavailableAction } from "@/lib/kickx/data";
 import { tradeService } from "@/lib/kickx/trade";
 import type { DataStatus, Player, Position, SeriesPoint, TradeQuote } from "@/lib/kickx/types";
 import { usePlatform } from "./provider";
+import { clubIdentity, leagueIdentity, luminance, type CrestShape } from "@/lib/kickx/club-identity";
 
 /* ---------- Layout primitives ---------- */
 export function PageHeading({
@@ -124,29 +125,71 @@ export function Change({ value, size = "md" }: { value: number | null | undefine
     </span>
   );
 }
-function teamColor(color: string | null | undefined) {
-  return color && /^#[0-9a-f]{3,8}$/i.test(color) ? color : "#9a9a93";
+const CREST_PATHS: Record<CrestShape, string> = {
+  shield: "M6 4 H94 V58 C94 84 72 98 50 108 C28 98 6 84 6 58 Z",
+  heater: "M4 8 Q50 -4 96 8 V54 C96 86 70 100 50 110 C30 100 4 86 4 54 Z",
+  round: "M50 6 A50 50 0 1 1 49.99 6 Z",
+  square: "M16 6 H84 Q96 6 96 18 V94 Q96 106 84 106 H16 Q4 106 4 94 V18 Q4 6 16 6 Z",
+};
+// BSD team image path is unverified; logos only replace the generated crest after they load.
+const logoState = { failures: 0, successes: 0 };
+function teamLogo(id: string | null | undefined) {
+  const match = id?.match(/^bsd-(\d+)$/);
+  if (!match || (logoState.failures >= 4 && logoState.successes === 0)) return null;
+  return `https://sports.bzzoiro.com/img/team/${match[1]}/`;
 }
-export function TeamBadge({
-  id,
-  size = "normal",
-}: {
-  id: string | null;
-  size?: "small" | "normal" | "large";
-}) {
+export function useClub(id: string | null | undefined) {
   const { getTeam } = usePlatform();
   const team = getTeam(id);
+  return { team, identity: clubIdentity(team) };
+}
+/** Generated club crest (shape + pattern + code) with an optional real logo on top once it loads. */
+export function ClubCrest({ id, size = "normal", title }: { id: string | null; size?: "small" | "normal" | "large" | "xl"; title?: string }) {
+  const { team, identity } = useClub(id);
+  const clip = useId().replace(/:/g, "");
+  const logo = teamLogo(team?.id);
+  const [loaded, setLoaded] = useState<string | null>(null);
+  const [failed, setFailed] = useState<string | null>(null);
+  const showLogo = !!logo && loaded === logo && failed !== logo;
+  if (!team || !identity)
+    return <span className={`crest ${size} unknown`} title={title ?? "구단 정보 없음"} aria-hidden="true"><svg viewBox="0 0 100 112"><path d={CREST_PATHS.shield} className="crest-empty" /></svg></span>;
+  const { primary, secondary, shape, pattern, code } = identity;
+  const light = luminance(primary) > 0.55;
+  const ink = light ? "#111110" : "#ffffff";
+  const fontSize = code.length >= 4 ? 23 : code.length === 2 ? 36 : 30;
   return (
-    <span
-      className={`team-badge ${size}`}
-      style={{ "--team-color": teamColor(team?.color) } as CSSProperties}
-      title={team?.name || "구단 정보 없음"}
-    >
-      <span>{team?.code || team?.name.slice(0, 2) || "—"}</span>
+    <span className={`crest ${size} ${showLogo ? "has-logo" : ""}`} title={title ?? team.name} aria-hidden="true" style={{ "--club": primary, "--club-2": secondary } as CSSProperties}>
+      {logo && failed !== logo && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={logo} alt="" loading="lazy" className="crest-logo"
+          onLoad={() => { logoState.successes++; setLoaded(logo); }}
+          onError={() => { logoState.failures++; setFailed(logo); }} />
+      )}
+      <svg viewBox="0 0 100 112" className="crest-art">
+        <defs><clipPath id={clip}><path d={CREST_PATHS[shape]} /></clipPath></defs>
+        <g clipPath={`url(#${clip})`}>
+          <rect width="100" height="112" fill={primary} />
+          {pattern === "half" && <rect x="50" width="50" height="112" fill={secondary} />}
+          {pattern === "band" && <polygon points="0,78 78,0 100,0 100,20 20,112 0,112" fill={secondary} opacity=".92" />}
+          {pattern === "stripes" && [18, 42, 66].map((x) => <rect key={x} x={x} width="14" height="112" fill={secondary} opacity=".95" />)}
+          {pattern === "ring" && <path d={CREST_PATHS[shape]} fill="none" stroke={secondary} strokeWidth="16" />}
+        </g>
+        <path d={CREST_PATHS[shape]} fill="none" stroke="#111110" strokeWidth="4" vectorEffect="non-scaling-stroke" />
+        <text x="50" y={shape === "round" ? 66 : 64} textAnchor="middle" fontSize={fontSize} fill={ink}
+          stroke={light ? "#ffffff" : primary} strokeWidth="5" paintOrder="stroke" className="crest-code">{code}</text>
+      </svg>
     </span>
   );
 }
-/** Illustrated placeholder in the Yellow Playbook style. Never presented as a real photo. */
+export function TeamBadge({ id, size = "normal" }: { id: string | null; size?: "small" | "normal" | "large" }) {
+  return <ClubCrest id={id} size={size} />;
+}
+export function LeagueMark({ league, size = "md" }: { league: { name: string } | null | undefined; size?: "sm" | "md" | "lg" }) {
+  const mark = leagueIdentity(league);
+  if (!mark) return null;
+  return <span className={`league-mark ${size}`} style={{ "--league": mark.color, "--league-ink": mark.ink } as CSSProperties}>{mark.short}</span>;
+}
+/** Player photo on a club-coloured stage. Falls back to an illustrated silhouette (never presented as a real photo). */
 export function PlayerPortrait({
   player,
   size = "md",
@@ -154,18 +197,19 @@ export function PlayerPortrait({
   player: Player;
   size?: "sm" | "md" | "wide" | "lg" | "xl";
 }) {
-  const { getTeam } = usePlatform();
-  const team = getTeam(player.team);
+  const { identity } = useClub(player.team);
   const [failedPhoto, setFailedPhoto] = useState<string | null>(null);
+  const photo = player.photo && failedPhoto !== player.photo ? player.photo : null;
   return (
     <span
-      className={`portrait ${size}`}
-      style={{ "--team-color": teamColor(team?.color) } as CSSProperties}
+      className={`portrait ${size} ${photo ? "has-photo" : "no-photo"}`}
+      style={{ "--club": identity?.primary ?? "#8a8a83", "--club-2": identity?.secondary ?? "#ffffff" } as CSSProperties}
       aria-hidden="true"
     >
-      {player.photo && failedPhoto !== player.photo ? (
+      <span className="portrait-fx" />
+      {photo ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={player.photo} alt="" loading="lazy" onError={() => setFailedPhoto(player.photo ?? null)} />
+        <img src={photo} alt="" loading="lazy" decoding="async" onError={() => setFailedPhoto(player.photo ?? null)} />
       ) : (
         <svg viewBox="0 6 100 94" preserveAspectRatio="xMidYMax meet">
           <path className="portrait-body" d="M18 104 C19 80 31 70 50 69 C69 70 81 80 82 104 Z" />

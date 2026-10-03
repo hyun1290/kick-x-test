@@ -1,4 +1,6 @@
 "use client";
+import { Select } from "./select";
+import { useTeamOptions } from "./options";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -98,6 +100,7 @@ function ProfileForm({ onboarding = false }: { onboarding?: boolean }) {
   const lock = useRef(false);
   const nickname = draftName ?? data.session?.profile?.nickname ?? "";
   const team = draftTeam ?? data.session?.profile?.team ?? "";
+  const teamOptions = useTeamOptions("나중에 선택", "all", "");
   const canSave = status === "ready" && !!data.session;
   const dirty = !data.session?.profile || nickname !== data.session.profile.nickname || team !== (data.session.profile.team || "");
   async function save(event: React.FormEvent) {
@@ -124,10 +127,7 @@ function ProfileForm({ onboarding = false }: { onboarding?: boolean }) {
       </label>
       <label htmlFor="profile-team">
         <span id="profile-team-label">응원 구단</span>
-        <select id="profile-team" aria-labelledby="profile-team-label" aria-describedby="team-help" value={team} disabled={busy || !data.teams.length} onChange={(event) => setDraftTeam(event.target.value)}>
-          <option value="">나중에 선택</option>
-          {data.teams.map((t) => <option value={t.id} key={t.id}>{t.name}</option>)}
-        </select>
+        <Select id="profile-team" describedBy="team-help" value={team} disabled={busy || !data.teams.length} onChange={setDraftTeam} options={teamOptions} placeholder="나중에 선택" />
         <small id="team-help">{data.teams.length ? "응원 구단 라운지에서 글과 댓글을 작성할 수 있습니다." : "구단 정보가 준비되면 선택할 수 있습니다."}</small>
       </label>
       {error && <p className="form-error" role="alert">{error}</p>}

@@ -1,4 +1,5 @@
 "use client";
+import { Select } from "./select";
 import { useState } from "react";
 import { Plus, RotateCcw, Save, X } from "lucide-react";
 import { money } from "@/lib/kickx/data";
@@ -173,10 +174,7 @@ export function SquadScreen() {
             </div>
             <label className="squad-formation">
               <span className="sr-only">포메이션</span>
-              <select aria-label="포메이션" value={formation} disabled={!data.formations.length} onChange={(e) => changeFormation(e.target.value)}>
-                <option value="">포메이션 선택</option>
-                {data.formations.map((f) => <option value={f.id} key={f.id}>{f.name}</option>)}
-              </select>
+              <Select label="포메이션" value={formation} disabled={!data.formations.length} onChange={changeFormation} placeholder="포메이션 선택" options={data.formations.map((f) => ({ value: f.id, label: f.name, hint: `GK 1 · DF ${f.positions.filter((p) => p === "DF").length} · MF ${f.positions.filter((p) => p === "MF").length} · FW ${f.positions.filter((p) => p === "FW").length}` }))} />
             </label>
           </div>
           <Pitch slots={safeSlots} formation={formation || null} selected={selected} onSelect={(i) => setSelected(selected === i ? null : i)} />

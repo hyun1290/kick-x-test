@@ -1,4 +1,6 @@
 "use client";
+import { Select } from "./select";
+import { useLeagueOptions } from "./options";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { CalendarDays, ChevronLeft, ChevronRight, RotateCcw, Search } from "lucide-react";
@@ -14,6 +16,7 @@ export function FixturesScreen() {
   const { data, status:platformStatus, getTeam, getLeague } = usePlatform();
   const [league, setLeague] = useState("all"), [state, setState] = useState("all");
   const [day, setDay] = useState(""), [query, setQuery] = useState(""), [page, setPage] = useState(1);
+  const leagueOptions = useLeagueOptions();
   const results = useMemo(() => data.fixtures.filter((fixture) => {
     const home = data.teams.find((t) => t.id === fixture.home), away = data.teams.find((t) => t.id === fixture.away);
     return (league === "all" || fixture.leagueId === league) && (state === "all" || fixtureGroup(fixture.status) === state)
@@ -48,10 +51,7 @@ export function FixturesScreen() {
         </div>
         <div className="toolbar fixture-tools">
           <label className="input-search"><Search size={17} /><input aria-label="경기 구단 검색" placeholder="구단 이름 검색" maxLength={100} value={query} onChange={(e) => { setQuery(e.target.value); setPage(1); }} /></label>
-          <select aria-label="경기 리그" value={league} onChange={(e) => { setLeague(e.target.value); setPage(1); }}>
-            <option value="all">모든 리그</option>
-            {data.leagues.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
-          </select>
+          <Select label="경기 리그" value={league} onChange={(v) => { setLeague(v); setPage(1); }} options={leagueOptions} />
           <input type="date" aria-label="경기 날짜 (대한민국 시간)" value={day} onChange={(e) => { setDay(e.target.value); setPage(1); }} />
           <button className="button secondary" disabled={!filtered} onClick={reset}><RotateCcw size={15} />초기화</button>
         </div>

@@ -1,4 +1,6 @@
 "use client";
+import { Select } from "./select";
+import { simple } from "./options";
 import Link from "next/link";
 import { useState } from "react";
 import { History, Search, Wallet } from "lucide-react";
@@ -143,11 +145,7 @@ export function TransactionsScreen() {
           <Tabs items={["전체", "매입", "매각"]} value={tab} onChange={setTab} variant="segment" label="거래 유형" />
           <div className="toolbar">
             <label className="input-search"><Search size={16} /><input aria-label="거래 선수 검색" placeholder="거래 선수 검색" value={q} onChange={(e) => setQ(e.target.value)} /></label>
-            <select aria-label="거래 기간" value={period} onChange={(e) => setPeriod(e.target.value)}>
-              <option>전체 기간</option>
-              <option>최근 7일</option>
-              <option>최근 30일</option>
-            </select>
+            <Select label="거래 기간" value={period} onChange={setPeriod} options={simple(["전체 기간", "최근 7일", "최근 30일"])} variant="compact" />
           </div>
         </div>
         <div className="table-scroll">

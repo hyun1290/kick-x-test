@@ -1,10 +1,13 @@
 "use client";
+import { Select } from "./select";
+import { POSITION_OPTIONS, useTeamOptions } from "./options";
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { ArrowRight, ArrowUpRight, BookOpen, ChevronDown, Search, Shield, X } from "lucide-react";
+import { ArrowRight, ArrowUpRight, BookOpen, ChevronDown, Search, Shield, TrendingUp, X } from "lucide-react";
 import { dateText, money } from "@/lib/kickx/data";
 import { fixtureGroup, fixtureStatus, selectFeaturedFixtures } from "@/lib/kickx/fixtures";
 import type { Player } from "@/lib/kickx/types";
+import { clubIdentity } from "@/lib/kickx/club-identity";
 import { usePlatform } from "./provider";
 import { useCatalogPage } from "./catalog";
 import { Change, DataEmpty, Modal, PlayerIdentity, PlayerPortrait, PositionBadge, Sparkline, TeamBadge, WatchButton } from "./ui";
@@ -119,8 +122,8 @@ function WatchPanel() {
               <PlayerPortrait player={player} size="xl" />
               <span className="dash-watch-text">
                 <strong>{player.short || player.name}</strong>
-                <span>{getTeam(player.team)?.code || "—"} · <b className="num">{money(player.price)}</b></span>
-                <Change value={player.change} />
+                <span>{clubIdentity(getTeam(player.team))?.code || "—"}{player.price != null ? <> · <b className="num">{money(player.price)}</b></> : player.position ? ` · ${player.position}` : ""}</span>
+                {player.price != null ? <Change value={player.change} /> : <small className="value-pending">가치 산정 전</small>}
               </span>
             </Link>
           ))}
@@ -163,6 +166,7 @@ export function HomeScreen() {
   const [sort, setSort] = useState("default");
   const [limit, setLimit] = useState(10);
   const [guideOpen, setGuideOpen] = useState(false);
+  const teamOptions = useTeamOptions("소속 구단 전체");
   const member = data.member?.financialReady === false ? null : data.member;
   const filtered = !!search || position !== "all" || team !== "all";
   const results = useMemo(() => data.players.filter(player => {
@@ -180,6 +184,8 @@ export function HomeScreen() {
   const status=remote.enabled ? remote.status : platformStatus;
   const total=remote.enabled ? remote.data.total : results.length;
   const visible=remote.enabled ? (remote.status === "ready" ? remote.data.items : []) : results.slice(0,limit);
+  // Value columns only when any visible player has a computed value; otherwise show real imported stats.
+  const valued = !visible.length || visible.some(p => p.price != null);
   const known = data.players.filter(p => p.change != null);
   const rising = [...known].filter(p => (p.change ?? 0) > 0).sort((a, b) => (b.change ?? 0) - (a.change ?? 0)).slice(0, 5);
   const falling = [...known].filter(p => (p.change ?? 0) < 0).sort((a, b) => (a.change ?? 0) - (b.change ?? 0)).slice(0, 5);
@@ -204,21 +210,9 @@ export function HomeScreen() {
               <input aria-label="선수 이름 검색" placeholder="선수 이름을 검색하세요." maxLength={100} value={query} onChange={event => setQuery(event.target.value)} />
               {query && <button aria-label="검색어 지우기" type="button" onClick={() => { setQuery(""); update(() => setSearch("")); }}><X size={16} /></button>}
             </label>
-            <select aria-label="포지션" value={position} onChange={event => update(() => setPosition(event.target.value))}>
-              <option value="all">포지션 전체</option>
-              {["FW", "MF", "DF", "GK"].map(value => <option key={value}>{value}</option>)}
-            </select>
-            <select aria-label="소속 구단" value={team} onChange={event => update(() => setTeam(event.target.value))}>
-              <option value="all">소속 구단 전체</option>
-              {data.teams.map(club => <option key={club.id} value={club.id}>{club.name}</option>)}
-            </select>
-            <select aria-label="정렬 기준" value={sort} onChange={event => update(() => setSort(event.target.value))}>
-              <option value="default">정렬 기준</option>
-              <option value="high">가치 높은 순</option>
-              <option value="low">가치 낮은 순</option>
-              <option value="change">상승률 순</option>
-              <option value="performance">Performance 순</option>
-            </select>
+            <Select label="포지션" variant="bare" value={position} onChange={v => update(() => setPosition(v))} options={POSITION_OPTIONS} />
+            <Select label="소속 구단" variant="bare" value={team} onChange={v => update(() => setTeam(v))} options={teamOptions} />
+            <Select label="정렬 기준" variant="bare" value={sort} onChange={v => update(() => setSort(v))} options={[{ value: "default", label: "정렬 기준" }, { value: "high", label: "가치 높은 순" }, { value: "low", label: "가치 낮은 순" }, { value: "change", label: "상승률 순" }, { value: "performance", label: "Performance 순" }]} />
             <button type="submit" className="home-search-button yb-search-button">검색</button>
           </form>
           <div className="board-caption">
@@ -240,10 +234,22 @@ export function HomeScreen() {
                 <tr>
                   <th>선수</th>
                   <th className="hide-sm">포지션</th>
-                  <th className="numeric">현재 가치</th>
-                  <th className="numeric hide-sm">변동</th>
-                  <th className="hide-md">30일 추이</th>
-                  <th className="numeric hide-sm">Performance</th>
+                  {valued ? (
+                    <>
+                      <th className="numeric">현재 가치</th>
+                      <th className="numeric hide-sm">변동</th>
+                      <th className="hide-md">30일 추이</th>
+                      <th className="numeric hide-sm">Performance</th>
+                    </>
+                  ) : (
+                    <>
+                      <th className="hide-md">국적 · 나이</th>
+                      <th className="numeric hide-sm" title="수집된 경기 기준">경기</th>
+                      <th className="numeric hide-sm">골</th>
+                      <th className="numeric hide-sm">도움</th>
+                      <th className="numeric">가치</th>
+                    </>
+                  )}
                   <th className="cell-actions">관심</th>
                 </tr>
               </thead>
@@ -252,10 +258,22 @@ export function HomeScreen() {
                   <tr key={player.id}>
                     <td><PlayerIdentity player={player} size="wide" /></td>
                     <td className="hide-sm"><PositionBadge position={player.position} /></td>
-                    <td className="numeric strong yb-price">{money(player.price)}<span className="unit">P</span><span className="only-sm"><Change value={player.change} /></span></td>
-                    <td className="numeric hide-sm"><Change value={player.change} /></td>
-                    <td className="hide-md"><Sparkline values={player.history.map(point => point.value)} down={(player.change ?? 0) < 0} /></td>
-                    <td className="numeric hide-sm">{money(player.performance)}</td>
+                    {valued ? (
+                      <>
+                        <td className="numeric strong yb-price">{money(player.price)}<span className="unit">P</span><span className="only-sm"><Change value={player.change} /></span></td>
+                        <td className="numeric hide-sm"><Change value={player.change} /></td>
+                        <td className="hide-md"><Sparkline values={player.history.map(point => point.value)} down={(player.change ?? 0) < 0} /></td>
+                        <td className="numeric hide-sm">{money(player.performance)}</td>
+                      </>
+                    ) : (
+                      <>
+                        <td className="hide-md muted">{[player.country, player.age != null ? `${player.age}세` : null].filter(Boolean).join(" · ") || "—"}</td>
+                        <td className="numeric hide-sm">{money(player.statsScope === "imported_matches" ? player.importedMatches : null)}</td>
+                        <td className="numeric hide-sm">{money(player.goals)}</td>
+                        <td className="numeric hide-sm">{money(player.assists)}</td>
+                        <td className="numeric"><span className="value-pending">산정 전</span></td>
+                      </>
+                    )}
                     <td className="cell-actions"><WatchButton id={player.id} /></td>
                   </tr>
                 ))}
@@ -288,8 +306,19 @@ export function HomeScreen() {
           <Link className="button secondary small" href="/market">선수 시장 <ArrowRight size={15} /></Link>
         </div>
         <div className="movers-grid">
-          <MoverList title="상승 TOP 5" players={rising} tone="up" />
-          <MoverList title="하락 TOP 5" players={falling} tone="down" />
+          {rising.length || falling.length ? (
+            <>
+              <MoverList title="상승 TOP 5" players={rising} tone="up" />
+              <MoverList title="하락 TOP 5" players={falling} tone="down" />
+            </>
+          ) : (
+            <section className="movers-col movers-pending">
+              <span className="market-pending-icon" aria-hidden="true"><TrendingUp size={18} /></span>
+              <h3>가치 변동 집계 준비 중</h3>
+              <p>경기 기록으로 Performance가 계산되면 가장 크게 오르고 내린 선수가 여기에 표시됩니다.</p>
+              <Link className="button secondary small" href="/market">선수 시장 둘러보기 <ArrowRight size={14} /></Link>
+            </section>
+          )}
           <section className="movers-col trades-col">
             <h3>최근 내 거래</h3>
             {trades.length ? (

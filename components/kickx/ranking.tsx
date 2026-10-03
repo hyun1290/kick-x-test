@@ -1,4 +1,5 @@
 "use client";
+import { Select } from "./select";
 import { useState } from "react";
 import { dateText, money } from "@/lib/kickx/data";
 import { usePlatform } from "./provider";
@@ -58,10 +59,7 @@ export function RankingScreen() {
       <section className="panel flush">
         <div className="panel-head">
           <h2>전체 순위 <span className="muted num">{rows.length ? `${rows.length}명` : ""}</span></h2>
-          <select aria-label="랭킹 구단 필터" value={club} onChange={(e) => setClub(e.target.value)} className="compact-select">
-            <option>전체 구단</option>
-            <option disabled={!myTeam}>내 응원 구단</option>
-          </select>
+          <Select label="랭킹 구단 필터" value={club} onChange={setClub} variant="compact" options={[{ value: "전체 구단", label: "전체 구단" }, { value: "내 응원 구단", label: "내 응원 구단", disabled: !myTeam, hint: myTeam ? undefined : "응원 구단 미설정" }]} />
         </div>
         <div className="table-scroll">
           <table className="data-table ranking-table">

@@ -1,12 +1,16 @@
 "use client";
+import { Select } from "./select";
+import { useLeagueOptions, useTeamOptions } from "./options";
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import { ArrowRight, ChevronLeft, ChevronRight, LayoutGrid, List, MessageCircle, RotateCcw, Search, Sparkles } from "lucide-react";
 import { dateText, money, seriesForDays } from "@/lib/kickx/data";
+import { leagueIdentity } from "@/lib/kickx/club-identity";
 import type { Player } from "@/lib/kickx/types";
 import { usePlatform } from "./provider";
 import { useCatalogPage, useCatalogPlayer } from "./catalog";
+import { PlayerCard } from "./player-card";
 import {
   BackLink,
   Change,
@@ -21,43 +25,75 @@ import {
   Sparkline,
   StatCard,
   Tabs,
-  TeamBadge,
   TradeButton,
   WatchButton,
+  ClubCrest,
+  LeagueMark,
+  useClub,
 } from "./ui";
 
 const PAGE = 12;
+const SORT_OPTIONS = [
+  { value: "price", label: "가치 높은 순" },
+  { value: "price-asc", label: "가치 낮은 순" },
+  { value: "change", label: "상승률 순" },
+  { value: "performance", label: "Performance 순" },
+  { value: "volume", label: "거래량 순" },
+  { value: "name", label: "이름 순" },
+];
 function compareNumber(a: number | null, b: number | null, ascending = false) {
   if (a == null) return b == null ? 0 : 1;
   if (b == null) return -1;
   return ascending ? a - b : b - a;
 }
-function PlayerCard({ player }: { player: Player }) {
-  const { data, getTeam } = usePlatform();
-  const owned = data.member?.holdings.some((h) => h.playerId === player.id);
+function MarketHero({ league, onLeague }: { league: string; onLeague: (id: string) => void }) {
+  const { data } = usePlatform();
+  const featured = [...data.players].sort((a, b) => Number(!!b.photo) - Number(!!a.photo)).slice(0, 3);
+  const total = data.playerTotal ?? data.players.length;
   return (
-    <article className="player-card">
-      <Link href={`/players/${player.id}`} className="player-card-photo" aria-label={`${player.name} 상세 보기`}>
-        <PlayerPortrait player={player} size="xl" />
-        <span className="player-card-badges">
-          <PositionBadge position={player.position} />
-          {owned && <span className="tag ink">보유</span>}
-        </span>
-      </Link>
-      <span className="player-card-watch"><WatchButton id={player.id} /></span>
-      <div className="player-card-body">
-        <Link href={`/players/${player.id}`}><h3>{player.name}</h3></Link>
-        <p><TeamBadge id={player.team} size="small" />{getTeam(player.team)?.name || "소속 정보 없음"}</p>
-        <div className="player-card-price">
-          <strong className="num">{money(player.price)}<span className="unit">P</span></strong>
-          <Change value={player.change} />
+    <>
+      <section className="market-hero" aria-labelledby="market-hero-title">
+        <div className="market-hero-copy">
+          <span className="eyebrow plain">PLAYER EXCHANGE · BIG FIVE</span>
+          <h2 id="market-hero-title">유럽 5대 리그의 선수를<br /><em>한 곳에서.</em></h2>
+          <p>실제 경기 기록으로 움직이는 선수 가치. 관심 선수를 모아두고 가치가 열리는 순간을 기다리세요.</p>
+          <dl className="market-hero-stats">
+            <div><dt>등록 선수</dt><dd className="num">{total ? money(total) : "—"}</dd></div>
+            <div><dt>구단</dt><dd className="num">{data.teams.length || "—"}</dd></div>
+            <div><dt>리그</dt><dd className="num">{data.leagues.length || "—"}</dd></div>
+            <div><dt>최근 갱신</dt><dd className="num small">{dateText(data.updatedAt)}</dd></div>
+          </dl>
         </div>
-        <div className="player-card-foot">
-          <span>Performance <b className="num">{money(player.performance)}</b></span>
-          <Sparkline values={player.history.slice(-14).map((v) => v.value)} down={(player.change ?? 0) < 0} />
+        <div className="market-hero-stack" aria-hidden="true">
+          {featured.map((p, i) => (
+            <Link key={p.id} href={`/players/${p.id}`} tabIndex={-1} className={`hero-card hero-card-${i}`}>
+              <PlayerPortrait player={p} size="xl" />
+              <span className="hero-card-plate"><b>{p.short || p.name}</b><small>{p.position ?? "—"}{p.number != null ? ` · #${p.number}` : ""}</small></span>
+            </Link>
+          ))}
         </div>
-      </div>
-    </article>
+      </section>
+      {data.leagues.length > 0 && (
+        <div className="league-tiles" role="group" aria-label="리그로 선수 보기">
+          <button type="button" className={`league-tile all ${league === "all" ? "active" : ""}`} aria-pressed={league === "all"} onClick={() => onLeague("all")}>
+            <span className="league-tile-mark">ALL</span>
+            <strong>전체 리그</strong>
+            <small className="num">{data.teams.length}개 구단</small>
+          </button>
+          {data.leagues.map((l) => {
+            const mark = leagueIdentity(l);
+            return (
+              <button key={l.id} type="button" className={`league-tile ${league === l.id ? "active" : ""}`} aria-pressed={league === l.id} onClick={() => onLeague(l.id)}
+                style={{ "--league": mark?.color, "--league-ink": mark?.ink } as CSSProperties}>
+                <span className="league-tile-mark">{mark?.short}</span>
+                <strong>{l.name}</strong>
+                <small className="num">{mark?.country ? `${mark.country} · ` : ""}{data.teams.filter((t) => t.leagueId === l.id).length}개 구단</small>
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </>
   );
 }
 export function PlayerList({ market = false }: { market?: boolean }) {
@@ -68,9 +104,11 @@ export function PlayerList({ market = false }: { market?: boolean }) {
     [team, setTeam] = useState(sp.get("team") || "all"),
     [pos, setPos] = useState("전체");
   const [sort, setSort] = useState(market ? "volume" : "price"),
-    [view, setView] = useState(market ? "list" : "grid"),
+    [viewChoice, setView] = useState<string | null>(null),
     [tab, setTab] = useState(sp.get("watchlist") === "1" ? "관심 선수" : "전체 선수"),
     [page, setPage] = useState(1);
+  const leagueOptions = useLeagueOptions();
+  const teamOptions = useTeamOptions("모든 구단", league);
   useEffect(() => {
     setQ(sp.get("q") || "");
     setTeam(sp.get("team") || "all");
@@ -93,6 +131,7 @@ export function PlayerList({ market = false }: { market?: boolean }) {
       );
     })
     .sort((a, b) => {
+      if (sort === "name") return a.name.localeCompare(b.name);
       const key = (sort === "price-asc" ? "price" : sort) as "price" | "change" | "performance" | "volume";
       return compareNumber(a[key], b[key], sort === "price-asc");
     });
@@ -110,6 +149,7 @@ export function PlayerList({ market = false }: { market?: boolean }) {
     setTab("전체 선수");
     setPage(1);
   };
+  const view = viewChoice ?? (market && data.market ? "list" : "grid");
   const movers = [...data.players].filter((p) => p.change != null).sort((a, b) => Math.abs(b.change!) - Math.abs(a.change!)).slice(0, 4);
   return (
     <>
@@ -121,12 +161,23 @@ export function PlayerList({ market = false }: { market?: boolean }) {
       />
       {market && (
         <>
-          <div className="stat-grid market-stats">
-            <StatCard label="전체 거래량" value={money(data.market?.volume)} unit="건" hint={data.market?.calculatedAt ? `${dateText(data.market.calculatedAt)} 집계` : "집계 대기"} />
-            <StatCard label="상승 선수" value={<span className="up">{money(data.market?.rising)}</span>} unit="명" hint="직전 갱신 대비" />
-            <StatCard label="하락 선수" value={<span className="down">{money(data.market?.falling)}</span>} unit="명" hint="직전 갱신 대비" />
-            <StatCard label="거래 가능 선수" value={money(data.market ? data.players.filter((p) => !p.status && p.price != null).length || null : null)} unit="명" hint={`전체 ${data.playerTotal ?? data.players.length}명`} tone="yellow" />
-          </div>
+          <MarketHero league={league} onLeague={(id) => { setLeague(id); setTeam("all"); setPage(1); }} />
+          {data.market ? (
+            <div className="stat-grid market-stats">
+              <StatCard label="전체 거래량" value={money(data.market.volume)} unit="건" hint={data.market.calculatedAt ? `${dateText(data.market.calculatedAt)} 집계` : "집계 대기"} />
+              <StatCard label="상승 선수" value={<span className="up">{money(data.market.rising)}</span>} unit="명" hint="직전 갱신 대비" />
+              <StatCard label="하락 선수" value={<span className="down">{money(data.market.falling)}</span>} unit="명" hint="직전 갱신 대비" />
+              <StatCard label="거래 가능 선수" value={money(data.players.filter((p) => !p.status && p.price != null).length || null)} unit="명" hint={`전체 ${data.playerTotal ?? data.players.length}명`} tone="yellow" />
+            </div>
+          ) : (
+            <div className="market-pending" role="note">
+              <span className="market-pending-icon" aria-hidden="true"><Sparkles size={18} /></span>
+              <div>
+                <strong>선수 가치와 변동률은 산정 준비 중입니다</strong>
+                <span>실제 경기 기록으로 Performance가 계산되면 가치·상승/하락·거래량이 이곳에 집계됩니다. 지금은 선수 정보와 수집된 경기 기록을 탐색할 수 있어요.</span>
+              </div>
+            </div>
+          )}
           {movers.length > 0 && (
             <section className="market-movers" aria-labelledby="market-movers">
               <SectionTitle title="오늘의 움직임" meta="변동폭 상위" />
@@ -167,21 +218,9 @@ export function PlayerList({ market = false }: { market?: boolean }) {
             <Search size={17} />
             <input aria-label="선수 검색" placeholder="선수 · 구단 · 리그 검색" maxLength={100} value={q} onChange={(e) => { setQ(e.target.value); setPage(1); }} />
           </label>
-          <select aria-label="리그 필터" value={league} onChange={(e) => { setLeague(e.target.value); setTeam("all"); setPage(1); }}>
-            <option value="all">모든 리그</option>
-            {data.leagues.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
-          </select>
-          <select aria-label="구단 필터" value={team} onChange={(e) => { setTeam(e.target.value); setPage(1); }}>
-            <option value="all">모든 구단</option>
-            {data.teams.filter((t) => league === "all" || t.leagueId === league).map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
-          </select>
-          <select aria-label="선수 정렬" value={sort} onChange={(e) => { setSort(e.target.value); setPage(1); }}>
-            <option value="price">가치 높은 순</option>
-            <option value="price-asc">가치 낮은 순</option>
-            <option value="change">상승률 순</option>
-            <option value="performance">Performance 순</option>
-            <option value="volume">거래량 순</option>
-          </select>
+          <Select label="리그 필터" value={league} onChange={(v) => { setLeague(v); setTeam("all"); setPage(1); }} options={leagueOptions} />
+          <Select label="구단 필터" value={team} onChange={(v) => { setTeam(v); setPage(1); }} options={teamOptions} />
+          <Select label="선수 정렬" value={sort} onChange={(v) => { setSort(v); setPage(1); }} options={SORT_OPTIONS} />
         </div>
         <div className="result-line">
           <div className="chips" role="group" aria-label="포지션 필터">
@@ -218,7 +257,7 @@ export function PlayerList({ market = false }: { market?: boolean }) {
                     <tr key={p.id}>
                       <td><span className="row-identity"><WatchButton id={p.id} /><PlayerIdentity player={p} /></span></td>
                       <td className="hide-sm"><PositionBadge position={p.position} /></td>
-                      <td className="numeric strong">{money(p.price)}<span className="unit">P</span><span className="only-sm"><Change value={p.change} /></span></td>
+                      <td className="numeric strong">{p.price != null ? <>{money(p.price)}<span className="unit">P</span><span className="only-sm"><Change value={p.change} /></span></> : <span className="value-pending">산정 전</span>}</td>
                       <td className="numeric hide-sm"><Change value={p.change} /></td>
                       <td className="hide-md"><Sparkline values={p.history.map((v) => v.value)} down={(p.change ?? 0) < 0} /></td>
                       <td className="numeric hide-sm">{money(p.performance)}</td>
@@ -270,6 +309,7 @@ export function PlayerDetail() {
     [tab, setTab] = useState("최근 경기");
   const owned = data.member?.holdings.find((h) => h.playerId === p?.id);
   const team = getTeam(p?.team);
+  const detailClub = useClub(p?.team);
   const posts = data.posts.filter((post) => post.scope === "player" && post.target === p?.id).slice(0, 3);
   if (!p)
     return (
@@ -288,25 +328,39 @@ export function PlayerDetail() {
   return (
     <>
       <BackLink />
-      <section className="detail-hero">
+      <section className="detail-hero" style={{ "--club": detailClub.identity?.primary ?? "#55554f", "--club-2": detailClub.identity?.secondary ?? "#ffffff" } as CSSProperties}>
+        <span className="detail-hero-bg" aria-hidden="true" />
+        <span className="detail-hero-number num" aria-hidden="true">{p.number ?? ""}</span>
         <div className="detail-photo"><PlayerPortrait player={p} size="xl" /></div>
         <div className="detail-identity">
-          <span className="eyebrow">{getLeague(team?.leagueId)?.name || "PLAYER PROFILE"}</span>
+          <div className="detail-badges">
+            <ClubCrest id={p.team} size="large" />
+            {getLeague(team?.leagueId) && <LeagueMark league={getLeague(team?.leagueId)} size="md" />}
+          </div>
           <h1>{p.name}</h1>
-          <p className="detail-english">{p.english || "—"}</p>
+          {p.english && p.english !== p.name && <p className="detail-english">{p.english}</p>}
           <div className="detail-meta">
-            <span className="detail-club"><TeamBadge id={p.team} size="small" />{team?.name || "소속 정보 없음"}</span>
+            <span className="detail-club">{team?.name || "소속 정보 없음"}</span>
             <PositionBadge position={p.position} />
             <span>#{p.number ?? "—"}</span>
-            <span>{p.country || "—"}</span>
-            <span>{p.age != null ? `${p.age}세` : "—"}</span>
+            <span>{p.country || "국적 정보 없음"}</span>
+            <span>{p.age != null ? `${p.age}세` : "나이 정보 없음"}</span>
           </div>
         </div>
         <div className="detail-price">
-          <span>현재 선수 가치</span>
-          <strong className="num">{money(p.price)}<span className="unit">P</span></strong>
-          <Change value={p.change} size="lg" />
-          <small>최근 갱신 {dateText(p.updatedAt)}</small>
+          <span className="detail-price-label">현재 선수 가치</span>
+          {p.price != null ? (
+            <>
+              <strong className="num">{money(p.price)}<span className="unit">P</span></strong>
+              <Change value={p.change} size="lg" />
+            </>
+          ) : (
+            <div className="detail-pending">
+              <span className="pcard-pending-dot" aria-hidden="true" />
+              <div><strong>가치 산정 전</strong><small>Performance 계산이 연결되면 가치와 변동률이 표시됩니다.</small></div>
+            </div>
+          )}
+          <small className="detail-updated">최근 갱신 {dateText(p.updatedAt)}</small>
           <div className="detail-cta">
             <TradeButton player={p} side="buy" className="button primary large" label="매입하기" />
             <TradeButton player={owned ? p : undefined} side="sell" className="button secondary large" label="매각하기" />
@@ -316,7 +370,7 @@ export function PlayerDetail() {
         </div>
       </section>
       <div className="stat-grid detail-stats">
-        <StatCard label="최근 Performance" value={money(p.performance)} hint="최근 경기 기준" tone="yellow" />
+        <StatCard label="최근 Performance" value={money(p.performance)} hint={p.performance == null ? "계산 준비 중" : "최근 경기 기준"} tone="yellow" />
         <StatCard label={p.statsScope === "imported_matches" ? `수집된 ${p.importedMatches ?? 0}경기 득점 · 도움` : p.season ? `${p.season} 시즌 득점 · 도움` : "시즌 득점 · 도움"} value={`${money(p.goals)} · ${money(p.assists)}`} />
         <StatCard label="출전 시간" value={money(p.minutes)} unit="분" />
         <StatCard label="거래량" value={money(p.volume)} unit="건" />
