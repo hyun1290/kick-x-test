@@ -74,13 +74,13 @@ npm run dev
 npm run data:sync:all
 
 # 일시 중지/일일 한도 후 재개
-npm run data:sync:all -- --resume
+node scripts/sync-football-all.mjs --resume
 
 # 현재 상태 조회만 하기
-npm run data:sync:all -- --status
+node scripts/sync-football-all.mjs --status
 ```
 
-CLI는 Ctrl+C로 현재 단계 후 중지한다. 오류 코드는 키/원본 오류 본문 없이 출력된다. 정상 완료는 종료 코드 0, 중지/다른 작업 진행 중은 2, 설정/실행 오류는 1이다.
+CLI는 Ctrl+C로 현재 단계 후 중지한다. 오류 코드는 키/원본 오류 본문 없이 출력된다. 정상 완료 또는 정상 단일 단계 진단은 종료 코드 0, 중지/다른 작업 진행 중은 2, 설정/실행 오류는 1이다.
 
 ### 첫 리그에서 `INVALID_EXTERNAL_ID`로 중지된 경우
 
@@ -91,8 +91,21 @@ CLI는 Ctrl+C로 현재 단계 후 중지한다. 오류 코드는 키/원본 오
 ```powershell
 cd C:\next\kickx
 git pull --ff-only origin main
-npm run data:sync:all -- --resume
+node scripts/sync-football-all.mjs --resume
 ```
+
+### DB 오류 진단과 기존 작업 재개
+
+`BULK_DATABASE_ERROR`로 종료됐으면 최신 코드를 받은 후 아래 전체 PowerShell 명령으로 상태를 확인하고 **기존 작업의 한 단계만** 진단한다. SQL 재실행이나 작업 삭제는 하지 않는다. 재개 응답이 `busy`이면 다른 작업 또는 최대 90초의 점유권이 남아 있으므로, 점유권 만료 후 다시 실행한다. `cooldown`이면 표시된 `retry_at` 이후에 직접 재개한다.
+
+```powershell
+cd C:\next\kickx
+git pull --ff-only origin main
+node scripts/sync-football-all.mjs --status
+node scripts/sync-football-all.mjs --resume --once
+```
+
+진단 실행은 정상 처리 한 단계 후 종료한다. 전체 재개는 `node scripts/sync-football-all.mjs --resume`이다. 오류 출력의 `operation`은 실패한 DB 작업, `databaseCode`는 SQLSTATE/PostgREST 코드이며, `phase`/`eventId`는 해당 경기 처리 지점이다. DB 메시지·원본 응답·SQL·키는 출력하지 않는다. DB 저장 응답을 잃었을 때 실패 상태를 추가로 덮어쓰지 않으며, 다음 실행은 DB 체크포인트와 점유권을 기준으로 이어간다. 원인이 확정되지 않은 운영 DB 오류를 이 변경만으로 해결했다고 판단하지 않는다.
 
 ## 5. 수집하는 데이터
 

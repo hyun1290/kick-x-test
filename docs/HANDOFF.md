@@ -50,7 +50,8 @@ SQL은 4개 파일, 공개 스키마 테이블은 총 21개다. 이미 적용한
 
 ## 수집 계약과 주의사항
 
-- 리그 BSD ID는 1·3·4·5·6. 시즌 ID는 `/leagues/{id}/season/`의 `{league_id, season}` 응답에서 `season.id`로 실행마다 찾는다. 연도를 시즌 ID로 쓰지 않는다. 첫 리그에서 `INVALID_EXTERNAL_ID`로 중지된 이전 작업은 최신 코드에서 `npm run data:sync:all -- --resume`으로 이어간다. SQL 재적용은 필요 없다.
+- 리그 BSD ID는 1·3·4·5·6. 시즌 ID는 `/leagues/{id}/season/`의 `{league_id, season}` 응답에서 `season.id`로 실행마다 찾는다. 연도를 시즌 ID로 쓰지 않는다. 이전 작업은 최신 코드에서 `node scripts/sync-football-all.mjs --resume`으로 이어간다. Windows npm 인수 전달 누락을 피하려면 node를 직접 실행한다. SQL 재적용은 필요 없다.
+- 운영 전체 수집 중 `BULK_DATABASE_ERROR` 보고가 있었다. 정확한 운영 오류 원인은 아직 확인되지 않았다. CLI는 안전한 DB 작업명/코드와 경기 phase를 출력하며, `--resume --once`로 한 단계만 진단할 수 있다. DB 저장 실패 응답 뒤 추가 실패 기록으로 첫 오류를 가리지 않는다. `busy`는 점유 만료 후, `cooldown`은 retry_at 이후 수동 재개한다.
 - 현재 시즌 전체 날짜를 30일 구간으로 나누고 모든 페이지를 읽는다. 종료된 경기만 상세·통계·라인업·사건·v1 보완을 조회한다.
 - 원본/표준 통계/공개 요약은 구분한다. BSD 기본 0은 실제 0인지 미제공인지 검증되기 전 `unverified_zero`다.
 - 클린시트·출전 중 실점·자책골·카드 중복 처리는 계산 단계의 선행 작업이다. `calculation_ready=false`를 무시하지 않는다.
