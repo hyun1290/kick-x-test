@@ -43,10 +43,14 @@ export async function processBulkTask(api, job, today) {
     if (selected === null) throw new SyncError("CURRENT_SEASON_UNAVAILABLE");
     if (!selected || typeof selected !== "object" || Array.isArray(selected)) throw new SyncError("INVALID_CURRENT_SEASON_RESPONSE");
     externalId(selected.id);
-    const windows = seasonWindows(selected.start_date, selected.end_date);
+    const fullWindows = seasonWindows(selected.start_date, selected.end_date);
+    const shift = days => new Date(Date.parse(today) + days * 86400000).toISOString().slice(0, 10);
+    const windows = p.automatic
+      ? [{ from: [selected.start_date, shift(-7)].sort().at(-1), to: [selected.end_date, shift(21)].sort()[0] }]
+      : fullWindows;
     if (selected.is_current !== true || selected.start_date > today || selected.end_date < today) throw new SyncError("CURRENT_SEASON_UNAVAILABLE");
     const seasons = { league_id: p.league, seasons: [selected] };
-    const context = { league: p.league, seasonId: selected.id, seasonYear: selected.year, leagueName: p.detail.name };
+    const context = { league: p.league, seasonId: selected.id, seasonYear: selected.year, leagueName: p.detail.name, ...(p.automatic ? { automatic: true } : {}) };
     const batch = normalizeBatch("leagues", { ...p.detail, season: seasons }, context);
     return result(batch, [task(`teams:${p.league}:0`, "teams", 10, { context, offset: 0, seen: [] }, `${p.detail.name} 구단`), ...windows.map(w => fixtureTask(context, w))], {
       entities: [source("league", p.league, { detail: p.detail, currentSeason, seasons })],
