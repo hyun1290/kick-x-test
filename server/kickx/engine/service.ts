@@ -4,7 +4,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { calculatePerformance, RULE_VERSION } from "./performance";
 import { HttpError } from "../http";
 import { checkDatabase } from "../prototype";
-export async function calculatePlayer(db: SupabaseClient, playerId: string, actor: string, preview=false) {
+export async function calculatePlayer(db: SupabaseClient, playerId: string, actor: string | null, preview=false) {
  const stats=[];
  for(let offset=0;;offset+=500){
   const r=await db.from("football_match_stats").select("*,fixtures!inner(*,football_event_sources(*))").eq("player_id",playerId).order("fixture_id").range(offset,offset+499);

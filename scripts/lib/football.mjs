@@ -135,7 +135,7 @@ export function createFootballClient({key,budget=10,delay=1100,timeoutMs=20000,f
         requests++;
         let response;
         try { response=await fetchImpl(url,{headers:{Authorization:`Token ${key}`},signal:AbortSignal.timeout(timeoutMs),redirect:"error"}); }
-        catch {if(attempt<2) continue;throw new SyncError("PROVIDER_NETWORK_ERROR");}
+        catch(error) {if(error instanceof SyncError) throw error;if(attempt<2) continue;throw new SyncError("PROVIDER_NETWORK_ERROR");}
         const quota=response.headers.get("ratelimit");
         if(quota!=null) {
           try {

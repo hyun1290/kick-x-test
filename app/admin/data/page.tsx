@@ -1,4 +1,2 @@
-import { DataAdmin } from "@/components/kickx/admin";
-export default function Page() {
-  return <DataAdmin />;
-}
+import { redirect } from "next/navigation";
+export default function Page() { redirect("/admin"); }

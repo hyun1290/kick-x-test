@@ -1,34 +1,29 @@
 "use client";
 import Link from "next/link";
 import { useState, useRef } from "react";
-import { AlertTriangle, ArrowRight, Calculator, Database, FileClock, Flag, RefreshCw, Search, ShieldCheck, TrendingUp } from "lucide-react";
+import { ArrowRight, FileClock, Flag, Search, ShieldCheck, TrendingUp } from "lucide-react";
 import { dateText, money, relativeTime } from "@/lib/kickx/data";
-import type { AdminData, DataStatus } from "@/lib/kickx/types";
-import {PrototypeAdmin} from "./prototype-admin";
+import type { DataStatus } from "@/lib/kickx/types";
+
 import {apiRequest} from "@/lib/kickx/client";
 import { useAdminData, usePlatform } from "./provider";
-import { ManualIngestion } from "./ingestion";
-import { DataEmpty, DataNotice, DisabledAction, MockBadge, Modal, StatCard, Tabs } from "./ui";
+
+import { DataEmpty, DataNotice, MockBadge, Modal, StatCard, Tabs } from "./ui";
 
 const nav = [
   ["/admin", "운영 개요"],
-  ["/admin/data", "데이터 관리"],
+  ["/admin/users", "회원 관리"],
   ["/admin/trades", "거래 모니터링"],
   ["/admin/community", "커뮤니티 관리"],
 ];
-type Job = AdminData["jobs"][number];
-const PIPELINE: { kind: string; label: string; icon: typeof Database }[] = [
-  { kind: "collect", label: "경기 데이터 수집", icon: Database },
-  { kind: "performance", label: "Performance 계산", icon: Calculator },
-  { kind: "value", label: "선수 가치 갱신", icon: TrendingUp },
-];
+
 function statusTone(status: string) {
   return /완료|체결|기각/.test(status) ? "ok" : /실패|숨김/.test(status) ? "fail" : /진행|접수/.test(status) ? "live" : "";
 }
 function StatusPill({ status }: { status: string }) {
   return <span className={`status-pill ${statusTone(status)}`}>{status}</span>;
 }
-function AdminFrame({
+export function AdminFrame({
   active,
   status,
   reload,
@@ -69,151 +64,28 @@ function AdminFrame({
     </>
   );
 }
-function Pipeline({ jobs }: { jobs: Job[] }) {
-  return (
-    <ol className="pipeline">
-      {PIPELINE.map(({ kind, label, icon: Icon }, i) => {
-        const latest = jobs.filter((j) => j.kind === kind).sort((a, b) => Date.parse(b.time) - Date.parse(a.time))[0];
-        return (
-          <li key={kind} className={`pipeline-step ${latest ? statusTone(latest.status) : ""}`}>
-            <span className="pipeline-index num">{String(i + 1).padStart(2, "0")}</span>
-            <Icon size={22} />
-            <div>
-              <strong>{label}</strong>
-              <span>{latest ? `${relativeTime(latest.time)} · ${latest.target}` : "실행 기록 없음"}</span>
-            </div>
-            {latest ? <StatusPill status={latest.status} /> : <span className="status-pill">대기</span>}
-          </li>
-        );
-      })}
-    </ol>
-  );
-}
 export function AdminScreen() {
   const { data, status, reload } = useAdminData();
-  const failed = data.jobs.filter((j) => j.status === "실패");
   return (
-    <AdminFrame active="/admin" status={status} reload={reload} eyebrow="KICK-X OPERATIONS" title="운영 개요" description="데이터 수집부터 커뮤니티 신고까지, 오늘 확인할 항목을 모았습니다.">
+    <AdminFrame active="/admin" status={status} reload={reload} eyebrow="KICK-X OPERATIONS" title="운영 개요" description="회원·거래·커뮤니티 신고를 관리합니다. 축구 데이터와 게임 계산은 자동 처리됩니다.">
       <div className="stat-grid admin-stats">
-        <StatCard label="등록 선수" value={money(data.summary?.players)} unit="명" />
-        <StatCard label="완료 작업" value={money(data.summary?.completedJobs)} unit="건" hint="최근 기록 기준" />
-        <StatCard label="실패 작업" value={<span className={(data.summary?.failedJobs ?? 0) > 0 ? "down" : ""}>{money(data.summary?.failedJobs)}</span>} unit="건" hint={(data.summary?.failedJobs ?? 0) > 0 ? "재처리 필요" : undefined} />
-        <StatCard label="접수된 신고" value={money(data.summary?.pendingReports)} unit="건" hint="검토 대기" tone="yellow" />
-      </div>
-      {failed.length > 0 && (
-        <div className="admin-alert" role="status">
-          <AlertTriangle size={18} />
-          <span><b>실패한 작업 {failed.length}건</b> · {failed[0].name} ({failed[0].target})</span>
-          <Link className="text-link" href="/admin/data">확인하기 <ArrowRight size={14} /></Link>
-        </div>
-      )}
-      <section className="admin-section">
-        <div className="section-title"><h2>데이터 파이프라인<span>최근 실행 기준</span></h2></div>
-        <Pipeline jobs={data.jobs} />
-      </section>
-      <div className="admin-columns">
-        <section className="panel flush">
-          <div className="panel-head"><h2>최근 처리 작업</h2><Link className="text-link" href="/admin/data">전체 보기 <ArrowRight size={14} /></Link></div>
-          {data.jobs.length ? (
-            <ul className="job-list">
-              {data.jobs.slice(0, 5).map((j) => (
-                <li key={j.id}>
-                  <span className={`job-dot ${statusTone(j.status)}`} aria-hidden="true" />
-                  <div><strong>{j.name}</strong><span>{j.target}</span></div>
-                  <time className="num">{relativeTime(j.time)}</time>
-                  <StatusPill status={j.status} />
-                </li>
-              ))}
-            </ul>
-          ) : <DataEmpty entity="처리 작업" status={status} rows={3} />}
-        </section>
-        <section className="panel flush">
-          <div className="panel-head"><h2>운영 처리 이력</h2></div>
-          {data.audit.length ? (
-            <ol className="audit-list">
-              {data.audit.map((a) => (
-                <li key={a.id}>
-                  <FileClock size={15} />
-                  <div><span>{a.description}</span><time className="num">{dateText(a.date)}</time></div>
-                </li>
-              ))}
-            </ol>
-          ) : <DataEmpty entity="운영 이력" status={status} rows={3} />}
-        </section>
+        <StatCard label="등록 회원" value={money(data.summary?.members)} unit="명" />
+        <StatCard label="이용 제한 회원" value={money(data.summary?.restrictedMembers)} unit="명" />
+        <StatCard label="누적 체결 거래" value={money(data.summary?.trades)} unit="건" />
+        <StatCard label="접수된 신고" value={money(data.summary?.pendingReports)} unit="건" tone="yellow" />
       </div>
       <div className="admin-quick">
         {nav.slice(1).map(([href, title], i) => (
           <Link key={href} href={href} className="admin-quick-card hover-lift">
-            {[<Database key="d" size={22} />, <TrendingUp key="t" size={22} />, <Flag key="f" size={22} />][i]}
-            <strong>{title}</strong>
-            <span>{["수집·계산 작업 상태와 오류", "거래 기록과 수수료·정산 결과", "신고 접수와 게시글 숨김 처리"][i]}</span>
-            <ArrowRight size={18} />
+            {[<ShieldCheck key="u" size={22} />, <TrendingUp key="t" size={22} />, <Flag key="f" size={22} />][i]}
+            <strong>{title}</strong><span>{["회원 검색·이용 제한·해제", "체결 거래와 수수료·정산 확인", "신고 검토·숨김·복원"][i]}</span><ArrowRight size={18} />
           </Link>
         ))}
       </div>
-    </AdminFrame>
-  );
-}
-export function DataAdmin() {
-  const { data, status, reload } = useAdminData();
-  const [tab, setTab] = useState("전체"),
-    [selected, setSelected] = useState<string | null>(null);
-  const rows = data.jobs.filter((j) => tab === "전체" || j.status === tab),
-    job = data.jobs.find((j) => j.id === selected);
-  return (
-    <AdminFrame active="/admin/data" status={status} reload={reload} eyebrow="DATA OPERATIONS" title="데이터 관리" description="경기 데이터 수집 → Performance 계산 → 선수 가치 갱신 작업 상태를 확인합니다.">
-      <section className="admin-section"><Pipeline jobs={data.jobs} /></section>
-      <ManualIngestion initial={data.ingestion} reload={reload} />
-      <PrototypeAdmin data={data} reload={reload}/>
       <section className="panel flush">
-        <div className="panel-head">
-          <Tabs items={["전체", "완료", "실패", "진행 중"]} value={tab} onChange={setTab} variant="segment" label="작업 상태" />
-          <DisabledAction className="button secondary small"><RefreshCw size={15} />실패 작업 재처리</DisabledAction>
-        </div>
-        <div className="table-scroll">
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>작업</th>
-                <th>대상</th>
-                <th>처리 일시 (KST)</th>
-                <th className="numeric">성공 / 실패</th>
-                <th>상태</th>
-                <th className="cell-actions" />
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((j) => (
-                <tr key={j.id}>
-                  <td><div className="two-line"><strong>{j.name}</strong><small className="mono">{j.id}</small></div></td>
-                  <td>{j.target}</td>
-                  <td className="muted num">{dateText(j.time)}</td>
-                  <td className="numeric">{money(j.success)} <span className="muted">/</span> <span className={(j.fail ?? 0) > 0 ? "down" : ""}>{money(j.fail)}</span></td>
-                  <td><StatusPill status={j.status} /></td>
-                  <td className="cell-actions"><button className="button secondary small" onClick={() => setSelected(j.id)}>상세</button></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        {!rows.length && <DataEmpty entity="처리 작업" status={status} filtered={data.jobs.length > 0} />}
+        <div className="panel-head"><h2>관리자 처리 이력</h2></div>
+        {data.audit.length ? <ol className="audit-list">{data.audit.map(a => <li key={a.id}><FileClock size={15} /><div><span>{a.description}</span><time className="num">{dateText(a.date)}</time></div></li>)}</ol> : <DataEmpty entity="운영 이력" status={status} rows={3} />}
       </section>
-      {job && (
-        <Modal title={job.name} eyebrow={job.id} onClose={() => setSelected(null)}>
-          <dl className="summary-list">
-            <div><dt>상태</dt><dd><StatusPill status={job.status} /></dd></div>
-            <div><dt>대상</dt><dd>{job.target}</dd></div>
-            <div><dt>처리 일시</dt><dd>{dateText(job.time)}</dd></div>
-            <div><dt>성공 / 실패</dt><dd>{money(job.success)} / {money(job.fail)}</dd></div>
-          </dl>
-          <pre className="log-block">{job.error || "저장된 오류 내용이 없습니다."}</pre>
-          <p className="fine-print">5대 리그 수집은 위의 수동 갱신에서 이어서 실행할 수 있습니다. 계산은 위의 게임 운영에서 별도로 실행할 수 있습니다.</p>
-          <div className="modal-actions">
-            <button className="button secondary" onClick={() => setSelected(null)}>닫기</button>
-            <DisabledAction className="button primary"><RefreshCw size={15} />재처리 요청</DisabledAction>
-          </div>
-        </Modal>
-      )}
     </AdminFrame>
   );
 }

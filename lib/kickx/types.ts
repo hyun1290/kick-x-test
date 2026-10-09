@@ -200,6 +200,9 @@ export type AdminData = {
   calculationIssues?: {player_id:string;fixture_id:string;status:string;warnings:string[]}[];
   ingestion?: IngestionState;
   summary: {
+    members?: number | null;
+    restrictedMembers?: number | null;
+    trades?: number | null;
     players: number | null;
     completedJobs: number | null;
     failedJobs: number | null;

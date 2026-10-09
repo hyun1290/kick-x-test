@@ -16,3 +16,8 @@ test("bulk CLI refuses missing DB credentials and unsupported arguments without 
   assert.equal(result.status,1);assert.equal(JSON.parse(result.stderr).error,code);
  }
 });
+
+test("automatic runner starts under react-server and refuses absent configuration",()=>{
+ const result=spawnSync(process.execPath,["--conditions=react-server","--import","tsx","scripts/automatic-football.ts"],{env:{...env,SUPABASE_URL:""},encoding:"utf8"});
+ assert.equal(result.status,1);assert.equal(JSON.parse(result.stderr).error,"AUTOMATION_CONFIG_REQUIRED");
+});
