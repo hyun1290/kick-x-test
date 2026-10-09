@@ -16,8 +16,38 @@ const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
 /** Weekday for a KST calendar day string (YYYY-MM-DD). */
 const weekday = (day: string) => { const d = new Date(day + "T00:00:00Z"); return Number.isNaN(d.getTime()) ? "" : WEEKDAYS[d.getUTCDay()]; };
 const STATES: [string, string][] = [["all", "전체"], ["live", "진행 중"], ["scheduled", "예정"], ["finished", "종료"], ["other", "연기·기타"]];
+/** One match card: club-colour edges, score block and links to each team page. */
+export function MatchRow({ fixture, showDate = false }: { fixture: Fixture; showDate?: boolean }) {
+  const { getTeam, getLeague } = usePlatform();
+  const group = fixtureGroup(fixture.status);
+  const scored = fixture.homeScore != null && fixture.awayScore != null;
+  const homeWin = scored && fixture.homeScore! > fixture.awayScore!, awayWin = scored && fixture.awayScore! > fixture.homeScore!;
+  const homeId = clubIdentity(getTeam(fixture.home)), awayId = clubIdentity(getTeam(fixture.away));
+  const tint = { "--home": homeId?.primary ?? "var(--line-2)", "--away": awayId?.primary ?? "var(--line-2)" } as CSSProperties;
+  const [day, time] = [koreanDay(fixture.startsAt), dateText(fixture.startsAt).split(" ").slice(-1).join(" ")];
+  return (
+    <li className={`match-row ${group}`} style={tint}>
+      <div className="match-meta">
+        <time dateTime={fixture.startsAt} className="num">{showDate ? `${day.slice(5).replace("-", ".")} (${weekday(day)}) ${time}` : time}</time>
+        <span><LeagueMark league={getLeague(fixture.leagueId)} size="sm" />{getLeague(fixture.leagueId)?.name || "리그 정보 없음"}</span>
+      </div>
+      <Link href={"/teams/" + fixture.home} className={`match-team home ${awayWin ? "lost" : ""}`}>
+        <span>{getTeam(fixture.home)?.name || "구단 정보 없음"}</span>
+        <TeamBadge id={fixture.home} />
+      </Link>
+      <div className={`match-score ${scored ? "scored" : ""}`}>
+        <strong className="num">{scored ? `${fixture.homeScore} : ${fixture.awayScore}` : "VS"}</strong>
+        <span className={`match-status ${group}`}>{fixtureStatus(fixture.status)}</span>
+      </div>
+      <Link href={"/teams/" + fixture.away} className={`match-team ${homeWin ? "lost" : ""}`}>
+        <TeamBadge id={fixture.away} />
+        <span>{getTeam(fixture.away)?.name || "구단 정보 없음"}</span>
+      </Link>
+    </li>
+  );
+}
 export function FixturesScreen() {
-  const { data, status:platformStatus, getTeam, getLeague } = usePlatform();
+  const { data, status:platformStatus } = usePlatform();
   const [league, setLeague] = useState("all"), [state, setState] = useState("all");
   const [day, setDay] = useState(""), [query, setQuery] = useState(""), [page, setPage] = useState(1);
   const leagueOptions = useLeagueOptions();
@@ -73,33 +103,7 @@ export function FixturesScreen() {
               <small className="num">{fixtures.length}경기</small>
             </h2>
             <ul>
-              {fixtures.map((fixture) => {
-                const group = fixtureGroup(fixture.status);
-                const scored = fixture.homeScore != null && fixture.awayScore != null;
-                const homeWin = scored && fixture.homeScore! > fixture.awayScore!, awayWin = scored && fixture.awayScore! > fixture.homeScore!;
-                const homeId = clubIdentity(getTeam(fixture.home)), awayId = clubIdentity(getTeam(fixture.away));
-                const tint = { "--home": homeId?.primary ?? "var(--line-2)", "--away": awayId?.primary ?? "var(--line-2)" } as CSSProperties;
-                return (
-                  <li className={`match-row ${group}`} key={fixture.id} style={tint}>
-                    <div className="match-meta">
-                      <time dateTime={fixture.startsAt} className="num">{dateText(fixture.startsAt).split(" ").slice(-1).join(" ")}</time>
-                      <span><LeagueMark league={getLeague(fixture.leagueId)} size="sm" />{getLeague(fixture.leagueId)?.name || "리그 정보 없음"}</span>
-                    </div>
-                    <Link href={"/teams/" + fixture.home} className={`match-team home ${awayWin ? "lost" : ""}`}>
-                      <span>{getTeam(fixture.home)?.name || "구단 정보 없음"}</span>
-                      <TeamBadge id={fixture.home} />
-                    </Link>
-                    <div className={`match-score ${scored ? "scored" : ""}`}>
-                      <strong className="num">{scored ? `${fixture.homeScore} : ${fixture.awayScore}` : "VS"}</strong>
-                      <span className={`match-status ${group}`}>{fixtureStatus(fixture.status)}</span>
-                    </div>
-                    <Link href={"/teams/" + fixture.away} className={`match-team ${homeWin ? "lost" : ""}`}>
-                      <TeamBadge id={fixture.away} />
-                      <span>{getTeam(fixture.away)?.name || "구단 정보 없음"}</span>
-                    </Link>
-                  </li>
-                );
-              })}
+              {fixtures.map((fixture) => <MatchRow fixture={fixture} key={fixture.id} />)}
             </ul>
           </section>
         ))}

@@ -351,6 +351,15 @@ a.player-identity:hover strong { text-decoration: underline; text-underline-offs
 .trade-player > div { display: grid; flex: 1; min-width: 0; }
 .trade-player strong { font-size: 18px; font-weight: 900; }
 .trade-player span { font-size: var(--fs-small); color: var(--text-3); font-weight: 600; }
+.trade-state { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px var(--s-3); margin: var(--s-3) 0 0; padding: 10px 14px; font-size: var(--fs-small); font-weight: 800; border: 1.5px solid; }
+.trade-state.loading { justify-content: flex-start; color: var(--text-2); border-color: var(--line); background: var(--surface-2); }
+.trade-state.warn { border-color: var(--ink); background: var(--yellow); color: var(--ink); }
+.trade-state.error { border-color: var(--down); background: var(--down-bg); color: var(--down); }
+.trade-timer { position: relative; display: flex; align-items: baseline; justify-content: space-between; margin-top: var(--s-3); padding: 8px 14px 12px; background: var(--surface-2); font-size: var(--fs-small); font-weight: 700; color: var(--text-2); overflow: hidden; }
+.trade-timer b { font-size: 16px; font-weight: 900; color: var(--ink); }
+.trade-timer i { position: absolute; left: 0; bottom: 0; height: 4px; background: var(--ink); transition: width 1s linear; }
+.trade-timer.urgent b { color: var(--down); }
+.trade-timer.urgent i { background: var(--down); }
 .trade-summary, .trade-balance { display: grid; gap: 0; margin: 0; }
 .trade-summary > div, .trade-balance > div { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s-4); padding: 10px 0; }
 .trade-summary dt, .trade-balance dt { font-size: var(--fs-small); color: var(--text-2); font-weight: 700; }

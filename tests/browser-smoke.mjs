@@ -263,8 +263,8 @@ try {
   await mockPage.getByRole('button',{name:'게시글 등록',exact:true}).click();await mockPage.getByRole('link',{name:'저장한 게시글 보기',exact:true}).click();
   await mockPage.getByRole('heading',{name:'테스트 경기 후기',exact:true}).waitFor();
   await mockPage.getByLabel('댓글 내용',{exact:true}).fill('저장하는 댓글');await mockPage.getByRole('button',{name:'댓글 등록',exact:true}).click();await mockPage.getByText('저장하는 댓글',{exact:true}).waitFor();
-  await mockPage.getByRole('button',{name:'공감 · 0',exact:true}).click();await mockPage.getByRole('button',{name:'공감 취소 · 1',exact:true}).waitFor();
-  await mockPage.getByRole('button',{name:'게시글 신고',exact:true}).click();await mockPage.getByLabel('신고 사유 (5~500자)',{exact:true}).fill('신고 등록 테스트입니다');await mockPage.getByRole('button',{name:'확인',exact:true}).click();
+  await mockPage.getByRole('button',{name:'공감 0',exact:true,pressed:false}).click();await mockPage.getByRole('button',{name:'공감 1',exact:true,pressed:true}).waitFor();
+  await mockPage.getByRole('button',{name:'게시글 신고',exact:true}).click();await mockPage.getByLabel('신고 사유',{exact:true}).fill('신고 등록 테스트입니다');await mockPage.getByRole('button',{name:'신고 제출',exact:true}).click();
   assert.ok(['createPost','comment','like','report'].every(action=>communityActions.includes(action)));
   report.checks.push('Post creation, direct detail, comment, desired-state like and report use real endpoint contracts');
   for(const width of [1440,390]){

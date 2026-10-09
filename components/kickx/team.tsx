@@ -1,24 +1,107 @@
-'use client';
-import Link from 'next/link';
-import {useParams} from 'next/navigation';
-import {useState} from 'react';
-import type {Player,Fixture} from '@/lib/kickx/types';
-import {dateText} from '@/lib/kickx/data';
-import {usePlatform} from './provider';
-import {useCatalogPage} from './catalog';
-import {BackLink,ClubCrest,DataEmpty,PageHeading,PositionBadge} from './ui';
-export function TeamScreen(){
- const {teamId}=useParams<{teamId:string}>();const {data,getTeam,getLeague,mock}=usePlatform();const team=getTeam(teamId);
- const [page,setPage]=useState(1),[matchPage,setMatchPage]=useState(1);
- const roster=useCatalogPage<Player>('players',{team:teamId,sort:'number',page,size:20});
- const schedule=useCatalogPage<Fixture>('fixtures',{team:teamId,page:matchPage,size:20});
- const local=data.players.filter(p=>p.team===teamId).sort((a,b)=>(a.number??Infinity)-(b.number??Infinity)||a.name.localeCompare(b.name));
- const players=mock?local:roster.status==='ready'?roster.data.items:[];
- const matches=mock?data.fixtures.filter(f=>f.home===teamId||f.away===teamId):schedule.status==='ready'?schedule.data.items:[];
- return <><BackLink href="/fixtures" label="경기 일정"/><PageHeading eyebrow="TEAM PROFILE" title={team?.name??'구단 정보'} description={team?`${team.english??''} · ${getLeague(team.leagueId)?.name??'리그 정보 없음'}`:undefined}/>
- {team&&<section className="panel frame"><div className="button-row"><ClubCrest id={teamId} size="large"/><strong>{team.name}</strong><Link className="button secondary" href={`/community/clubs/${teamId}`}>팬 라운지</Link></div><p className="fine-print">현재 소속 선수와 수집된 경기 기록을 확인하세요.</p></section>}
- <section className="panel flush"><div className="panel-head"><h2>소속 선수 · 등번호 순</h2><span>{mock?local.length:roster.status==='ready'?roster.data.total:'—'}명</span></div><div className="table-scroll"><table className="data-table"><thead><tr><th>등번호</th><th>선수</th><th>포지션</th><th>국적</th></tr></thead><tbody>{players.map(p=><tr key={p.id}><td>{p.number??'—'}</td><td><Link className="table-link" href={`/players/${p.id}`}>{p.name}</Link></td><td><PositionBadge position={p.position}/></td><td>{p.country??'—'}</td></tr>)}</tbody></table></div>{!players.length&&<DataEmpty entity="소속 선수" status={mock?undefined:roster.status}/>}
- {!mock&&<div className="button-row frame"><button className="button secondary small" disabled={page===1} onClick={()=>setPage(p=>p-1)}>이전</button><span>{page} 페이지</span><button className="button secondary small" disabled={page*20>=roster.data.total} onClick={()=>setPage(p=>p+1)}>다음</button></div>}</section>
- <section className="panel flush"><div className="panel-head"><h2>경기 일정·결과</h2></div><ul className="job-list">{matches.map(f=><li key={f.id}><span>{dateText(f.startsAt)}</span><div><Link href={`/teams/${f.home}`}>{getTeam(f.home)?.name??'—'}</Link><strong>{f.homeScore??'—'} : {f.awayScore??'—'}</strong><Link href={`/teams/${f.away}`}>{getTeam(f.away)?.name??'—'}</Link></div><span>{f.status}</span></li>)}</ul>{!matches.length&&<DataEmpty entity="경기" status={mock?undefined:schedule.status}/>}
- {!mock&&<div className="button-row frame"><button className="button secondary small" disabled={matchPage===1} onClick={()=>setMatchPage(p=>p-1)}>이전</button><span>{matchPage} 페이지</span><button className="button secondary small" disabled={matchPage*20>=schedule.data.total} onClick={()=>setMatchPage(p=>p+1)}>다음</button></div>}</section></>;
+"use client";
+import Link from "next/link";
+import { useParams } from "next/navigation";
+import { useState, type CSSProperties } from "react";
+import { ArrowRight, ChevronLeft, ChevronRight, MessageCircle, Users } from "lucide-react";
+import type { Fixture, Player } from "@/lib/kickx/types";
+import { money } from "@/lib/kickx/data";
+import { clubIdentity } from "@/lib/kickx/club-identity";
+import { usePlatform } from "./provider";
+import { useCatalogPage } from "./catalog";
+import { MatchRow } from "./fixtures";
+import { BackLink, ClubCrest, DataEmpty, LeagueMark, PlayerPortrait, PositionBadge } from "./ui";
+
+const PAGE = 20;
+function Pager({ page, total, label, onPage }: { page: number; total: number; label: string; onPage: (page: number) => void }) {
+  const count = Math.max(1, Math.ceil(total / PAGE));
+  if (total <= PAGE) return null;
+  return (
+    <div className="panel-foot pagination">
+      <span>{`${(page - 1) * PAGE + 1}–${Math.min(page * PAGE, total)} / ${total}`}</span>
+      <div>
+        <button aria-label={`이전 ${label} 페이지`} disabled={page === 1} onClick={() => onPage(page - 1)}><ChevronLeft size={17} /></button>
+        <span className="num">{page} / {count}</span>
+        <button aria-label={`다음 ${label} 페이지`} disabled={page >= count} onClick={() => onPage(page + 1)}><ChevronRight size={17} /></button>
+      </div>
+    </div>
+  );
+}
+export function TeamScreen() {
+  const { teamId } = useParams<{ teamId: string }>();
+  const { data, getTeam, getLeague, mock, status } = usePlatform();
+  const team = getTeam(teamId);
+  const identity = clubIdentity(team);
+  const league = getLeague(team?.leagueId);
+  const [page, setPage] = useState(1), [matchPage, setMatchPage] = useState(1);
+  const roster = useCatalogPage<Player>("players", { team: teamId, sort: "number", page, size: PAGE });
+  const schedule = useCatalogPage<Fixture>("fixtures", { team: teamId, page: matchPage, size: PAGE });
+  const localPlayers = data.players.filter((p) => p.team === teamId).sort((a, b) => (a.number ?? Infinity) - (b.number ?? Infinity) || a.name.localeCompare(b.name));
+  const localMatches = data.fixtures.filter((f) => f.home === teamId || f.away === teamId).sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt));
+  const players = mock ? localPlayers : roster.status === "ready" ? roster.data.items : [];
+  const matches = mock ? localMatches : schedule.status === "ready" ? schedule.data.items : [];
+  const playerTotal = mock ? localPlayers.length : roster.status === "ready" ? roster.data.total : null;
+  const matchTotal = mock ? localMatches.length : schedule.status === "ready" ? schedule.data.total : null;
+  const posts = data.communityCounts?.find((c) => c.scope === "club" && c.target === teamId)?.count ?? (mock ? data.posts.filter((p) => p.scope === "club" && p.target === teamId).length : null);
+  const heroStyle = identity ? ({ "--club": identity.primary, "--club-2": identity.secondary } as CSSProperties) : undefined;
+  return (
+    <>
+      <BackLink href="/fixtures" label="경기 일정" />
+      <section className="lounge-hero team-hero" style={heroStyle}>
+        <span className="lounge-hero-code" aria-hidden="true">{identity?.code ?? ""}</span>
+        <div className="lounge-hero-mark"><ClubCrest id={team ? teamId : null} size="xl" /></div>
+        <div className="lounge-hero-text">
+          <span className="eyebrow plain">TEAM PROFILE{league && <> · <LeagueMark league={league} size="sm" /></>}</span>
+          <h1>{team?.name ?? (status === "ready" ? "구단을 찾을 수 없습니다" : "구단 정보")}</h1>
+          <p>{team ? [team.english, league?.name].filter(Boolean).join(" · ") : "요청한 구단 정보가 없습니다."}</p>
+        </div>
+        <div className="lounge-hero-stats">
+          <div><span>소속 선수</span><b className="num">{playerTotal ?? "—"}</b></div>
+          <div><span>수집 경기</span><b className="num">{matchTotal ?? "—"}</b></div>
+          <div><span>팬 게시글</span><b className="num">{posts ?? "—"}</b></div>
+        </div>
+        {team && (
+          <div className="lounge-hero-actions">
+            <Link className="button primary" href={`/community/clubs/${teamId}`}><MessageCircle size={16} />팬 라운지</Link>
+          </div>
+        )}
+      </section>
+      <section className="panel flush team-section">
+        <div className="panel-head">
+          <h2><Users size={18} />소속 선수 <span className="muted">등번호 순</span></h2>
+          <span className="muted num">{playerTotal != null ? `${playerTotal}명` : ""}</span>
+        </div>
+        {players.length > 0 && (
+          <ul className="roster-grid">
+            {players.map((p) => (
+              <li key={p.id}>
+                <Link className="roster-card hover-lift" href={`/players/${p.id}`}>
+                  <span className="roster-number num">{p.number ?? "—"}</span>
+                  <PlayerPortrait player={p} size="sm" />
+                  <span className="roster-text">
+                    <strong>{p.name}</strong>
+                    <span>{[p.country, p.age != null ? `${p.age}세` : null].filter(Boolean).join(" · ") || "—"}</span>
+                  </span>
+                  <span className="roster-side">
+                    <PositionBadge position={p.position} />
+                    <small className="num">{p.price != null ? `${money(p.price)} P` : "산정 전"}</small>
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+        {!players.length && <DataEmpty entity="소속 선수" status={mock ? status : roster.status} retry={mock ? undefined : roster.reload} />}
+        {!mock && <Pager page={page} total={roster.data.total} label="선수" onPage={setPage} />}
+      </section>
+      <section className="panel flush team-section">
+        <div className="panel-head">
+          <h2>경기 일정 · 결과</h2>
+          <Link className="text-link" href="/fixtures">전체 일정 <ArrowRight size={14} /></Link>
+        </div>
+        {matches.length > 0 && <ul className="match-list">{matches.map((f) => <MatchRow fixture={f} key={f.id} showDate />)}</ul>}
+        {!matches.length && <DataEmpty entity="경기" status={mock ? status : schedule.status} retry={mock ? undefined : schedule.reload} />}
+        {!mock && <Pager page={matchPage} total={schedule.data.total} label="경기" onPage={setMatchPage} />}
+      </section>
+    </>
+  );
 }

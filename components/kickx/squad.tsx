@@ -112,6 +112,8 @@ export function SquadScreen() {
   const { data, mock, notify, getPlayer, getTeam, reload } = usePlatform();
   const member = data.member;
   const [saving,setSaving]=useState(false);
+  const [saveError,setSaveError]=useState<{message:string;stale:boolean}|null>(null);
+  const [savedAt,setSavedAt]=useState<number|null>(null);
   const lock=useRef(false);
   const baseRevision=useRef<number|null>(null);
   const [draft, setDraft] = useState<{ formationId: string; slots: (string | null)[] } | null>(null),
@@ -127,13 +129,19 @@ export function SquadScreen() {
   const lineup = safeSlots.map((id) => getPlayer(id)).filter(Boolean) as Player[];
   const visible = owned.filter((p) => (filter === "전체" || p.position === filter) && (!target || p.position === target));
   const counts = ROWS.slice().reverse().map((pos) => [pos, rule?.positions.filter((x) => x === pos).length ?? 0, lineup.filter((p) => p.position === pos).length] as const);
-  function captureRevision(){if(baseRevision.current==null)baseRevision.current=member?.squad?.revision??0;}
+  function captureRevision(){if(baseRevision.current==null)baseRevision.current=member?.squad?.revision??0;setSavedAt(null);}
+  function discardDraft(){setDraft(null);baseRevision.current=null;setSelected(null);setSaveError(null);reload();}
   async function save(){
     if(!draft || lock.current)return;
     if(mock){notify("스쿼드 저장 예시입니다. 실제로 저장되지 않습니다.");return;}
     lock.current=true;setSaving(true);
-    try{await apiRequest("/api/kickx/squad","PUT",{formationId:draft.formationId,slots:draft.slots,revision:baseRevision.current??member?.squad?.revision??0});setDraft(null);baseRevision.current=null;reload();notify("스쿼드를 저장했습니다.");}
-    catch(e){notify(e instanceof Error?e.message:"저장하지 못했습니다.","error");}
+    setSaveError(null);
+    try{await apiRequest("/api/kickx/squad","PUT",{formationId:draft.formationId,slots:draft.slots,revision:baseRevision.current??member?.squad?.revision??0});setDraft(null);baseRevision.current=null;setSavedAt(Date.now());reload();notify("스쿼드를 저장했습니다.");}
+    catch(e){
+      const message=e instanceof Error?e.message:"저장하지 못했습니다.";
+      // A stale revision means another tab saved first; the draft stays so the user can compare before discarding.
+      setSaveError({message,stale:/다른 창/.test(message)});notify(message,"error");
+    }
     finally{lock.current=false;setSaving(false);}
   }
   function changeFormation(id: string) {
@@ -170,7 +178,7 @@ export function SquadScreen() {
         description="보유 선수 중 최대 11명으로 나만의 라인업을 완성하세요."
         action={
           <>
-            <button className="button secondary" disabled={!draft} onClick={() => { setDraft(null); baseRevision.current=null;setSelected(null); reload(); }}>
+            <button className="button secondary" disabled={!draft} onClick={discardDraft}>
               <RotateCcw size={16} />되돌리기
             </button>
             <button className="button primary" disabled={!draft || saving || !data.session} onClick={()=>void save()}><Save size={17} />{saving?"저장 중…":"스쿼드 저장"}</button>
@@ -183,7 +191,7 @@ export function SquadScreen() {
           <div className="squad-toolbar">
             <div className="squad-team">
               <strong>{data.session?.profile?.nickname ? `${data.session.profile.nickname} FC` : "내 라인업"}</strong>
-              {draft && <span className="tag yellow">편집 중 · 미저장</span>}
+              {draft ? <span className="tag yellow">편집 중 · 미저장</span> : savedAt && <span className="tag outline">저장됨</span>}
             </div>
             <div className="squad-count">
               <span>등록 선수</span>
@@ -195,6 +203,12 @@ export function SquadScreen() {
               <Select label="포메이션" value={formation} disabled={saving || !data.formations.length} onChange={changeFormation} placeholder="포메이션 선택" options={data.formations.map((f) => ({ value: f.id, label: f.name, hint: `GK 1 · DF ${f.positions.filter((p) => p === "DF").length} · MF ${f.positions.filter((p) => p === "MF").length} · FW ${f.positions.filter((p) => p === "FW").length}` }))} />
             </label>
           </div>
+          {saveError && (
+            <div className={`squad-alert ${saveError.stale ? "stale" : ""}`} role="alert">
+              <span><b>{saveError.stale ? "다른 창에서 스쿼드가 먼저 저장되었습니다." : "스쿼드를 저장하지 못했습니다."}</b>{saveError.stale ? " 편집 중인 라인업은 그대로 두었습니다. 최신 스쿼드를 불러오면 편집 내용은 사라집니다." : ` ${saveError.message}`}</span>
+              {saveError.stale ? <button className="button primary small" onClick={discardDraft}>최신 스쿼드 불러오기</button> : <button className="button secondary small" onClick={() => setSaveError(null)}>닫기</button>}
+            </div>
+          )}
           <Pitch slots={safeSlots} formation={formation || null} selected={selected} onSelect={(i) => setSelected(selected === i ? null : i)} />
           <div className="squad-footer">
             <div><span>라인업 가치</span><strong className="num">{lineup.length ? money(lineup.every(p=>p.price!=null)?lineup.reduce((s,p)=>s+p.price!,0):null) : money(member?.squad?.value)}<span className="unit">P</span></strong></div>

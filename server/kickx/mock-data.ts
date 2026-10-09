@@ -236,10 +236,31 @@ function records(id: string, teamId: string, performance: number, position: Play
   });
 }
 
+/** Example score breakdowns for the detail screen (mock only; real ones come from the stored engine results). */
+const GOAL_POINTS = { GK: 10, DF: 6, MF: 5, FW: 4 }, ASSIST_POINTS = { GK: 5, DF: 4, MF: 3, FW: 3 };
+function scoreDetails(position: Player["position"], records_: Player["records"]): Player["scoreDetails"] {
+  const pos = position ?? "MF";
+  return records_.map((r, i) => {
+    if (!r.minutes) return { fixture_id: r.id, score: null, status: "not-played", rule_version: "prototype-v1", breakdown: [], warnings: ["NO_PRICE_CHANGE_FOR_NON_PARTICIPATION"] };
+    if (i === 3) return { fixture_id: r.id, score: null, status: "blocked", rule_version: "prototype-v1", breakdown: [], warnings: ["CONFIRMED_LINEUP_REQUIRED"] };
+    const breakdown = [
+      { metric: "minutes", value: r.minutes, points: r.minutes >= 60 ? 2 : 1, evidence: "example" },
+      ...(r.goals ? [{ metric: "goals", value: r.goals, points: r.goals * GOAL_POINTS[pos], evidence: "example" }] : []),
+      ...(r.assists ? [{ metric: "assists", value: r.assists, points: r.assists * ASSIST_POINTS[pos], evidence: "example" }] : []),
+      ...(i === 1 ? [{ metric: "yellow_cards", value: 1, points: -1, evidence: "example" }] : []),
+    ];
+    return { fixture_id: r.id, score: breakdown.reduce((sum, b) => sum + b.points, 0), status: "provisional", rule_version: "prototype-v1", breakdown, warnings: ["key_passes:UNVERIFIED_OR_MISSING_EXCLUDED", "PROTOTYPE_INCIDENT_COMPLETENESS_ASSUMPTION"] };
+  });
+}
+
 function players(now: number): Player[] {
-  return seeds.map(([id, name, english, short, teamId, position, number, country, age, price, change, performance]) => {
+  return seeds.map(([id, name, english, short, teamId, position, number, country, age, price, change, seedPerformance]) => {
     const random = seeded(id + "-season");
-    const records_ = records(id, teamId, performance, position, now);
+    const records_ = records(id, teamId, seedPerformance, position, now);
+    // Raw prototype scores (not 0–100): each record shows the same score as its example breakdown.
+    const details = scoreDetails(position, records_) ?? [];
+    records_.forEach((r) => { r.performance = details.find((d) => d.fixture_id === r.id)?.score ?? null; });
+    const performance = records_.find((r) => r.performance != null)?.performance ?? null;
     const apps = 9 + Math.floor(random() * 4);
     const goalsRate = position === "FW" ? 0.7 : position === "MF" ? 0.25 : 0.05;
     return {
@@ -250,7 +271,8 @@ function players(now: number): Player[] {
       minutes: apps * 80 + Math.floor(random() * 90),
       history: history(id, price, change, now),
       records: records_,
-      analysis: `${name}의 최근 6경기 평균 Performance는 ${Math.round(records_.reduce((s, r) => s + (r.performance ?? 0), 0) / Math.max(1, records_.filter(r => r.performance != null).length))}점입니다. 최근 가치 변동은 ${change > 0 ? "+" : ""}${change.toFixed(1)}%로, ${change >= 3 ? "경기력 상승이 가치에 빠르게 반영되고 있습니다." : change <= -3 ? "출전 시간과 공격 포인트 감소가 가치 하락으로 이어졌습니다." : "경기력과 가치가 안정적으로 유지되고 있습니다."} (예시 분석 문장입니다.)`,
+      scoreDetails: details,
+      analysis: `${name}의 최근 6경기 평균 Performance는 ${(records_.reduce((s, r) => s + (r.performance ?? 0), 0) / Math.max(1, records_.filter(r => r.performance != null).length)).toFixed(1)}점입니다. 최근 가치 변동은 ${change > 0 ? "+" : ""}${change.toFixed(1)}%로, ${change >= 3 ? "경기력 상승이 가치에 빠르게 반영되고 있습니다." : change <= -3 ? "출전 시간과 공격 포인트 감소가 가치 하락으로 이어졌습니다." : "경기력과 가치가 안정적으로 유지되고 있습니다."} (예시 분석 문장입니다.)`,
       updatedAt: new Date(now - 2 * 3_600_000).toISOString(),
       status: id === "griezmann" ? "거래 일시 중지" : null,
       photo: null,
@@ -380,7 +402,7 @@ function member(list: Player[], now: number): MemberData {
     squad: {
       formationId: formation.id, slots,
       value: squadPlayers.reduce((s, p) => s + (p.price ?? 0), 0),
-      performance: Math.round(squadPlayers.reduce((s, p) => s + (p.performance ?? 0), 0) / squadPlayers.length),
+      performance: Math.round(squadPlayers.reduce((s, p) => s + (p.performance ?? 0), 0) / squadPlayers.length * 10) / 10,
     },
   };
 }

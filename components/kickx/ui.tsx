@@ -612,11 +612,23 @@ function TradeDialog({ player, side, onClose }: { player: Player; side: "buy" | 
   }, [player.id, side, mock, attempt]);
   const [state, setState] = useState<TradeState>("loading");
   const [error, setError] = useState("");
+  const [now, setNow] = useState(() => Date.now());
   const lock = useRef(false);
   const label = side === "buy" ? "매입" : "매각";
   const insufficient = side === "buy" && quote?.balanceAfter != null && quote.balanceAfter < 0;
+  const expiresAt = quote?.expiresAt ? Date.parse(quote.expiresAt) : null;
+  const quotedAt = quote?.quotedAt ? Date.parse(quote.quotedAt) : null;
+  const remaining = expiresAt == null ? null : Math.max(0, Math.floor((expiresAt - now) / 1000));
+  const expired = state === "review" && expiresAt != null && expiresAt <= now;
+  // Errors that a fresh quote can resolve (expired quote, changed price).
+  const renewable = state === "failed" && (!quote || /견적|가격이 변경/.test(error));
+  useEffect(() => {
+    if (state !== "review" || expiresAt == null) return;
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, [state, expiresAt]);
   async function confirm() {
-    if (lock.current || !quote || !service.available || insufficient) return;
+    if (lock.current || !quote || !service.available || insufficient || expired) return;
     lock.current = true;
     setState("submitting");
     setError("");
@@ -671,11 +683,27 @@ function TradeDialog({ player, side, onClose }: { player: Player; side: "buy" | 
             <div><dt>보유 포인트</dt><dd className="num">{money(quote?.balance)}<span className="unit">P</span></dd></div>
             <div className={insufficient ? "warn" : ""}><dt>{side === "buy" ? "거래 후 잔액" : "정산 후 잔액"}</dt><dd className="num">{money(quote?.balanceAfter)}<span className="unit">P</span></dd></div>
           </dl>
-          {insufficient && <p className="form-error" role="alert">보유 포인트가 부족합니다.</p>}
-          {state === "loading" && <p role="status">견적을 확인하고 있습니다…</p>}
-          {error && <p className="form-error" role="alert">{error}</p>}
-          {state === "failed" && <button className="button secondary" onClick={()=>setAttempt(a=>a+1)}>새 견적 확인</button>}
-          {quote?.expiresAt && <p className="fine-print">견적 유효 시간: {dateText(quote.expiresAt)}</p>}
+          {state === "loading" && <p className="trade-state loading" role="status"><LoaderCircle size={16} className="kx-spin" />서버에서 견적을 확인하고 있습니다…</p>}
+          {state === "review" && remaining != null && !expired && (
+            <div className={`trade-timer ${remaining <= 10 ? "urgent" : ""}`} role="timer" aria-live="off">
+              <span>견적 유효 시간</span>
+              <b className="num">{remaining}초</b>
+              {expiresAt != null && quotedAt != null && expiresAt > quotedAt && <i aria-hidden="true" style={{ width: `${Math.min(100, ((expiresAt - now) / (expiresAt - quotedAt)) * 100)}%` }} />}
+            </div>
+          )}
+          {expired && (
+            <div className="trade-state warn" role="alert">
+              <span>견적이 만료되었습니다. 현재 가격으로 새 견적을 받아 주세요.</span>
+              <button className="button secondary small" onClick={() => setAttempt((a) => a + 1)}>새 견적 받기</button>
+            </div>
+          )}
+          {insufficient && <p className="trade-state error" role="alert">보유 포인트가 부족합니다. 거래 후 잔액이 0P보다 작을 수 없습니다.</p>}
+          {state === "failed" && (
+            <div className="trade-state error" role="alert">
+              <span>{error || "거래를 처리하지 못했습니다."}</span>
+              {renewable && <button className="button secondary small" onClick={() => setAttempt((a) => a + 1)}>새 견적 받기</button>}
+            </div>
+          )}
           <p className="fine-print">
             {service.available
               ? `${mock ? "예시 모드 · 수수료와 정산액은 예시 값입니다. " : ""}확정 시점의 가격으로 체결되며, 가격이 바뀌면 다시 확인을 요청합니다.`
@@ -685,7 +713,7 @@ function TradeDialog({ player, side, onClose }: { player: Player; side: "buy" | 
             <button className="button secondary" onClick={onClose} disabled={state === "submitting"}>취소</button>
             <button
               className={`button ${side === "buy" ? "primary" : "accent"}`}
-              disabled={!quote || !service.available || insufficient || state === "submitting" || state === "loading"}
+              disabled={!quote || !service.available || insufficient || expired || !(state === "review" || (state === "failed" && !renewable))}
               title={service.available ? undefined : unavailableAction}
               aria-busy={state === "submitting"}
               onClick={() => void confirm()}
