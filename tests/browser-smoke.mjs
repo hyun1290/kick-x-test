@@ -169,33 +169,42 @@ try {
   assert.ok(await mockPage.getByRole("heading",{name:"새 닉네임",exact:true}).isVisible());
   report.checks.push("Profile errors preserve input; confirmed saves update the account");
 
-  // The admin manages members; entering the retired data page never starts collection.
+  // Admin visits never invoke collection/calculation; verified member controls persist.
   state.session.role="admin";
   const admin=loadTs("../lib/kickx/data.ts").emptyAdminData();
   await mock.route(/\/api\/kickx\/admin$/,route=>route.fulfill({json:{status:"ready",data:admin}}));
-  let manualCalls=0;
-  await mock.route("**/api/kickx/admin/ingestion",route=>{manualCalls++;return route.fulfill({status:410,json:{error:"automatic"}});});
-  const managedMember={id:"00000000-0000-0000-0000-000000000003",nickname:"테스트 회원",created_at:"2026-10-02T10:00:00Z",team_id:null,user_roles:null,member_restrictions:null};
-  let restrictionCalls=0;
-  await mock.route("**/api/kickx/admin/users?*",route=>route.fulfill({json:{items:[managedMember],total:1,page:1,size:30}}));
-  await mock.route("**/api/kickx/admin/users",route=>{
-    const input=route.request().postDataJSON();assert.equal(input.userId,managedMember.id);assert.equal(input.days,7);assert.equal(input.reason,"반복적인 게시판 도배");
-    restrictionCalls++;managedMember.member_restrictions={suspended_until:new Date(Date.now()+7*86400000).toISOString(),reason:input.reason};return route.fulfill({json:{saved:true}});
+  const actions=[];
+  await mock.route("**/api/kickx/admin/ingestion",route=>{actions.push("ingestion");return route.fulfill({status:410,json:{error:"automatic"}});});
+  const managed={id:"00000000-0000-0000-0000-000000000003",nickname:"운영 테스트 회원",team_id:null,created_at:"2026-10-09T01:00:00Z",user_roles:null,member_restrictions:null};
+  await mock.route("**/api/kickx/admin/users**",route=>{
+    if(route.request().method()==="POST") {
+      const input=route.request().postDataJSON();actions.push(input.days);
+      assert.equal(input.userId,managed.id);
+      managed.member_restrictions={suspended_until:input.days?new Date(Date.now()+input.days*86400000).toISOString():null,reason:input.reason};
+      return route.fulfill({json:{saved:true}});
+    }
+    return route.fulfill({json:{items:[managed],total:1,page:1,size:30}});
   });
   await mockPage.goto(base+"/admin/data",{waitUntil:"networkidle"});
-  assert.equal(new URL(mockPage.url()).pathname,"/admin");assert.equal(manualCalls,0);
+  assert.equal(new URL(mockPage.url()).pathname,"/admin");assert.deepEqual(actions,[]);
   assert.equal(await mockPage.getByRole("button",{name:"5대 리그 데이터 갱신",exact:true}).count(),0);
   await mockPage.goto(base+"/admin/users",{waitUntil:"networkidle"});
+  await mockPage.getByText(managed.nickname,{exact:true}).waitFor();assert.deepEqual(actions,[]);
   await mockPage.getByRole("button",{name:"회원 관리",exact:true}).click();
-  await mockPage.getByLabel("회원 처리 사유").fill("반복적인 게시판 도배");
+  await mockPage.getByLabel("회원 처리 사유").fill("반복적인 운영 규칙 위반");
   await mockPage.getByRole("button",{name:"이용 제한 적용",exact:true}).click();
-  await mockPage.getByText("회원 이용을 제한했습니다.",{exact:true}).waitFor();assert.equal(restrictionCalls,1);
+  await mockPage.getByText(/이용 제한 ·/).waitFor();assert.deepEqual(actions,[7]);
+  await mockPage.reload({waitUntil:"networkidle"});await mockPage.getByText(/이용 제한 ·/).waitFor();
+  await mockPage.getByRole("button",{name:"회원 관리",exact:true}).click();
+  await mockPage.getByLabel("회원 처리 사유").fill("운영 검토 후 제한 해제");
+  await mockPage.getByRole("button",{name:"제한 해제",exact:true}).click();
+  await mockPage.getByText("정상",{exact:true}).waitFor();assert.deepEqual(actions,[7,0]);
   for(const width of [1440,390]) {
     await mockPage.setViewportSize({width,height:900});
     assert.ok(await mockPage.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
-    await mockPage.screenshot({path:`test-artifacts/admin-members-${width}.png`,fullPage:true});
+    await mockPage.screenshot({path:`test-artifacts/admin-users-${width}.png`,fullPage:true});
   }
-  report.checks.push("Admin manages member restrictions; retired data page redirects without provider calls");
+  report.checks.push("Admin visits have no collection mutation; member restriction and restore survive reload");
   // Browser contract doubles only. SQL integration above independently tests actual persistence.
   state.players[0].price=100000;state.players[0].position='FW';state.players[0].number=9;
   state.teams=[{id:'test-team',name:'테스트 구단',english:'Test Club',code:'TST',color:null,leagueId:null}];

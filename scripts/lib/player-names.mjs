@@ -45,12 +45,12 @@ export async function lookupKoreanName(player, { fetchImpl = fetch, wait = ms =>
   return matchKoreanName(player, detail.entities ?? {});
 }
 export const nameSignature = p => createHash('sha256').update(JSON.stringify([p.name, p.english ?? null, p.birth_date ?? null])).digest('hex');
-export async function mapPlayerNames(db, { limit = 100, lookup = lookupKoreanName, now = new Date().toISOString() } = {}) {
+export async function mapPlayerNames(db, { limit = 100, lookup = lookupKoreanName, now = new Date().toISOString(), deadline = Date.now() + 4 * 60000 } = {}) {
   let processed = 0, matched = 0, unmatched = 0;
-  for (let offset = 0; processed < limit; offset += 250) {
+  for (let offset = 0; processed < limit && Date.now() < deadline; offset += 250) {
     const players = checked(await db.from('players').select('id,name,english,birth_date,player_names(source),name_mapping_checks(checked_at,status,input_signature)').eq('provider', 'bsd').order('id').range(offset, offset + 249));
     for (const p of players) {
-      if (processed >= limit) break;
+      if (processed >= limit || Date.now() >= deadline) break;
       const existing = Array.isArray(p.player_names) ? p.player_names[0] : p.player_names;
       if (existing?.source === 'manual') continue;
       const previous = Array.isArray(p.name_mapping_checks) ? p.name_mapping_checks[0] : p.name_mapping_checks;
