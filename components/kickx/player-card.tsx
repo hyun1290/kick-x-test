@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useState, type CSSProperties } from "react";
-import { money } from "@/lib/kickx/data";
+import { money, score } from "@/lib/kickx/data";
 import type { Player } from "@/lib/kickx/types";
 import { usePlatform } from "./provider";
 import { Change, ClubCrest, LeagueMark, Sparkline, useClub, WatchButton } from "./ui";
@@ -66,7 +66,7 @@ export function PlayerCard({ player, variant = "grid", rank }: { player: Player;
           </div>
         )}
         <dl className="pcard-facts">
-          <div><dt>{matches != null ? "경기" : "PERF"}</dt><dd className="num">{matches != null ? money(matches) : money(player.performance)}</dd></div>
+          <div><dt>{matches != null ? "경기" : "PERF"}</dt><dd className="num">{matches != null ? money(matches) : score(player.performance)}</dd></div>
           <div><dt>골</dt><dd className="num">{money(player.goals)}</dd></div>
           <div><dt>도움</dt><dd className="num">{money(player.assists)}</dd></div>
         </dl>

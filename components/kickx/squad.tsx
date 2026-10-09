@@ -1,12 +1,13 @@
 "use client";
 import { Select } from "./select";
-import { useState, type CSSProperties } from "react";
+import { useState, useRef, type CSSProperties } from "react";
 import { clubIdentity, luminance } from "@/lib/kickx/club-identity";
 import { Plus, RotateCcw, Save, X } from "lucide-react";
-import { money } from "@/lib/kickx/data";
+import { apiRequest } from "@/lib/kickx/client";
+import { money, score } from "@/lib/kickx/data";
 import type { Player, Position } from "@/lib/kickx/types";
 import { usePlatform } from "./provider";
-import { Change, DataEmpty, DisabledAction, MemberNotice, PageHeading, PlayerPortrait, PositionBadge, Tabs } from "./ui";
+import { Change, DataEmpty, MemberNotice, PageHeading, PlayerPortrait, PositionBadge, Tabs } from "./ui";
 
 const ROWS: Position[] = ["FW", "MF", "DF", "GK"];
 const MAX_SQUAD = 11;
@@ -108,8 +109,11 @@ export function Pitch({
   );
 }
 export function SquadScreen() {
-  const { data, mock, notify, getPlayer, getTeam } = usePlatform();
+  const { data, mock, notify, getPlayer, getTeam, reload } = usePlatform();
   const member = data.member;
+  const [saving,setSaving]=useState(false);
+  const lock=useRef(false);
+  const baseRevision=useRef<number|null>(null);
   const [draft, setDraft] = useState<{ formationId: string; slots: (string | null)[] } | null>(null),
     [selected, setSelected] = useState<number | null>(null),
     [filter, setFilter] = useState("전체");
@@ -117,13 +121,23 @@ export function SquadScreen() {
   const slots = draft?.slots || member?.squad?.slots || [];
   const rule = data.formations.find((f) => f.id === formation),
     target = selected == null ? null : rule?.positions[selected];
-  const owned = data.players.filter((p) => member?.holdings.some((h) => h.playerId === p.id));
+  const owned = (member?.holdings.map(h=>getPlayer(h.playerId)).filter(Boolean) ?? []) as Player[];
   const safeSlots = slots.map((id) => (owned.some((p) => p.id === id) ? id : null));
   const filled = safeSlots.filter(Boolean).length;
   const lineup = safeSlots.map((id) => getPlayer(id)).filter(Boolean) as Player[];
   const visible = owned.filter((p) => (filter === "전체" || p.position === filter) && (!target || p.position === target));
   const counts = ROWS.slice().reverse().map((pos) => [pos, rule?.positions.filter((x) => x === pos).length ?? 0, lineup.filter((p) => p.position === pos).length] as const);
+  function captureRevision(){if(baseRevision.current==null)baseRevision.current=member?.squad?.revision??0;}
+  async function save(){
+    if(!draft || lock.current)return;
+    if(mock){notify("스쿼드 저장 예시입니다. 실제로 저장되지 않습니다.");return;}
+    lock.current=true;setSaving(true);
+    try{await apiRequest("/api/kickx/squad","PUT",{formationId:draft.formationId,slots:draft.slots,revision:baseRevision.current??member?.squad?.revision??0});setDraft(null);baseRevision.current=null;reload();notify("스쿼드를 저장했습니다.");}
+    catch(e){notify(e instanceof Error?e.message:"저장하지 못했습니다.","error");}
+    finally{lock.current=false;setSaving(false);}
+  }
   function changeFormation(id: string) {
+    captureRevision();
     const next = data.formations.find((f) => f.id === id);
     if (!next) return;
     const pool = [...safeSlots];
@@ -140,7 +154,8 @@ export function SquadScreen() {
     setSelected(null);
   }
   function place(p: Player) {
-    if (selected == null || !rule || p.position !== target) return;
+    captureRevision();
+    if (saving || selected == null || !rule || p.position !== target) return;
     setDraft({
       formationId: formation,
       slots: rule.positions.map((_, i) => (i === selected ? p.id : safeSlots[i] === p.id ? null : safeSlots[i] || null)),
@@ -155,16 +170,10 @@ export function SquadScreen() {
         description="보유 선수 중 최대 11명으로 나만의 라인업을 완성하세요."
         action={
           <>
-            <button className="button secondary" disabled={!draft} onClick={() => { setDraft(null); setSelected(null); }}>
+            <button className="button secondary" disabled={!draft} onClick={() => { setDraft(null); baseRevision.current=null;setSelected(null); reload(); }}>
               <RotateCcw size={16} />되돌리기
             </button>
-            {mock ? (
-              <button className="button primary" disabled={!draft} onClick={() => { notify("스쿼드를 저장했습니다. (예시 모드 · 저장되지 않음)"); }}>
-                <Save size={17} />스쿼드 저장
-              </button>
-            ) : (
-              <DisabledAction className="button primary"><Save size={17} />스쿼드 저장</DisabledAction>
-            )}
+            <button className="button primary" disabled={!draft || saving || !data.session} onClick={()=>void save()}><Save size={17} />{saving?"저장 중…":"스쿼드 저장"}</button>
           </>
         }
       />
@@ -183,13 +192,13 @@ export function SquadScreen() {
             </div>
             <label className="squad-formation">
               <span className="sr-only">포메이션</span>
-              <Select label="포메이션" value={formation} disabled={!data.formations.length} onChange={changeFormation} placeholder="포메이션 선택" options={data.formations.map((f) => ({ value: f.id, label: f.name, hint: `GK 1 · DF ${f.positions.filter((p) => p === "DF").length} · MF ${f.positions.filter((p) => p === "MF").length} · FW ${f.positions.filter((p) => p === "FW").length}` }))} />
+              <Select label="포메이션" value={formation} disabled={saving || !data.formations.length} onChange={changeFormation} placeholder="포메이션 선택" options={data.formations.map((f) => ({ value: f.id, label: f.name, hint: `GK 1 · DF ${f.positions.filter((p) => p === "DF").length} · MF ${f.positions.filter((p) => p === "MF").length} · FW ${f.positions.filter((p) => p === "FW").length}` }))} />
             </label>
           </div>
           <Pitch slots={safeSlots} formation={formation || null} selected={selected} onSelect={(i) => setSelected(selected === i ? null : i)} />
           <div className="squad-footer">
-            <div><span>라인업 가치</span><strong className="num">{lineup.length ? money(lineup.reduce((s, p) => s + (p.price ?? 0), 0)) : money(member?.squad?.value)}<span className="unit">P</span></strong></div>
-            <div><span>저장된 평균 Performance</span><strong className="num">{money(member?.squad?.performance)}</strong></div>
+            <div><span>라인업 가치</span><strong className="num">{lineup.length ? money(lineup.every(p=>p.price!=null)?lineup.reduce((s,p)=>s+p.price!,0):null) : money(member?.squad?.value)}<span className="unit">P</span></strong></div>
+            <div><span>저장된 평균 Performance</span><strong className="num">{score(member?.squad?.performance)}</strong></div>
             <div className="squad-composition">
               <span>포지션 구성</span>
               <span className="squad-pos-list">
@@ -238,6 +247,7 @@ export function SquadScreen() {
             <button
               className="button danger full"
               onClick={() => {
+                captureRevision();
                 setDraft({ formationId: formation, slots: safeSlots.map((id, i) => (i === selected ? null : id)) });
                 setSelected(null);
               }}
@@ -254,7 +264,7 @@ export function SquadScreen() {
               })()}
             </div>
           )}
-          <p className="fine-print">{mock ? "예시 모드 · 편집 내용은 저장되지 않습니다." : "스쿼드 저장 서비스 준비 중입니다. 편집 내용은 저장되지 않습니다."}</p>
+          <p className="fine-print">{mock ? "예시 모드 · 편집 내용은 저장되지 않습니다." : "저장 버튼을 누르면 반영됩니다. 선수를 판매하면 해당 자리는 자동으로 비워집니다."}</p>
         </section>
       </div>
     </>

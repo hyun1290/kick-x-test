@@ -2,7 +2,8 @@ import "server-only";
 import type { KickxRepository } from "./repository";
 import type { MemberData, Session } from "@/lib/kickx/types";
 import { createRequestClient } from "./supabase";
-import { readCatalog } from "./catalog";
+import { readCatalog, mapPlayer } from "./catalog";
+import { checkDatabase, migrationMissing } from "./prototype";
 import { readOperations } from "./ingestion";
 export class SupabaseKickxRepository implements KickxRepository {
   readonly configured = true;
@@ -37,6 +38,15 @@ export class SupabaseKickxRepository implements KickxRepository {
     const session = await this.getSession();
     if (!session || session.userId !== userId) throw new Error("Member identity mismatch");
     const client = await this.client;
+    if (session.profile) {
+      const wallet = await client.rpc("kickx_open_wallet");
+      if (!migrationMissing(wallet.error)) {
+        checkDatabase(wallet.error);
+        const result = await client.rpc("kickx_member_data");
+        checkDatabase(result.error);
+        return {...result.data, ownedPlayers: (result.data.ownedPlayers ?? []).map((p: Record<string,unknown>)=>mapPlayer(p,p))};
+      }
+    }
     const watchlist: string[] = [];
     for (let offset = 0; ; offset += 500) {
       const { data, error } = await client.from("watchlists").select("player_id").eq("user_id", session.userId).order("player_id").range(offset, offset + 499);

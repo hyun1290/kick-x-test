@@ -4,6 +4,7 @@ import { fixtureGroup, koreanDay } from "@/lib/kickx/fixtures";
 import { getKickxRepository } from "./repository";
 import { createRequestClient } from "./supabase";
 import { authenticatedClient, failure, HttpError, json } from "./http";
+import {prototypeAvailable} from "./prototype";
 import { readFixturePage, readPlayerDetail, readPlayerPage } from "./catalog-pages";
 export async function catalogPage(request: Request, kind: "players" | "fixtures") {
   try {
@@ -12,8 +13,8 @@ export async function catalogPage(request: Request, kind: "players" | "fixtures"
     const empty={items:[],total:0,page:input.page,size:input.size};
     if(!repo.configured) return json({status:"not-configured",data:empty});
     if(repo.source !== "mock") {
-      if(kind === "players" && input.scope === "owned") return json({status:"not-configured",data:empty});
-      const client=kind === "players" && input.scope === "watch" ? (await authenticatedClient()).client : await createRequestClient();
+      const client=kind === "players" && ["watch","owned"].includes(input.scope) ? (await authenticatedClient()).client : await createRequestClient();
+      if(kind==="players"&&input.scope==="owned"&&!await prototypeAvailable(client))return json({status:"not-configured",data:empty});
       return json({status:"ready",data:await (kind === "players" ? readPlayerPage(client,input) : readFixturePage(client,input))});
     }
     const data=await repo.getPublicData(),member=await repo.getMemberData((await repo.getSession())!.userId);
@@ -26,12 +27,12 @@ export async function catalogPage(request: Request, kind: "players" | "fixtures"
         && (input.scope !== "rising" || (p.change ?? 0)>0) && (input.scope !== "falling" || (p.change ?? 0)<0);
     }).sort((a,b)=>{
       if(input.sort === "name") return a.name.localeCompare(b.name) || a.id.localeCompare(b.id);
-      const key=(input.sort === "price-asc" ? "price" : input.sort) as "price"|"change"|"performance"|"volume";
+      const key=(input.sort === "price-asc" ? "price" : input.sort) as "number"|"price"|"change"|"performance"|"volume";
       const x=a[key],y=b[key];
-      return (x == null ? (y == null ? 0 : 1) : y == null ? -1 : input.sort === "price-asc" ? x-y : y-x) || a.id.localeCompare(b.id);
+      return (x == null ? (y == null ? 0 : 1) : y == null ? -1 : ["price-asc","number"].includes(input.sort) ? x-y : y-x) || a.name.localeCompare(b.name) || a.id.localeCompare(b.id);
     }) : data.fixtures.filter(f=>{
       const h=data.teams.find(t=>t.id === f.home),a=data.teams.find(t=>t.id === f.away);
-      return matches([h?.name,h?.english,a?.name,a?.english].join(" ")) && (!input.league || f.leagueId === input.league)
+      return matches([h?.name,h?.english,a?.name,a?.english].join(" ")) && (!input.league || f.leagueId === input.league) && (!input.team || f.home === input.team || f.away === input.team)
         && (!input.day || koreanDay(f.startsAt) === input.day) && (input.state === "all" || fixtureGroup(f.status)===input.state);
     }).sort((a,b)=>Date.parse(a.startsAt)-Date.parse(b.startsAt)||a.id.localeCompare(b.id));
     return json({status:"ready",source:"mock",data:{...empty,items:items.slice((input.page-1)*input.size,input.page*input.size),total:items.length}});

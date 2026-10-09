@@ -85,7 +85,7 @@ export function FixturesScreen() {
                       <time dateTime={fixture.startsAt} className="num">{dateText(fixture.startsAt).split(" ").slice(-1).join(" ")}</time>
                       <span><LeagueMark league={getLeague(fixture.leagueId)} size="sm" />{getLeague(fixture.leagueId)?.name || "리그 정보 없음"}</span>
                     </div>
-                    <Link href={"/community/clubs/" + fixture.home} className={`match-team home ${awayWin ? "lost" : ""}`}>
+                    <Link href={"/teams/" + fixture.home} className={`match-team home ${awayWin ? "lost" : ""}`}>
                       <span>{getTeam(fixture.home)?.name || "구단 정보 없음"}</span>
                       <TeamBadge id={fixture.home} />
                     </Link>
@@ -93,7 +93,7 @@ export function FixturesScreen() {
                       <strong className="num">{scored ? `${fixture.homeScore} : ${fixture.awayScore}` : "VS"}</strong>
                       <span className={`match-status ${group}`}>{fixtureStatus(fixture.status)}</span>
                     </div>
-                    <Link href={"/community/clubs/" + fixture.away} className={`match-team ${homeWin ? "lost" : ""}`}>
+                    <Link href={"/teams/" + fixture.away} className={`match-team ${homeWin ? "lost" : ""}`}>
                       <TeamBadge id={fixture.away} />
                       <span>{getTeam(fixture.away)?.name || "구단 정보 없음"}</span>
                     </Link>

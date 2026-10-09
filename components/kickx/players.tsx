@@ -1,11 +1,12 @@
 "use client";
+import {PerformanceDetails} from "./performance";
 import { Select } from "./select";
 import { useLeagueOptions, useTeamOptions } from "./options";
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { useEffect, useState, type CSSProperties } from "react";
 import { ArrowRight, ChevronLeft, ChevronRight, LayoutGrid, List, MessageCircle, RotateCcw, Search, Sparkles } from "lucide-react";
-import { dateText, money, seriesForDays } from "@/lib/kickx/data";
+import { dateText, money, seriesForDays, score } from "@/lib/kickx/data";
 import { leagueIdentity } from "@/lib/kickx/club-identity";
 import type { Player } from "@/lib/kickx/types";
 import { usePlatform } from "./provider";
@@ -34,6 +35,7 @@ import {
 
 const PAGE = 12;
 const SORT_OPTIONS = [
+  { value: "number", label: "등번호 순" },
   { value: "price", label: "가치 높은 순" },
   { value: "price-asc", label: "가치 낮은 순" },
   { value: "change", label: "상승률 순" },
@@ -103,7 +105,7 @@ export function PlayerList({ market = false }: { market?: boolean }) {
     [league, setLeague] = useState("all"),
     [team, setTeam] = useState(sp.get("team") || "all"),
     [pos, setPos] = useState("전체");
-  const [sort, setSort] = useState(market ? "volume" : "price"),
+  const [sort, setSort] = useState(market ? "volume" : "number"),
     [viewChoice, setView] = useState<string | null>(null),
     [tab, setTab] = useState(sp.get("watchlist") === "1" ? "관심 선수" : "전체 선수"),
     [page, setPage] = useState(1);
@@ -132,8 +134,8 @@ export function PlayerList({ market = false }: { market?: boolean }) {
     })
     .sort((a, b) => {
       if (sort === "name") return a.name.localeCompare(b.name);
-      const key = (sort === "price-asc" ? "price" : sort) as "price" | "change" | "performance" | "volume";
-      return compareNumber(a[key], b[key], sort === "price-asc");
+      const key = (sort === "price-asc" ? "price" : sort) as "number" | "price" | "change" | "performance" | "volume";
+      return compareNumber(a[key], b[key], ["price-asc","number"].includes(sort)) || a.name.localeCompare(b.name) || a.id.localeCompare(b.id);
     });
   const remote=useCatalogPage<Player>("players",{q,league,team,position:pos === "전체" ? undefined : pos,sort,page,size:PAGE,scope:({"관심 선수":"watch","보유 선수":"owned","상승 선수":"rising","하락 선수":"falling"} as Record<string,string>)[tab] ?? "all"});
   const status=remote.enabled ? remote.status : platformStatus;
@@ -167,7 +169,7 @@ export function PlayerList({ market = false }: { market?: boolean }) {
               <StatCard label="전체 거래량" value={money(data.market.volume)} unit="건" hint={data.market.calculatedAt ? `${dateText(data.market.calculatedAt)} 집계` : "집계 대기"} />
               <StatCard label="상승 선수" value={<span className="up">{money(data.market.rising)}</span>} unit="명" hint="직전 갱신 대비" />
               <StatCard label="하락 선수" value={<span className="down">{money(data.market.falling)}</span>} unit="명" hint="직전 갱신 대비" />
-              <StatCard label="거래 가능 선수" value={money(data.players.filter((p) => !p.status && p.price != null).length || null)} unit="명" hint={`전체 ${data.playerTotal ?? data.players.length}명`} tone="yellow" />
+              <StatCard label="거래 가능 선수" value={money(data.market.pricedPlayers ?? data.players.filter((p) => !p.status && p.price != null).length)} unit="명" hint={`전체 ${data.playerTotal ?? data.players.length}명`} tone="yellow" />
             </div>
           ) : (
             <div className="market-pending" role="note">
@@ -260,7 +262,7 @@ export function PlayerList({ market = false }: { market?: boolean }) {
                       <td className="numeric strong">{p.price != null ? <>{money(p.price)}<span className="unit">P</span><span className="only-sm"><Change value={p.change} /></span></> : <span className="value-pending">산정 전</span>}</td>
                       <td className="numeric hide-sm"><Change value={p.change} /></td>
                       <td className="hide-md"><Sparkline values={p.history.map((v) => v.value)} down={(p.change ?? 0) < 0} /></td>
-                      <td className="numeric hide-sm">{money(p.performance)}</td>
+                      <td className="numeric hide-sm">{score(p.performance)}</td>
                       <td className="numeric hide-md">{money(p.volume)}</td>
                       <td className="cell-actions hide-sm"><TradeButton player={p} side={owned ? "sell" : "buy"} className={`button small ${owned ? "secondary" : "primary"}`} /></td>
                     </tr>
@@ -288,11 +290,12 @@ export function PlayerList({ market = false }: { market?: boolean }) {
 function PerformanceBars({ player }: { player: Player }) {
   const records = [...player.records].sort((a, b) => Date.parse(a.playedAt) - Date.parse(b.playedAt)).slice(-6);
   if (!records.length) return <p className="muted perf-empty">최근 경기 기록이 없습니다.</p>;
+  const scale=Math.max(1,...records.map(r=>Math.abs(r.performance??0)));
   return (
-    <div className="perf-bars" role="img" aria-label={`최근 ${records.length}경기 Performance: ${records.map((r) => money(r.performance)).join(", ")}`}>
+    <div className="perf-bars" role="img" aria-label={`최근 ${records.length}경기 Performance (막대는 점수의 절댓값): ${records.map((r) => score(r.performance)).join(", ")}`}>
       {records.map((r) => (
-        <span key={r.id} className={r.performance == null ? "dnp" : ""}>
-          <i style={{ height: `${r.performance == null ? 6 : Math.max(8, r.performance)}%` }} />
+        <span key={r.id} className={r.performance == null ? "dnp" : r.performance<0 ? "negative" : ""}>
+          <i style={{ height: `${r.performance == null ? 6 : Math.max(4, Math.abs(r.performance)/scale*70)}%` }} />
           <b className="num">{r.performance == null ? "—" : r.performance}</b>
           <small>{dateText(r.playedAt, false).slice(6)}</small>
         </span>
@@ -370,7 +373,7 @@ export function PlayerDetail() {
         </div>
       </section>
       <div className="stat-grid detail-stats">
-        <StatCard label="최근 Performance" value={money(p.performance)} hint={p.performance == null ? "계산 준비 중" : "최근 경기 기준"} tone="yellow" />
+        <StatCard label="최근 Performance" value={score(p.performance)} hint={p.performance == null ? "계산 준비 중" : "최근 경기 기준"} tone="yellow" />
         <StatCard label={p.statsScope === "imported_matches" ? `수집된 ${p.importedMatches ?? 0}경기 득점 · 도움` : p.season ? `${p.season} 시즌 득점 · 도움` : "시즌 득점 · 도움"} value={`${money(p.goals)} · ${money(p.assists)}`} />
         <StatCard label="출전 시간" value={money(p.minutes)} unit="분" />
         <StatCard label="거래량" value={money(p.volume)} unit="건" />
@@ -413,7 +416,7 @@ export function PlayerDetail() {
                           <td className="numeric">{r.minutes == null ? "—" : r.minutes > 0 ? `${money(r.minutes)}′` : <span className="muted">미출전</span>}</td>
                           <td className="numeric">{money(r.goals)}</td>
                           <td className="numeric">{money(r.assists)}</td>
-                          <td className="numeric strong">{money(r.performance)}</td>
+                          <td className="numeric strong">{score(r.performance)}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -469,6 +472,7 @@ export function PlayerDetail() {
           </section>
         </aside>
       </div>
+      <PerformanceDetails player={p}/>
     </>
   );
 }

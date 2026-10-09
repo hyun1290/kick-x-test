@@ -1,10 +1,12 @@
 "use client";
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { AlertTriangle, ArrowRight, Calculator, Database, FileClock, Flag, RefreshCw, Search, ShieldCheck, TrendingUp } from "lucide-react";
 import { dateText, money, relativeTime } from "@/lib/kickx/data";
 import type { AdminData, DataStatus } from "@/lib/kickx/types";
-import { useAdminData } from "./provider";
+import {PrototypeAdmin} from "./prototype-admin";
+import {apiRequest} from "@/lib/kickx/client";
+import { useAdminData, usePlatform } from "./provider";
 import { ManualIngestion } from "./ingestion";
 import { DataEmpty, DataNotice, DisabledAction, MockBadge, Modal, StatCard, Tabs } from "./ui";
 
@@ -162,6 +164,7 @@ export function DataAdmin() {
     <AdminFrame active="/admin/data" status={status} reload={reload} eyebrow="DATA OPERATIONS" title="데이터 관리" description="경기 데이터 수집 → Performance 계산 → 선수 가치 갱신 작업 상태를 확인합니다.">
       <section className="admin-section"><Pipeline jobs={data.jobs} /></section>
       <ManualIngestion initial={data.ingestion} reload={reload} />
+      <PrototypeAdmin data={data} reload={reload}/>
       <section className="panel flush">
         <div className="panel-head">
           <Tabs items={["전체", "완료", "실패", "진행 중"]} value={tab} onChange={setTab} variant="segment" label="작업 상태" />
@@ -204,7 +207,7 @@ export function DataAdmin() {
             <div><dt>성공 / 실패</dt><dd>{money(job.success)} / {money(job.fail)}</dd></div>
           </dl>
           <pre className="log-block">{job.error || "저장된 오류 내용이 없습니다."}</pre>
-          <p className="fine-print">5대 리그 수집은 위의 수동 갱신에서 이어서 실행할 수 있습니다. 개별 작업 재처리와 계산은 아직 지원하지 않습니다.</p>
+          <p className="fine-print">5대 리그 수집은 위의 수동 갱신에서 이어서 실행할 수 있습니다. 계산은 위의 게임 운영에서 별도로 실행할 수 있습니다.</p>
           <div className="modal-actions">
             <button className="button secondary" onClick={() => setSelected(null)}>닫기</button>
             <DisabledAction className="button primary"><RefreshCw size={15} />재처리 요청</DisabledAction>
@@ -293,6 +296,10 @@ export function TradesAdmin() {
   );
 }
 export function CommunityAdmin() {
+  const {mock,notify}=usePlatform();
+  const [reason,setReason]=useState(""),[busy,setBusy]=useState(false);
+  const lock=useRef(false);
+  async function moderate(operation:string){if(!report||lock.current)return;if(mock){notify("예시 모드 · 실제로 처리되지 않습니다.");return;}lock.current=true;setBusy(true);try{await apiRequest("/api/kickx/admin/prototype","POST",{action:"moderate",reportId:report.id,operation,reason});setSelected(null);setReason("");reload();notify("신고를 처리했습니다.");}catch(e){notify(e instanceof Error?e.message:"처리 실패","error");}finally{lock.current=false;setBusy(false);}}
   const { data, status, reload } = useAdminData();
   const [tab, setTab] = useState("전체"),
     [selected, setSelected] = useState<string | null>(null);
@@ -302,7 +309,7 @@ export function CommunityAdmin() {
     <AdminFrame active="/admin/community" status={status} reload={reload} eyebrow="COMMUNITY MODERATION" title="커뮤니티 관리" description="신고된 게시글을 검토하고 처리 내역을 확인합니다.">
       <section className="panel flush">
         <div className="panel-head">
-          <Tabs items={["전체", "접수", "숨김", "기각"]} value={tab} onChange={setTab} variant="segment" label="처리 상태" />
+          <Tabs items={["전체", "접수", "숨김", "기각", "복원"]} value={tab} onChange={setTab} variant="segment" label="처리 상태" />
           <span className="fine-print num">검토 대기 {data.reports.filter((r) => r.status === "접수").length}건</span>
         </div>
         <div className="table-scroll">
@@ -342,10 +349,10 @@ export function CommunityAdmin() {
             <div><dt>접수 일시</dt><dd>{dateText(report.date)}</dd></div>
             <div><dt>처리 상태</dt><dd><StatusPill status={report.status} /></dd></div>
           </dl>
-          <p className="fine-print">신고 처리 서비스 준비 중입니다. 처리 결과는 감사 이력에 기록됩니다.</p>
+          <p className="article-body">{report.content}</p><label className="modal-field">처리 사유 (5~500자)<textarea value={reason} onChange={e=>setReason(e.target.value)} maxLength={500}/></label><p className="fine-print">처리 결과와 사유가 운영 이력에 기록됩니다.</p>
           <div className="modal-actions">
-            <DisabledAction className="button secondary">신고 기각</DisabledAction>
-            <DisabledAction className="button danger">게시글 숨김</DisabledAction>
+            <button className="button secondary" disabled={busy||reason.trim().length<5||report.status!=="접수"} onClick={()=>void moderate("dismiss")}>신고 기각</button>
+            <button className="button danger" disabled={busy||reason.trim().length<5||!["접수","숨김"].includes(report.status)} onClick={()=>void moderate(report.status==="숨김"?"restore":"hide")}>{report.status==="숨김"?"복원":report.commentId?"댓글 숨김":"게시글 숨김"}</button>
           </div>
         </Modal>
       )}

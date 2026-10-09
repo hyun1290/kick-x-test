@@ -25,7 +25,7 @@ try {
   const context=await browser.newContext();
   const page=await context.newPage();
   page.on("pageerror",error=>errors.push(error.message));
-  const routes=["/","/login","/onboarding","/players","/players/missing","/market","/portfolio","/transactions","/squad","/ranking","/community","/community/clubs","/community/players","/community/clubs/missing","/community/players/missing","/community/posts/missing","/community/write","/mypage","/admin","/admin/data","/admin/trades","/admin/community","/fixtures"];
+  const routes=["/","/login","/onboarding","/players","/players/missing","/market","/portfolio","/transactions","/squad","/ranking","/community","/community/clubs","/community/players","/community/clubs/missing","/community/players/missing","/community/posts/missing","/community/write","/mypage","/admin","/admin/data","/admin/trades","/admin/community","/fixtures","/teams/missing","/rules"];
   for(const viewport of [{width:1440,height:1000},{width:390,height:844}]) {
     await page.setViewportSize(viewport);
     for(const path of routes) {
@@ -209,6 +209,73 @@ try {
     await mockPage.screenshot({path:`test-artifacts/admin-ingestion-${width}.png`,fullPage:true});
   }
   report.checks.push("Admin starts only on click; pause and reload retain checkpoint; explicit resume completes");
+  // Browser contract doubles only. SQL integration above independently tests actual persistence.
+  state.players[0].price=100000;state.players[0].position='FW';state.players[0].number=9;
+  state.teams=[{id:'test-team',name:'테스트 구단',english:'Test Club',code:'TST',color:null,leagueId:null}];
+  state.players[0].team='test-team';state.categories=['자유'];
+  state.formations=[{id:'4-3-3',name:'4-3-3',positions:['GK','DF','DF','DF','DF','MF','MF','MF','FW','FW','FW']}];
+  Object.assign(state.member,{financialReady:true,points:1300000,totalAssets:1300000,playerAssets:0,profit:0,returnRate:0,ownedPlayers:[]});
+  let tradeCalls=0,quoteCalls=0;
+  await mock.route('**/api/kickx/trades/quote',async route=>{
+    quoteCalls++;const body=route.request().postDataJSON();assert.equal(body.playerId,'test-player');assert.equal(body.price,undefined);
+    await route.fulfill({json:{id:'11111111-1111-1111-1111-111111111111',playerId:'test-player',side:body.side,quantity:1,price:100000,fee:0,settlement:100000,balance:1300000,balanceAfter:1200000,quotedAt:new Date().toISOString(),expiresAt:new Date(Date.now()+60000).toISOString()}});
+  });
+  await mock.route('**/api/kickx/trades',async route=>{
+    tradeCalls++;const body=route.request().postDataJSON();assert.deepEqual(Object.keys(body).sort(),['quoteId','requestId']);assert.match(body.requestId,/^[a-f0-9-]{36}$/);
+    Object.assign(state.member,{points:1200000,playerAssets:100000,ownedPlayers:[state.players[0]],holdings:[{id:'test-player',playerId:'test-player',playerName:'CI-only player',quantity:1,cost:100000,value:100000,profit:0,returnRate:0}]});
+    await new Promise(r=>setTimeout(r,150));await route.fulfill({json:{accepted:true}});
+  });
+  await mockPage.goto(base+'/players/test-player',{waitUntil:'networkidle'});
+  await mockPage.getByRole('button',{name:'매입하기',exact:true}).click();
+  const confirm=mockPage.getByRole('button',{name:'매입 확정',exact:true});await confirm.waitFor();await confirm.click();
+  await mockPage.getByRole('heading',{name:'매입이 완료되었습니다',exact:true}).waitFor();
+  assert.equal(quoteCalls,1);assert.equal(tradeCalls,1);
+  await mockPage.getByRole('button',{name:'확인',exact:true}).click();
+  assert.equal(await mockPage.getByRole('button',{name:'보유 중',exact:true}).isDisabled(),true);
+  report.checks.push('Trade UI uses server quote; receipt reloads holdings; duplicate holding blocks buy');
+  let squadCalls=0;
+  await mock.route('**/api/kickx/squad',async route=>{
+    squadCalls++;const body=route.request().postDataJSON();assert.equal(body.revision,0);assert.equal(body.slots.length,11);assert.equal(body.slots[8],'test-player');
+    state.member.squad={...body,revision:1,value:100000,performance:null};await route.fulfill({json:{revision:1}});
+  });
+  await mockPage.goto(base+'/squad',{waitUntil:'networkidle'});
+  await mockPage.getByRole('combobox',{name:'포메이션',exact:true}).click();await mockPage.getByRole('option').filter({hasText:'4-3-3'}).click();
+  await mockPage.getByRole('button',{name:'9번 FW 자리 빈 자리',exact:true}).click();await mockPage.getByRole('button',{name:'배치',exact:true}).click();
+  await mockPage.getByRole('button',{name:'스쿼드 저장',exact:true}).click();await mockPage.getByText('스쿼드를 저장했습니다.',{exact:true}).waitFor();assert.equal(squadCalls,1);
+  await mockPage.reload({waitUntil:'networkidle'});assert.ok(await mockPage.getByRole('button',{name:'9번 FW 자리 CI-only player',exact:true}).isVisible());
+  report.checks.push('Squad saves 11 slots and revision; saved owned lineup survives reload');
+  let savedPost=null;const savedComments=[];const communityActions=[];
+  await mock.route(/\/api\/kickx\/community(?:\?|$)/,async route=>{
+    const req=route.request();
+    if(req.method()==='GET'){
+      const params=new URL(req.url()).searchParams;
+      return route.fulfill({json:{status:'ready',data:params.has('postId')?{post:savedPost,comments:savedComments}:{items:savedPost?[savedPost]:[],total:savedPost?1:0,page:1,size:20}}});
+    }
+    const body=req.postDataJSON();communityActions.push(body.action);
+    if(body.action==='createPost')savedPost={...body,id:'22222222-2222-2222-2222-222222222222',author:'새 닉네임',authorId:'test-account',targetName:'CI-only player',date:new Date().toISOString(),revision:1,likes:0,liked:false,views:0,commentCount:0,transaction:null};
+    if(body.action==='comment'){assert.match(body.requestId,/^[a-f0-9-]{36}$/);savedComments.push({id:'33333333-3333-3333-3333-333333333333',postId:savedPost.id,author:'새 닉네임',authorId:'test-account',body:body.body,date:new Date().toISOString(),revision:1});savedPost.commentCount++;}
+    if(body.action==='like'){savedPost.liked=body.liked;savedPost.likes=body.liked?1:0;}
+    await route.fulfill({json:{id:savedPost?.id}});
+  });
+  await mockPage.goto(base+'/community/write?scope=player&target=test-player',{waitUntil:'networkidle'});
+  await mockPage.getByRole('combobox',{name:'주제',exact:false}).click();await mockPage.getByRole('option',{name:'자유',exact:true}).click();
+  await mockPage.getByLabel('제목',{exact:false}).fill('테스트 경기 후기');await mockPage.locator('#post-body').fill('저장 흐름을 점검하는 테스트 게시글 내용입니다.');
+  await mockPage.getByRole('button',{name:'게시글 등록',exact:true}).click();await mockPage.getByRole('link',{name:'저장한 게시글 보기',exact:true}).click();
+  await mockPage.getByRole('heading',{name:'테스트 경기 후기',exact:true}).waitFor();
+  await mockPage.getByLabel('댓글 내용',{exact:true}).fill('저장하는 댓글');await mockPage.getByRole('button',{name:'댓글 등록',exact:true}).click();await mockPage.getByText('저장하는 댓글',{exact:true}).waitFor();
+  await mockPage.getByRole('button',{name:'공감 · 0',exact:true}).click();await mockPage.getByRole('button',{name:'공감 취소 · 1',exact:true}).waitFor();
+  await mockPage.getByRole('button',{name:'게시글 신고',exact:true}).click();await mockPage.getByLabel('신고 사유 (5~500자)',{exact:true}).fill('신고 등록 테스트입니다');await mockPage.getByRole('button',{name:'확인',exact:true}).click();
+  assert.ok(['createPost','comment','like','report'].every(action=>communityActions.includes(action)));
+  report.checks.push('Post creation, direct detail, comment, desired-state like and report use real endpoint contracts');
+  for(const width of [1440,390]){
+    await mockPage.setViewportSize({width,height:900});
+    for(const path of ['/teams/test-team','/squad',`/community/posts/${savedPost.id}`,'/rules']){
+      await mockPage.goto(base+path,{waitUntil:'networkidle'});assert.ok(await mockPage.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),`${path} prototype overflows at ${width}`);
+      await mockPage.screenshot({path:`test-artifacts/prototype-${path.startsWith('/community')?'post':path.startsWith('/teams')?'team':path.slice(1)}-${width}.png`,fullPage:true});
+    }
+  }
+  report.checks.push('Prototype team, squad, article and score rules fit desktop and mobile');
+
   await mock.close();
   assert.deepEqual(errors,[],"Browser JavaScript errors");
   report.checks.push("No browser JavaScript errors");

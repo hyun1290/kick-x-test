@@ -3,19 +3,20 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Fixture, Player } from "@/lib/kickx/types";
 import { literalLike, type CatalogQuery } from "@/lib/kickx/catalog-query";
 import { mapPlayer, mapFixture } from "./catalog";
+import { checkDatabase, migrationMissing } from "./prototype";
 export type CatalogPage<T> = { items: T[]; total: number; page: number; size: number };
 export async function readPlayerPage(client: SupabaseClient, input: CatalogQuery): Promise<CatalogPage<Player>> {
   let query = input.scope === "watch"
     ? client.rpc("watched_player_catalog", {}, { count: "exact" }).select("*")
-    : client.from("player_catalog").select("*", { count: "exact" });
+    : input.scope === "owned" ? client.rpc("owned_player_catalog", {}, {count:"exact"}).select("*") : client.from("player_catalog").select("*", { count: "exact" });
   if (input.q) query = query.ilike("search_text", `%${literalLike(input.q)}%`);
   if (input.league) query = query.contains("league_ids", [input.league]);
   if (input.team) query = query.eq("team_id", input.team);
   if (input.position) query = query.eq("position", input.position);
   if (input.scope === "rising") query = query.gt("change_percent", 0);
   if (input.scope === "falling") query = query.lt("change_percent", 0);
-  const column = { price:"price", "price-asc":"price", change:"change_percent", performance:"performance", volume:"volume", name:"name" }[input.sort]!;
-  const { data, error, count } = await query.order(column, { ascending: input.sort === "price-asc" || input.sort === "name", nullsFirst:false }).order("id")
+  const column = { number:"shirt_number",price:"price", "price-asc":"price", change:"change_percent", performance:"performance", volume:"volume", name:"name" }[input.sort]!;
+  const { data, error, count } = await query.order(column, { ascending: ["price-asc","name","number"].includes(input.sort), nullsFirst:false }).order("name").order("id")
     .range((input.page-1)*input.size, input.page*input.size-1);
   if (error) throw error;
   if (!data || count == null) throw new Error("Missing paginated catalog result");
@@ -25,6 +26,7 @@ export async function readFixturePage(client: SupabaseClient, input: CatalogQuer
   let query = client.from("fixture_catalog").select("*", {count:"exact"});
   if (input.q) query = query.ilike("search_text", `%${literalLike(input.q)}%`);
   if (input.league) query = query.eq("league_id", input.league);
+  if (input.team) query = query.or(`home_team_id.eq.${input.team},away_team_id.eq.${input.team}`);
   if (input.state !== "all") query = query.eq("state", input.state);
   if (input.day) {
     const start = new Date(input.day+"T00:00:00+09:00");
@@ -50,5 +52,7 @@ export async function readPlayerDetail(client: SupabaseClient, id: string): Prom
   player.history=(history.data||[]).reverse().map(row=>({at:row.recorded_at,value:Number(row.value)}));
   player.records=(records.data||[]).map(row=>({id:row.id,playedAt:row.played_at,opponent:row.opponent,result:row.result,minutes:row.minutes,goals:row.goals,assists:row.assists,performance:row.performance == null ? null : Number(row.performance)}));
   player.analysis=analysis.data?.body ?? null;
+  const scores=await client.from("performance_results").select("fixture_id,score,status,rule_version,breakdown,warnings").eq("player_id",id).order("calculated_at",{ascending:false}).limit(20);
+  if(!migrationMissing(scores.error)){checkDatabase(scores.error);player.scoreDetails=scores.data??[];}
   return player;
 }

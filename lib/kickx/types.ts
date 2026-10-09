@@ -24,6 +24,9 @@ export type Player = {
   id: string;
   name: string;
   english: string | null;
+  originalName?: string;
+  aliases?: string[];
+  scoreDetails?: {fixture_id: string; score: number | null; status: string; rule_version: string; breakdown: {metric:string;value:number;points:number;evidence:string}[]; warnings:string[]}[];
   short: string | null;
   team: string | null;
   position: Position | null;
@@ -95,6 +98,9 @@ export type Post = {
   views: number;
   commentCount: number;
   transaction: Transaction | null;
+  targetName?: string;
+  revision?: number;
+  liked?: boolean;
 };
 export type Comment = {
   id: string;
@@ -103,6 +109,8 @@ export type Comment = {
   authorId: string;
   body: string;
   date: string;
+  parentId?: string | null;
+  revision?: number;
 };
 export type Profile = { nickname: string; team: string | null };
 export type Session = {
@@ -113,6 +121,9 @@ export type Session = {
 export type MemberData = {
   /** False while the ledger/holdings service is not connected. */
   financialReady?: boolean;
+  ownedPlayers?: Player[];
+  transactionTotal?: number;
+  realizedProfit?: number | null;
   points: number | null;
   totalAssets: number | null;
   playerAssets: number | null;
@@ -124,6 +135,7 @@ export type MemberData = {
   watchlist: string[];
   assetHistory: SeriesPoint[];
   squad: {
+    revision?: number;
     formationId: string;
     slots: (string | null)[];
     value: number | null;
@@ -146,6 +158,8 @@ export type RankingPeriod = {
   rows: RankingRow[];
 };
 export type PublicData = {
+  communityCounts?: {scope:"club"|"player";target:string;count:number}[];
+  policy?: {version:string;initialPoints:number;initialPrice:number;sellFeeBps:number;quoteSeconds:number} | null;
   /** Total DB catalog count; players below are bounded previews. */
   playerTotal?: number;
   players: Player[];
@@ -158,6 +172,7 @@ export type PublicData = {
   comments: Comment[];
   rankings: RankingPeriod[];
   market: {
+    pricedPlayers?: number;
     volume: number | null;
     rising: number | null;
     falling: number | null;
@@ -181,6 +196,8 @@ export type IngestionState = {
   warnings: { label: string; warning: string }[]; runs: IngestionRun[];
 };
 export type AdminData = {
+  prototypeReady?: boolean;
+  calculationIssues?: {player_id:string;fixture_id:string;status:string;warnings:string[]}[];
   ingestion?: IngestionState;
   summary: {
     players: number | null;
@@ -201,6 +218,8 @@ export type AdminData = {
   }[];
   trades: (Transaction & { userId: string })[];
   reports: {
+    commentId?: string | null;
+    content?: string;
     id: string;
     postId: string;
     title: string;
@@ -226,6 +245,9 @@ export type DataResponse<T> = {
 };
 /** Price quote shown before a trade is confirmed. Produced by the trade service, never computed in the UI. */
 export type TradeQuote = {
+  id?: string;
+  expiresAt?: string;
+  policyVersion?: string;
   playerId: string;
   side: "buy" | "sell";
   quantity: number;
