@@ -28,3 +28,19 @@ test('database error mapping exposes known conflicts but redacts unknown private
  assert.throws(()=>prototype.checkDatabase({code:'42P01',message:'private schema'}),e=>e.status===503&&!e.message.includes('private'));
  assert.throws(()=>prototype.checkDatabase({code:'XX000',message:'private credentials or content'}),e=>!e.message.includes('private'));
 });
+test('member restriction routes verify admin, reject invalid input and ignore forged roles/balances',async()=>{
+ let denied=true;const calls=[];
+ const route=loadTs('../app/api/kickx/admin/users/route.ts',{'@/server/kickx/http':{...http,authenticatedClient:async()=>({client:{rpc:async(name,args)=>{calls.push({name,args});return {error:null};}}})},'@/server/kickx/prototype':prototype,'@/lib/kickx/catalog-query':loadTs('../lib/kickx/catalog-query.ts'),'@/server/kickx/admin-db':{requireAdmin:async()=>{if(denied)throw new http.HttpError(403,'blocked');},createAdminDatabase:()=>{throw Error('not called');}}});
+ assert.equal((await route.GET(new Request('https://kickx.invalid/api/kickx/admin/users'))).status,403);
+ assert.equal((await route.POST(req({}))).status,403);denied=false;
+ const body={userId:'11111111-1111-1111-1111-111111111111',days:7,reason:'검토한 운영 위반',role:'admin',balance:999999};
+ assert.equal((await route.POST(req(body,'https://foreign.invalid'))).status,403);
+ for(const bad of [{...body,days:999},{...body,days:'7'},{...body,reason:'x'},{...body,userId:'bad'}])assert.equal((await route.POST(req(bad))).status,400);
+ assert.equal(calls.length,0);assert.equal((await route.POST(req(body))).status,200);
+ assert.deepEqual(calls[0],{name:'kickx_restrict_member',args:{p_user:body.userId,p_days:7,p_reason:body.reason}});
+});
+test('administrator cannot invoke manual game publication through the removed admin actions',async()=>{
+ let calls=0;const route=loadTs('../app/api/kickx/admin/prototype/route.ts',{'@/server/kickx/http':{...http,authenticatedClient:async()=>{calls++;throw Error('Unexpected mutation');}},'@/server/kickx/prototype':prototype,'@/server/kickx/admin-db':{requireAdmin:async()=>({id:'verified'})}});
+ for(const action of ['initialize','rankings','preview','calculate','batch','name'])assert.equal((await route.POST(req({action}))).status,400);
+ assert.equal(calls,0);
+});

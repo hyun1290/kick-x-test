@@ -9,7 +9,7 @@ import { Modal } from "./ui";
 import { Select } from "./select";
 
 type Member = { id: string; nickname: string; team_id: string; created_at: string; member_restrictions: { suspended_until: string | null; reason: string } | null; user_roles: { role: string } | null };
-type PageData = { items: Member[]; total: number; page: number; size: number };
+type PageData = { items: Member[]; total: number | null; page: number; size: number };
 const restricted = (m: Member) => !!m.member_restrictions?.suspended_until && Date.parse(m.member_restrictions.suspended_until) > Date.now();
 export function MembersAdmin() {
   const { status, reload } = useAdminData(), { mock, notify } = usePlatform();
@@ -20,9 +20,9 @@ export function MembersAdmin() {
   useEffect(() => {
     let active = true;
     const timer = setTimeout(() => {
-      if (mock) { setData({ items: [], total: 0, page: 1, size: 30 }); setLoading(false); return; }
+      if (mock) { setData({ items: [], total: null, page: 1, size: 30 }); setLoading(false); return; }
       setLoading(true); setError("");
-      fetch(`/api/kickx/admin/users?page=${page}&q=${encodeURIComponent(q)}`, { cache: "no-store" }).then(async response => { const result = await response.json(); if (!response.ok) throw new Error(result.error || "회원 정보를 불러오지 못했습니다."); return result; }).then(result => { if (active) setData(result as PageData); }).catch(e => { if (active) { setData(null); setError(e instanceof Error ? e.message : "회원을 불러오지 못했습니다."); } }).finally(() => { if (active) setLoading(false); });
+      fetch(`/api/kickx/admin/users?page=${page}&q=${encodeURIComponent(q)}`, { cache: "no-store", signal: AbortSignal.timeout(15000) }).then(async response => { const result = await response.json(); if (!response.ok) throw new Error(result.error ?? "조회 실패"); return result; }).then(result => { if (active) setData(result as PageData); }).catch(e => { if (active) { setData(null); setError(e instanceof Error ? e.message : "회원을 불러오지 못했습니다."); } }).finally(() => { if (active) setLoading(false); });
     }, 250);
     return () => { active = false; clearTimeout(timer); };
   }, [q, page, revision, mock]);
@@ -38,10 +38,10 @@ export function MembersAdmin() {
   }
   return <AdminFrame active="/admin/users" status={status} reload={reload} eyebrow="MEMBER MANAGEMENT" title="회원 관리" description="회원을 검색하고 거래·스쿼드·커뮤니티 이용을 제한하거나 해제합니다.">
     <section className="panel flush">
-      <div className="panel-head"><h2>회원 목록 {data ? `· ${data.total}명` : ""}</h2><label className="input-search"><Search size={16} /><input aria-label="회원 검색" placeholder="닉네임 또는 회원 ID" value={q} onChange={e => { setQ(e.target.value); setPage(1); }} maxLength={100} /></label></div>
+      <div className="panel-head"><h2>회원 목록 {data?.total == null ? "· —명" : `· ${data.total}명`}</h2><label className="input-search"><Search size={16} /><input aria-label="회원 검색" placeholder="닉네임 또는 회원 ID" value={q} onChange={e => { setQ(e.target.value); setPage(1); }} maxLength={100} /></label></div>
       {error && <p role="alert" className="fine-print">{error}</p>}
-      {loading ? <p className="fine-print" role="status">회원을 불러오고 있습니다.</p> : <div className="table-scroll"><table className="data-table"><thead><tr><th>닉네임</th><th>회원 ID</th><th>가입 일시</th><th>상태</th><th className="cell-actions" /></tr></thead><tbody>{data?.items.map(m => <tr key={m.id}><td><strong>{m.nickname}</strong></td><td className="mono muted">{m.id}</td><td className="num muted">{dateText(m.created_at)}</td><td>{m.user_roles?.role === "admin" ? "관리자" : restricted(m) ? `이용 제한 · ${dateText(m.member_restrictions!.suspended_until!)}` : "정상"}</td><td className="cell-actions"><button className="button secondary small" disabled={m.user_roles?.role === "admin"} onClick={() => { setSelected(m); setReason(""); setDays(restricted(m) ? "0" : "7"); }}>회원 관리</button></td></tr>)}</tbody></table>{data?.total === 0 && <p className="fine-print">{mock ? "예시 모드에서는 실제 회원을 조회하지 않습니다." : "검색된 회원이 없습니다."}</p>}</div>}
-      <div className="panel-head"><button className="button secondary small" disabled={page === 1 || loading} onClick={() => setPage(p => p - 1)}>이전</button><span className="fine-print num">{page} / {Math.max(1, Math.ceil((data?.total || 0) / 30))}</span><button className="button secondary small" disabled={!data || page * 30 >= data.total || loading} onClick={() => setPage(p => p + 1)}>다음</button></div>
+      {loading ? <p className="fine-print" role="status">회원을 불러오고 있습니다.</p> : <div className="table-scroll"><table className="data-table"><thead><tr><th>닉네임</th><th>회원 ID</th><th>가입 일시</th><th>상태</th><th className="cell-actions" /></tr></thead><tbody>{data?.items.map(m => <tr key={m.id}><td><strong>{m.nickname}</strong></td><td className="mono muted">{m.id}</td><td className="num muted">{dateText(m.created_at)}</td><td>{m.user_roles?.role === "admin" ? "관리자" : restricted(m) ? `이용 제한 · ${dateText(m.member_restrictions!.suspended_until!)}` : "정상"}</td><td className="cell-actions"><button className="button secondary small" disabled={m.user_roles?.role === "admin"} onClick={() => { setSelected(m); setReason(""); setDays(restricted(m) ? "0" : "7"); }}>회원 관리</button></td></tr>)}</tbody></table>{(mock || data?.total === 0) && <p className="fine-print">{mock ? "예시 모드에서는 실제 회원을 조회하지 않습니다." : "검색된 회원이 없습니다."}</p>}</div>}
+      <div className="panel-head"><button className="button secondary small" disabled={page === 1 || loading} onClick={() => setPage(p => p - 1)}>이전</button><span className="fine-print num">{page} / {data?.total == null ? "—" : Math.max(1, Math.ceil(data.total / 30))}</span><button className="button secondary small" disabled={data?.total == null || page * 30 >= data.total || loading} onClick={() => setPage(p => p + 1)}>다음</button></div>
     </section>
     {selected && <Modal title={`${selected.nickname} · 회원 관리`} eyebrow={selected.id} onClose={() => { if (!busy) setSelected(null); }}>
       {restricted(selected) && <p className="fine-print">기존 사유: {selected.member_restrictions?.reason}</p>}
