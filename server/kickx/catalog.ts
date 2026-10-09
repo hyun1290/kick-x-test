@@ -2,6 +2,7 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { PublicData, Player, Position } from "@/lib/kickx/types";
 import { emptyPublicData } from "@/lib/kickx/data";
+import { readPrototypePublic } from "./public-prototype";
 type Row = Record<string, unknown>;
 const text = (v: unknown) => typeof v === "string" ? v : null;
 const number = (v: unknown) => v != null && (typeof v === "number" || typeof v === "string") && v !== "" && Number.isFinite(Number(v)) ? Number(v) : null;
@@ -35,7 +36,7 @@ export function mapPlayer(row: Row, snapshot?: Row): Player {
   const position = ["GK","DF","MF","FW"].includes(String(row.position)) ? row.position as Position : null;
   const photo = text(row.photo);
   return {
-    id:required(row.id),name:required(row.name),english:text(row.english),short:text(row.short_name),
+    id:required(row.id),name:text(row.display_name)||required(row.name),originalName:required(row.name),aliases:Array.isArray(row.aliases)?row.aliases:[],english:text(row.english)||text(row.name),short:text(row.display_name)||text(row.short_name),
     team:text(row.team_id),position,number:number(row.shirt_number),country:text(row.country),age:ageAt(row.birth_date,new Date()),
     photo:photo && /^https:\/\/sports\.bzzoiro\.com\/img\/player\/[0-9]+\//.test(photo) ? photo : null,
     season:number(row.season),statsScope:text(row.stats_scope),importedMatches:number(row.matches_imported),price:number(snapshot?.price),change:number(snapshot?.change_percent),performance:number(snapshot?.performance),volume:number(snapshot?.volume),
@@ -66,7 +67,7 @@ export async function readCatalog(client: SupabaseClient): Promise<PublicData> {
   ]);
   if(summary.error || summary.count == null) throw summary.error || new Error("Missing player count");
   const players=[...new Map([...price,...rising,...falling].map(row=>[required(row.id),mapPlayer(row,row)])).values()];
-  return {...emptyPublicData(),
+  return {...emptyPublicData(),...await readPrototypePublic(client),
     leagues:leagues.map(row=>({id:required(row.id),name:required(row.name)})),
     teams:teams.map(row=>({id:required(row.id),name:required(row.name),english:text(row.english),code:text(row.code),color:text(row.color),leagueId:text(row.league_id)})),
     players,fixtures:fixtures.map(mapFixture),playerTotal:summary.count,

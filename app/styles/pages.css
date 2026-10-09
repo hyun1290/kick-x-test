@@ -325,6 +325,8 @@ a.movers-player:hover strong { text-decoration: underline; text-decoration-color
 .perf-bars > span { position: relative; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 4px; }
 .perf-bars i { width: 100%; max-width: 34px; background: var(--ink); transform-origin: bottom; animation: kx-grow var(--t-slow) var(--ease) both; }
 .perf-bars > span:last-child i { background: var(--yellow-strong); box-shadow: inset 0 0 0 1.5px var(--ink); }
+.perf-bars .negative i { background: var(--down); }
+.perf-bars .negative b { color: var(--down); }
 .perf-bars .dnp i { background: var(--line-2); }
 .perf-bars b { font-size: 12px; font-weight: 900; }
 .perf-bars small { font-size: 10px; color: var(--text-3); font-weight: 700; }

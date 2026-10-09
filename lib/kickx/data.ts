@@ -31,6 +31,8 @@ export const money = (value: number | null | undefined) =>
     : new Intl.NumberFormat("ko-KR", { maximumFractionDigits: 0 }).format(
         value,
       );
+/** Display raw performance points without rounding fractional scoring away. */
+export const score = (value: number | null | undefined) => value == null || !Number.isFinite(value) ? "—" : new Intl.NumberFormat("ko-KR", {maximumFractionDigits:2}).format(value);
 export const percent = (value: number | null | undefined) =>
   value == null || !Number.isFinite(value)
     ? "—"

@@ -1,83 +1,96 @@
-# KICK-X 인수인계
+# KICK-X 인수인계 — 2026-10-09
 
-기준: 2026-10-03 KST. 기존 `main`의 BSD 연결(PR #5, `394cc8a`) 위에 수동 전체 수집을 추가했다. 최신 요구사항은 `KICK_X_요구사항_명세서.docx`와 사용자의 BSD 확정·자동 갱신 보류 지시를 따른다. 과거 API-FOOTBALL·수요 기반 가격·다크 블루 디자인 계획은 현재 기준이 아니다.
+기존 main `0819981`의 Yellow Playbook 프론트를 유지하면서, 사용자 요청에 따라 게임 기능 프로토타입을 추가했다. 자세한 정책·결측·정정·활성화 절차는 [프로토타입 작업 기록](PROTOTYPE_2026-10-09.md), 앞으로 할 일은 [다음 작업](next-steps.md)을 먼저 읽는다.
 
-## 확정 원칙
+## 반드시 유지할 지시
 
-- Next.js·React·Supabase PostgreSQL/Auth·Google OAuth·Vercel을 유지한다.
-- Yellow Playbook: 노랑·검정·흰색, 상단 가로 메뉴. 화면 구조를 다시 만들지 않는다.
-- 축구 데이터는 BSD v2, 필요한 페널티 선방은 v1 보완. 대상은 유럽 5대 리그다.
-- 사용자는 시스템을 상대로 구매·판매한다. 실제 경기 Performance가 선수 가치에 반영되며 사용자 거래량·수요가 직접 가격을 정하지 않는다.
-- 스쿼드는 보유 선수 중 최대 11명. AI는 저장된 기록·가치 변화의 설명 기능이며 필수 개발 범위다.
-- 미확정 값을 가짜 0이나 예시 가격으로 채우지 않는다. 수수료 2%, 초기 1,300,000P, Performance 0~100은 정책이 아니다.
-- 완료 목표는 2026-11-11. 현재 요청에서는 스케줄러·Cron·정기 갱신을 만들지 않는다.
+- Next.js 16 App Router(cacheComponents), React 19, TypeScript, Supabase RLS/Google OAuth, Vercel 유지.
+- Yellow Playbook: 노랑 `#ffe23a`·검정 `#111110`·흰색, 상단 가로 메뉴. 다크 블루/좌측 사이드바 지시는 폐기된 과거 정보다.
+- 이번에는 데이터·API·연결 틀을 준비했다. **다음 담당 Claude가 프론트 디자인을 이어서 작업**한다. 프론트에서 실제 가격·Performance·수수료·정산 정책을 새로 계산하지 않는다.
+- 사용자 요청으로 최초 1,300,000P, 기본 가치 100,000P, 매각 2%를 **시범 정책**으로 구현했다. 최종 확정 정책과 혼동하지 않는다. Performance는 0~100이 아닌 원점수다.
+- 동일 선수는 회원당 1명. 시스템 상대 매입/매각. 거래 수요로 가치 변동시키지 않는다.
+- 미확정 값은 `—`, null ≠ 0. 예시 모드는 반드시 `예시 데이터` 배지, 실제 저장 증거로 쓰지 않는다.
+- **AI 생성·실제 축구 선수 이적 처리·Cron/스케줄러는 보류**. BSD/FotMob 세부 차이는 사용자 요청상 추후 보정한다.
+- 이미 적용된 SQL 재실행, 운영 DB 시드, `npm audit fix --force` 금지.
+- `BSD_API_KEY`, `SUPABASE_SERVICE_ROLE_KEY`는 서버에만. 관리자 방문만으로 수집/계산 시작 금지. 상태 확인은 `--status`만.
+- 코드 변경 보고는 한국어 `[이번 작업 내용] [변경 파일] [현재 동작] [검증] [다음 작업]` 순서. 코드를 보여줄 때 전체/일부 명시.
 
-## 구현과 운영 확인을 구분한 현황
+## 구현 현황
 
-| 분야 | 코드 | 실제 확인/남은 확인 |
+| 분야 | 준비된 동작 | 운영 확인 |
 | --- | --- | --- |
-| 화면 | 홈·선수·시장·일정·자산·거래·스쿼드·랭킹·커뮤니티·관리자 | 빈 상태와 예시 상태 지원. 실제 거래/저장 완료와 다름 |
-| 계정 | Google OAuth, 검증된 서버 세션, 프로필·관심 목록 API/RLS | 사용자가 설정 완료·연결 검증을 보고함. 실제 재로그인 유지·계정 간 격리는 별도 운영 시험 |
-| 카탈로그 | 서버 검색·필터·정렬·페이지네이션·상세, BSD 사진 | 사용자가 실제 선수/소속 증가와 표시를 확인 |
-| 소량 BSD 적재 | v2/v1 어댑터, 경기 원천과 내부 표준 통계, 재수집 upsert | 사용자 실행에서 경기 209584 적재 성공, `requests:7`, `rows:86` 보고 |
-| 전체 수집 | 5대 리그 현재 시즌 발견, 구단·선수단·프로필·시즌 일정·종료 경기 수집 | 코드 구현. 이번 작업 환경에는 운영 키가 없어서 전체 운영 적재는 미실행 |
-| 관리자 | 실제 수집 이력·진행률·오류, 수동 시작/중지/재개/종료 | 새 SQL·관리자 역할·실행 서버의 비밀키 설정 필요 |
-| Performance·가치 | 표시/저장 기반만 존재 | 계산 엔진·규칙 버전·정정 재계산 미구현 |
-| 포인트·거래·자산 | 화면·연결 지점 | 지갑·원장·최초 지급·동시 정산·보유 처리 미구현 |
-| 스쿼드·랭킹 | 화면 | 저장·기간별 스냅샷·집계 미구현 |
-| 커뮤니티 | 글쓰기 입력 검증 UI | 글·댓글·공감·신고 저장 미구현 |
-| 관리자 운영·AI | 화면 또는 저장 구조 | 신고 처리·계산 재처리·실제 AI 생성 미구현 |
+| Performance·가치 | 점수표, 출전 구간/카드/자책골/무실점, 잠정 산정/보류, 원본 경합 검사, 정정 전체 재계산·이력 | 실제 선수 표본 대조 및 전체 계산 필요 |
+| 지갑·거래·자산 | 1회 최초 지급, 60초 견적, 원자적 정산, 중복 요청·보유 방지, 자산·손익·거래 페이지 | 새 SQL 적용 후 실제 로그인 매입/매각 확인 |
+| 스쿼드 | 서버 저장, 5종 포메이션, 보유/중복/포지션/revision 검증, 매각 시 자리 비우기 | 실제 저장·재로그인 점검 |
+| 랭킹 | KST 주/월 기준 자산과 수익률 스냅샷, 동률·기간 중 가입 처리, 수동 갱신 | 관리자 버튼 실행 필요 |
+| 커뮤니티 | 글/댓글/답글 수정·삭제, 거래 첨부, 공감, 조회, 신고, 검색·페이지, 팬·작성자 권한 | 두 계정으로 운영 확인 |
+| 관리자 | 기존 수집, 수동 계산 미리보기/반영/전체 재개, 랭킹 갱신, 신고 숨김/복원/기각, 감사, 한글 표시명 | 관리자 역할·서버 키 유지 |
+| 탐색·팀 | 등번호 기본 정렬, 일정 → `/teams/[teamId]`, 한글/별칭 검색 구조 | 한글 표시명 데이터는 아직 전체 등록하지 않음 |
+| AI·이적 | 새 기능 추가 없음 | 사용자 후속 지시까지 대기 |
 
-`rows_written`은 신규 선수 수가 아니라 처리한 행 수다. 재수집으로 값이 늘어도 DB 중복을 뜻하지 않는다. 표본 통계 개수도 실제 출전 인원과 같다고 단정하지 않는다.
+이 변경 작업에서 운영 DB를 직접 변경하지 않았다. 코드 검증과 운영 서비스 활성화는 별개다. 적용할 새 SQL은 `202610090001`~`202610090003` 세 파일이며 이전 네 파일은 다시 실행하지 않는다.
 
-## 핵심 경로
+## Claude용 연결 지도
 
-| 경로 | 역할 |
+| 화면/기능 | 조회·변경 계약 | 주요 파일 |
+| --- | --- | --- |
+| 공통 상태 | `/api/kickx`, `DataResponse<PlatformData>` | `components/kickx/provider.tsx`, `server/kickx/{service,supabase-repository,catalog,public-prototype}.ts` |
+| 전체 선수/관심/보유 | `GET /api/kickx/players`, scope=all/watch/owned, sort=number 등 | `catalog.tsx`, `server/kickx/catalog-pages.ts`, `lib/kickx/catalog-query.ts` |
+| 선수 상세 | `GET /api/kickx/players/:id`, `scoreDetails` 추가 | `players.tsx`, `performance.tsx` |
+| 팀 정보 | `/teams/:teamId`, 선수·경기 API의 team 필터 | `team.tsx`, `fixtures.tsx` |
+| 정책·프로토타입 예시 | `/rules` | `app/rules/page.tsx`, `server/kickx/engine/performance.ts` |
+| 거래 견적 | `POST /api/kickx/trades/quote {playerId,side}` | `lib/kickx/trade.ts`, `ui.tsx` TradeDialog |
+| 거래 확정 | `POST /api/kickx/trades {quoteId,requestId}` | 견적·금액 서버 산출, 재시도 시 requestId 유지 |
+| 거래 전체 조회 | `GET /api/kickx/trades?page=&q=&side=&days=` | `assets.tsx`, 50개씩, 응답 DataResponse |
+| 스쿼드 저장 | `PUT /api/kickx/squad {formationId,slots,revision}` | `squad.tsx`; slots는 null 포함 11개 |
+| 커뮤니티 목록 | `GET /api/kickx/community?scope=&target=&q=&category=&sort=new/popular&page=` | `community.tsx`, 목록 20개씩 |
+| 글 상세 | 동일 API `?postId=UUID&page=` → `{post,comments}` | `community-detail.tsx`, 댓글 50개씩 |
+| 커뮤니티 쓰기 | `POST /api/kickx/community`, action별 입력 | 아래 표 및 SQL `kickx_community_write` |
+| 관리자 조회 | `GET /api/kickx/admin` | `ingestion.ts`, `admin.tsx` |
+| 게임 운영 | `POST /api/kickx/admin/prototype` | `prototype-admin.tsx`, `server/kickx/engine/service.ts` |
+
+공개 player 배열은 전체가 아니라 미리보기다. 전체 수는 `playerTotal`, 보유 전용 선수 정보는 `member.ownedPlayers`; `getPlayer()`는 보유 목록과 조회 캐시를 이용한다. 전체 팀 96개 참조 사전은 유지한다. API 목록은 검색 250ms 디바운스·서버 필터·페이지를 유지한다.
+
+| 커뮤니티 action | 핵심 입력 |
 | --- | --- |
-| `components/kickx/*`, `app/styles/*` | 기존 화면·디자인·상태 표현 |
-| `server/kickx/{service,repository,supabase-repository}.ts` | 실제/예시/미연결 데이터 경계와 권한 |
-| `server/kickx/{catalog,catalog-pages,catalog-query}.ts` | 제한된 초기 조회·전체 검색·상세 |
-| `scripts/lib/football.mjs` | BSD 인증·페이지·쿼터·정규화 |
-| `scripts/lib/bulk-plan.mjs` | 5대 리그 수집 작업 분할, 한 번에 BSD 리소스 하나 |
-| `scripts/lib/bulk-sync.mjs` | DB 작업 점유·체크포인트·오류/재개 |
-| `scripts/sync-football-all.mjs` | 관리자 버튼과 동일한 작업 큐를 쓰는 수동 CLI |
-| `server/kickx/{admin-db,ingestion}.ts` | 서버 관리자 검증·관리자 전용 DB 조회 |
-| `app/api/kickx/admin/ingestion/route.ts` | 관리자 갱신 API, POST 같은 origin 검사 |
-| `components/kickx/ingestion.tsx` | 클릭으로만 실행하는 수집 제어 화면 |
-| `supabase/migrations/202610030001_manual_bsd_refresh.sql` | 진행 상태·작업·일일 호출 예약·구단/선수 원본 |
+| createPost | requestId(UUID), scope, target, category, title, body, transaction(선택 없으면 빈 문자열) |
+| editPost | postId, revision, 위 글 내용; 대상·scope 이동 불가 |
+| deletePost | postId, revision |
+| comment | postId, requestId(UUID), body, parentId(선택, 최상위 댓글만) |
+| editComment / deleteComment | postId, commentId, revision, body(수정만) |
+| like | postId, liked(boolean) |
+| view | postId |
+| report | postId, commentId(선택), reason |
 
-SQL은 4개 파일, 공개 스키마 테이블은 총 21개다. 이미 적용한 SQL을 재실행하지 않는다. 새 작업 적용 및 관리자 지정은 [수동 갱신 안내](manual-refresh.md)를 따른다.
+관리자 action: `initialize`, `rankings`, `preview`/`calculate`+playerId, `batch`+cursor, `name`+playerId/displayName/aliases[], `moderate`+reportId/operation(hide,dismiss,restore)/reason. 관리자 역할은 서버와 RPC에서 확인한다. 일반 회원은 브라우저에서 테이블 직접 변경할 수 없다.
 
-## 수집 계약과 주의사항
+## 프론트 인계 우선순위
 
-- 리그 BSD ID는 1·3·4·5·6. 시즌 ID는 `/leagues/{id}/season/`의 `{league_id, season}` 응답에서 `season.id`로 실행마다 찾는다. 연도를 시즌 ID로 쓰지 않는다. 이전 작업은 최신 코드에서 `node scripts/sync-football-all.mjs --resume`으로 이어간다. Windows npm 인수 전달 누락을 피하려면 node를 직접 실행한다. SQL 재적용은 필요 없다.
-- 운영 전체 수집 중 `BULK_DATABASE_ERROR` 보고가 있었다. 정확한 운영 오류 원인은 아직 확인되지 않았다. CLI는 안전한 DB 작업명/코드와 경기 phase를 출력하며, `--resume --once`로 한 단계만 진단할 수 있다. DB 저장 실패 응답 뒤 추가 실패 기록으로 첫 오류를 가리지 않는다. `busy`는 점유 만료 후, `cooldown`은 retry_at 이후 수동 재개한다.
-- 현재 시즌 전체 날짜를 30일 구간으로 나누고 모든 페이지를 읽는다. 종료된 경기만 상세·통계·라인업·사건·v1 보완을 조회한다.
-- 원본/표준 통계/공개 요약은 구분한다. BSD 기본 0은 실제 0인지 미제공인지 검증되기 전 `unverified_zero`다.
-- 클린시트·출전 중 실점·자책골·카드 중복 처리는 계산 단계의 선행 작업이다. `calculation_ready=false`를 무시하지 않는다.
-- 현재 소속은 현재 선수단/프로필에서만 갱신한다. 과거 경기 소속으로 현재 소속을 덮어쓰지 않는다. 완성된 선수단에서 빠진 선수는 과거 기록을 보존하고 현재 팀 연결만 해제한다.
-- 한 DB에는 실행 중/중지 상태 전체 수집이 하나만 존재한다. 90초 점유권과 작업 토큰이 오래된 요청의 덮어쓰기를 막는다.
-- 단계별 최대 3회 재시도를 먼저 DB에 예약한다. 이 수집기의 UTC 하루 예산은 7,000회이고 BSD 응답의 잔여 쿼터도 확인한다. 다른 프로그램/기존 단건 CLI 사용량까지 통제하지는 않는다.
-- 창을 닫으면 다음 단계 요청이 멈춘다. 서버의 처리 중 단계는 완료될 수 있다. 다시 방문해 **이어서 실행**을 눌러야 진행한다. 예약 실행은 없다.
-- 수집 완료는 공개된 응답에 대한 작업 완료다. 통계 미제공 경기는 경고로 남으며 모든 필드의 무결측을 보장하지 않는다.
-- 완료 후 새 갱신은 현재 시즌을 다시 확인해 정정 내용도 반영한다. 증분 수집 최적화는 다음 범위다.
+1. 기존 Yellow Playbook 안에서 새 팀 정보·점수 내역·정책·관리자 입력 UI를 다듬는다. 전체 디자인 교체는 하지 않는다.
+2. 견적 로딩·만료·가격 변경·잔액 부족·이미 보유·성공 상태, 스쿼드 revision 충돌, 커뮤니티 작성 권한·오류를 더 명료하게 표현한다.
+3. 경기 점수의 잠정/보류와 데이터 경고 코드를 사용자용 문구로 정리한다. 현재 세부 warning 코드는 접힌 확인 영역에 있다.
+4. 댓글 답글 배치, 삭제/숨김된 부모 안내, 게시글 상세 header, 모바일 여백·버튼·폼을 개선한다. API 데이터를 가짜 값으로 대체하지 않는다.
+5. 관리자 한글명 편집 시 기존 값 불러오기, 검수한 명단의 일괄 업로드, 전체 신고/거래 페이지네이션은 후속 개선 가능하다.
+6. 경제 정책 변경은 프론트만 바꾸지 않는다. 서버/DB 규칙 버전과 문서를 함께 변경해야 한다.
 
-## 프론트 디자인 구성요소 (2026-10-03 추가)
+## 기존 디자인 자산·함정
 
-- `lib/kickx/club-identity.ts`: 표시 전용 구단 정체성. 5대 리그 구단의 3글자 약칭·대표색·보조색·엠블럼 모양/무늬, 목록에 없는 구단은 이름 기반의 결정적 생성. BSD `code`(short_name)·빈 `color`를 보완하며 데이터는 바꾸지 않는다. 리그 표식(`leagueIdentity`)도 포함.
-- `ClubCrest`(`ui.tsx`): 생성 엠블럼 SVG. BSD 구단 로고 주소(`/img/team/{id}/`)는 **미검증**이므로 이미지가 실제로 로드될 때만 생성 엠블럼을 대체하고, 4회 연속 실패 시 시도를 멈춘다. 실제 로고 경로가 확인되면 `teamLogo()` 한 곳만 수정한다.
-- `components/kickx/select.tsx`: 기본 `<select>` 대체 드롭다운(키보드·검색·그룹·아이콘·위로 열림). 옵션 생성은 `components/kickx/options.tsx`(리그별 구단+엠블럼, 리그, 포지션).
-- `components/kickx/player-card.tsx`: 구단색 무대·등번호·이름판 카드. 가치가 `null`이면 "가치 산정 전"과 수집 경기 기록(경기·골·도움)을 보여준다.
-- `PlayerPortrait`: BSD 투명 누끼 사진을 구단색 배경 위에 표시, 실패 시 실루엣.
-- 구단색 확장: 경기 일정 카드(양 팀 색 띠·요일 헤더·점수 블록), 구단/선수 라운지 헤더(구단색 배너), 스쿼드 유니폼, 랭킹 아바타·메달, 게시글 대상 엠블럼. 모두 `clubIdentity` 표시 전용 값만 쓴다.
-- 예시 데이터(`server/kickx/mock-data.ts`)는 실제 DB와 같은 5대 리그 96개 구단을 포함한다(선수·경기는 일부 구단만).
-- 가치가 없는 실제 모드: 홈 마켓 보드는 국적·나이·경기·골·도움 열로 전환, 시장은 "산정 준비 중" 안내, 상세는 "가치 산정 전" 카드.
+- `lib/kickx/club-identity.ts`: 표시용 약칭·구단색·엠블럼 패턴, 리그 표식. 데이터 원본 변경 금지.
+- `ui.tsx`: ClubCrest/TeamBadge, LeagueMark, PlayerPortrait. 구단 로고 URL은 미검증이며 실제 로드 시만 대체, 반복 실패 시 중지한다.
+- `select.tsx`, `options.tsx`: 접근 가능한 공통 드롭다운과 구단/리그 옵션. 네이티브 select로 되돌리지 않는다.
+- `player-card.tsx`: 가치 null이면 산정 전과 수집 경기 요약 표시.
+- 스타일은 `app/globals.css` → `app/styles/{tokens,base,components,shell,pages}.css`.
+- `.empty`는 상태 요소에만. `.table-scroll`은 position:relative. 그리드 열은 minmax(0,1fr). `.modal`은 text-align:left.
+- LeagueMark 내부 span의 색을 부모의 광범위한 선택자로 덮어쓰지 않는다. 테스트 alert는 텍스트로 범위 지정한다.
 
-## 다음 담당자가 할 일
+## 검증과 운영 범위
 
-1. [수동 갱신 안내](manual-refresh.md)의 새 SQL·역할을 적용하고 사용자 PC 또는 배포 서버에서 실제 전체 수집을 실행한다.
-2. 리그별 선수/경기/수집 완료 경기 수와 누락 경고를 확인한다. 재실행 중복·사진·검색/상세·일정 표시를 운영 데이터로 점검한다.
-3. [개발 우선순위와 결정표](next-steps.md)에 따라 Performance 정규화와 가치 정책을 확정하고 계산부터 거래 정산까지 구현한다.
-4. 개발용 모의 데이터는 `source: mock`으로 표시한다. 사용자 지시상 사용 환경 제한은 없지만 실제 저장 증거로 사용하면 안 된다. DB 활성화 시 실제 DB가 우선한다.
+- `npm run lint`
+- `npm test`: 기존 회귀 + 계산·API 권한 테스트.
+- `npm run test:db`: 독립 메모리 PostgreSQL(PGlite)에서 전체 7개 migration과 6개 SQL 검증; 운영 연결을 읽지 않는다.
+- `npm run build`
+- `KICKX_BROWSER_MODULE=<playwright가 설치된 상위 경로> node tests/browser-smoke.mjs`: 1440/390 화면, 기존 흐름과 새 거래/스쿼드/커뮤니티 API 계약.
+- CI는 PostgreSQL 17에서도 migration과 SQL 검증을 실행한다.
+- 브라우저 테스트는 실제 운영 계정 없이 API 대역을 사용한다. 운영 OAuth·PostgREST·실제 원본에 대한 활성화 검증은 [실행 절차](PROTOTYPE_2026-10-09.md#7-배포-활성화-순서)를 따른다.
 
-검증/검토 내용은 [프로젝트 검토](project-review.md), BSD 필드와 단건 명령은 [football-data.md](football-data.md)에 있다. 비밀키를 채팅/저장소에 복사해 공유하지 않는다.
+BSD 수집 세부 지침은 [manual-refresh.md](manual-refresh.md), [football-data.md](football-data.md)를 유지한다. 원본 수집/정규화/공개 요약을 섞지 않고, 과거 경기 소속으로 현재 소속을 덮어쓰지 않는다.

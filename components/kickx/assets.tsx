@@ -5,7 +5,8 @@ import Link from "next/link";
 import { useState } from "react";
 import { History, Search, Wallet } from "lucide-react";
 import { dateText, money, percent, seriesForDays } from "@/lib/kickx/data";
-import { usePlatform } from "./provider";
+import type {Transaction} from "@/lib/kickx/types";
+import { usePlatform, useResource } from "./provider";
 import { Change, DataEmpty, MemberNotice, PageHeading, PlayerIdentity, PriceChart, StatCard, Tabs, TradeButton } from "./ui";
 
 function signed(value: number | null | undefined) {
@@ -112,13 +113,17 @@ export function PortfolioScreen() {
     </>
   );
 }
+const emptyTransactions=()=>({items:[] as Transaction[],total:0,page:1,size:50});
 export function TransactionsScreen() {
-  const { data, getPlayer } = usePlatform();
+  const { data, getPlayer, mock, status } = usePlatform();
   const member = data.member?.financialReady === false ? null : data.member;
   const [tab, setTab] = useState("전체"),
     [q, setQ] = useState(""),
     [period, setPeriod] = useState("전체 기간");
-  const all = member?.transactions || [];
+  const [page,setPage]=useState(1);
+  const query=new URLSearchParams({page:String(page),q,side:tab==="전체"?"":tab==="매입"?"buy":"sell",days:period==="최근 7일"?"7":period==="최근 30일"?"30":""});
+  const remote=useResource(!mock&&status==="ready"&&data.session&&member?`/api/kickx/trades?${query}`:null,emptyTransactions);
+  const all = mock ? member?.transactions || [] : remote.status==="ready"?remote.data.items:[];
   const rows = all.filter(
     (t) =>
       (tab === "전체" || t.type === (tab === "매입" ? "buy" : "sell")) &&
@@ -138,14 +143,14 @@ export function TransactionsScreen() {
       <div className="stat-grid transaction-stats three">
         <div className="stat-card"><span className="stat-label">조회된 매입 금액</span><strong className="stat-value num">{money(sum("buy"))} <small className="unit">P</small></strong></div>
         <div className="stat-card"><span className="stat-label">조회된 매각 정산</span><strong className="stat-value num">{money(sum("sell"))} <small className="unit">P</small></strong></div>
-        <div className="stat-card"><span className="stat-label">거래 건수</span><strong className="stat-value num">{member ? all.length : "—"} <small className="unit">건</small></strong></div>
+        <div className="stat-card"><span className="stat-label">거래 건수</span><strong className="stat-value num">{member ? mock?all.length:remote.status==="ready"?remote.data.total:"—" : "—"} <small className="unit">건</small></strong></div>
       </div>
       <section className="panel flush">
         <div className="panel-head">
-          <Tabs items={["전체", "매입", "매각"]} value={tab} onChange={setTab} variant="segment" label="거래 유형" />
+          <Tabs items={["전체", "매입", "매각"]} value={tab} onChange={v=>{setTab(v);setPage(1);}} variant="segment" label="거래 유형" />
           <div className="toolbar">
-            <label className="input-search"><Search size={16} /><input aria-label="거래 선수 검색" placeholder="거래 선수 검색" value={q} onChange={(e) => setQ(e.target.value)} /></label>
-            <Select label="거래 기간" value={period} onChange={setPeriod} options={simple(["전체 기간", "최근 7일", "최근 30일"])} variant="compact" />
+            <label className="input-search"><Search size={16} /><input aria-label="거래 선수 검색" placeholder="거래 선수 검색" value={q} onChange={(e) => {setQ(e.target.value);setPage(1);}} /></label>
+            <Select label="거래 기간" value={period} onChange={v=>{setPeriod(v);setPage(1);}} options={simple(["전체 기간", "최근 7일", "최근 30일"])} variant="compact" />
           </div>
         </div>
         <div className="table-scroll">
@@ -181,7 +186,8 @@ export function TransactionsScreen() {
             </tbody>
           </table>
         </div>
-        {!rows.length && <DataEmpty financial entity="거래 내역" filtered={all.length > 0} />}
+        {!rows.length && <DataEmpty financial entity="거래 내역" status={mock||!member?undefined:remote.status} filtered={!!q||tab!=="전체"} />}
+        {!mock&&<div className="button-row frame"><button className="button secondary small" disabled={page===1} onClick={()=>setPage(p=>p-1)}>이전</button><span>{page} 페이지</span><button className="button secondary small" disabled={page*50>=remote.data.total} onClick={()=>setPage(p=>p+1)}>다음</button></div>}
         {rows.length > 0 && <div className="panel-foot"><span className="fine-print">금액 단위 P · 수수료와 정산액은 거래 당시 기록입니다.</span><span className="fine-print num">{rows.length}건</span></div>}
       </section>
     </>

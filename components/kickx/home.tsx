@@ -4,7 +4,7 @@ import { POSITION_OPTIONS, useTeamOptions } from "./options";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { ArrowRight, ArrowUpRight, BookOpen, ChevronDown, Search, Shield, TrendingUp, X } from "lucide-react";
-import { dateText, money } from "@/lib/kickx/data";
+import { dateText, money, score } from "@/lib/kickx/data";
 import { fixtureGroup, fixtureStatus, selectFeaturedFixtures } from "@/lib/kickx/fixtures";
 import type { Player } from "@/lib/kickx/types";
 import { clubIdentity } from "@/lib/kickx/club-identity";
@@ -74,7 +74,7 @@ function SquadPanel() {
         <div className="dash-squad-side">
           <div className="dash-field"><span>포메이션</span><strong>{formation?.name || "—"}</strong></div>
           <div className="dash-field"><span>등록 선수</span><strong className="num">{formation ? `${filled} / 11` : "—"}</strong></div>
-          <div className="dash-field"><span>평균 Performance</span><strong className="num">{money(squad?.performance)}</strong></div>
+          <div className="dash-field"><span>평균 Performance</span><strong className="num">{score(squad?.performance)}</strong></div>
           <Link href="/squad" className="button primary full">스쿼드 편집</Link>
         </div>
       </div>
@@ -263,7 +263,7 @@ export function HomeScreen() {
                         <td className="numeric strong yb-price">{money(player.price)}<span className="unit">P</span><span className="only-sm"><Change value={player.change} /></span></td>
                         <td className="numeric hide-sm"><Change value={player.change} /></td>
                         <td className="hide-md"><Sparkline values={player.history.map(point => point.value)} down={(player.change ?? 0) < 0} /></td>
-                        <td className="numeric hide-sm">{money(player.performance)}</td>
+                        <td className="numeric hide-sm">{score(player.performance)}</td>
                       </>
                     ) : (
                       <>

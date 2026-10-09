@@ -116,7 +116,7 @@ export function usePlatform() {
   if (!context) throw new Error("PlatformProvider is required");
   return useMemo(() => ({
     ...context,
-    getPlayer: (id: string | null | undefined) => context.cachedPlayers.find(p => p.id === id) || context.data.players.find(p => p.id === id),
+    getPlayer: (id: string | null | undefined) => context.data.member?.ownedPlayers?.find(p => p.id === id) || context.cachedPlayers.find(p => p.id === id) || context.data.players.find(p => p.id === id),
     getTeam: (id: string | null | undefined) => context.data.teams.find(t => t.id === id),
     getLeague: (id: string | null | undefined) => context.data.leagues.find(l => l.id === id),
   }), [context]);

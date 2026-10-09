@@ -26,7 +26,7 @@ export function RankingScreen() {
       <PageHeading
         eyebrow="THE LEADERBOARD"
         title="랭킹"
-        description="초기 자산 대비 수익률로 경쟁합니다. 축구를 보는 안목을 기록으로 증명하세요."
+        description="주간·월간 기준 자산 대비 수익률로 경쟁합니다. 축구를 보는 안목을 기록으로 증명하세요."
         action={<Tabs items={["주간", "월간"]} value={period} onChange={setPeriod} variant="segment" label="랭킹 기간" />}
       />
       <div className="ranking-meta">

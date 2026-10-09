@@ -595,25 +595,36 @@ export function Modal({
     </dialog>
   );
 }
-type TradeState = "review" | "submitting" | "done" | "failed";
+type TradeState = "loading" | "review" | "submitting" | "done" | "failed";
 function TradeDialog({ player, side, onClose }: { player: Player; side: "buy" | "sell"; onClose: () => void }) {
-  const { data, mock, getTeam, notify } = usePlatform();
+  const { data, mock, getTeam, notify, reload } = usePlatform();
   const service = tradeService(mock);
-  const [quote] = useState<TradeQuote>(() => service.quote(player, side, data.member));
-  const [state, setState] = useState<TradeState>("review");
+  const [quote, setQuote] = useState<TradeQuote | null>(null);
+  const [attempt, setAttempt] = useState(0);
+  const requestId = useRef("");
+  useEffect(() => {
+    let active = true;
+    setQuote(null); setError(""); setState("loading"); lock.current=false;
+    void service.quote(player, side, data.member).then(q => {if(active){setQuote(q);requestId.current=crypto.randomUUID();setState("review");}}).catch(e=>{if(active){setError(e instanceof Error?e.message:"견적을 불러오지 못했습니다.");setState("failed");}});
+    return ()=>{active=false;};
+  // A confirmed quote is frozen until the user explicitly requests a new one.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [player.id, side, mock, attempt]);
+  const [state, setState] = useState<TradeState>("loading");
   const [error, setError] = useState("");
   const lock = useRef(false);
   const label = side === "buy" ? "매입" : "매각";
-  const insufficient = side === "buy" && quote.balanceAfter != null && quote.balanceAfter < 0;
+  const insufficient = side === "buy" && quote?.balanceAfter != null && quote.balanceAfter < 0;
   async function confirm() {
-    if (lock.current || !service.available || insufficient) return;
+    if (lock.current || !quote || !service.available || insufficient) return;
     lock.current = true;
     setState("submitting");
     setError("");
     try {
-      await service.submit(quote);
+      await service.submit(quote, requestId.current);
+      if(!mock) reload();
       setState("done");
-      notify(`${player.name} ${label} 요청을 접수했습니다.${mock ? " (예시 모드 · 저장되지 않음)" : ""}`);
+      notify(`${player.name} ${label}이 완료되었습니다.${mock ? " (예시 모드 · 저장되지 않음)" : ""}`);
     } catch (e) {
       setError(e instanceof Error ? e.message : "거래를 처리하지 못했습니다.");
       setState("failed");
@@ -621,17 +632,17 @@ function TradeDialog({ player, side, onClose }: { player: Player; side: "buy" | 
     }
   }
   const rows: [string, ReactNode, string?][] = [
-    ["현재 가치", <>{money(quote.price)}<span className="unit">P</span></>],
-    ["수량", <>{quote.quantity}<span className="unit">명</span></>],
-    [side === "sell" ? "판매 수수료" : "수수료", quote.fee == null ? "—" : <>{side === "sell" && quote.fee > 0 ? "−" : ""}{money(quote.fee)}<span className="unit">P</span></>, "minor"],
-    [side === "buy" ? "결제 금액" : "예상 정산액", quote.settlement == null ? "—" : <>{money(quote.settlement)}<span className="unit">P</span></>, "total"],
+    ["현재 가치", <>{money(quote?.price)}<span className="unit">P</span></>],
+    ["수량", <>{quote?.quantity ?? "—"}<span className="unit">명</span></>],
+    [side === "sell" ? "판매 수수료" : "수수료", quote?.fee == null ? "—" : <>{side === "sell" && quote.fee > 0 ? "−" : ""}{money(quote?.fee)}<span className="unit">P</span></>, "minor"],
+    [side === "buy" ? "결제 금액" : "예상 정산액", quote?.settlement == null ? "—" : <>{money(quote?.settlement)}<span className="unit">P</span></>, "total"],
   ];
   return (
     <Modal title={`${player.name} ${label}`} eyebrow={side === "buy" ? "CONFIRM PURCHASE" : "CONFIRM SALE"} onClose={onClose}>
       {state === "done" ? (
         <div className="trade-done">
           <span className="trade-done-mark"><CheckCircle2 size={34} /></span>
-          <h3>{label} 요청이 접수되었습니다</h3>
+          <h3>{label}이 완료되었습니다</h3>
           <p>{mock ? "예시 모드에서는 실제 자산과 거래 내역이 변경되지 않습니다." : "체결 결과는 거래 내역에서 확인할 수 있습니다."}</p>
           <div className="modal-actions">
             <Link className="button secondary" href="/transactions">거래 내역</Link>
@@ -657,11 +668,14 @@ function TradeDialog({ player, side, onClose }: { player: Player; side: "buy" | 
             ))}
           </dl>
           <dl className="trade-balance">
-            <div><dt>보유 포인트</dt><dd className="num">{money(quote.balance)}<span className="unit">P</span></dd></div>
-            <div className={insufficient ? "warn" : ""}><dt>{side === "buy" ? "거래 후 잔액" : "정산 후 잔액"}</dt><dd className="num">{money(quote.balanceAfter)}<span className="unit">P</span></dd></div>
+            <div><dt>보유 포인트</dt><dd className="num">{money(quote?.balance)}<span className="unit">P</span></dd></div>
+            <div className={insufficient ? "warn" : ""}><dt>{side === "buy" ? "거래 후 잔액" : "정산 후 잔액"}</dt><dd className="num">{money(quote?.balanceAfter)}<span className="unit">P</span></dd></div>
           </dl>
           {insufficient && <p className="form-error" role="alert">보유 포인트가 부족합니다.</p>}
+          {state === "loading" && <p role="status">견적을 확인하고 있습니다…</p>}
           {error && <p className="form-error" role="alert">{error}</p>}
+          {state === "failed" && <button className="button secondary" onClick={()=>setAttempt(a=>a+1)}>새 견적 확인</button>}
+          {quote?.expiresAt && <p className="fine-print">견적 유효 시간: {dateText(quote.expiresAt)}</p>}
           <p className="fine-print">
             {service.available
               ? `${mock ? "예시 모드 · 수수료와 정산액은 예시 값입니다. " : ""}확정 시점의 가격으로 체결되며, 가격이 바뀌면 다시 확인을 요청합니다.`
@@ -671,7 +685,7 @@ function TradeDialog({ player, side, onClose }: { player: Player; side: "buy" | 
             <button className="button secondary" onClick={onClose} disabled={state === "submitting"}>취소</button>
             <button
               className={`button ${side === "buy" ? "primary" : "accent"}`}
-              disabled={!service.available || insufficient || state === "submitting"}
+              disabled={!quote || !service.available || insufficient || state === "submitting" || state === "loading"}
               title={service.available ? undefined : unavailableAction}
               aria-busy={state === "submitting"}
               onClick={() => void confirm()}
@@ -696,10 +710,12 @@ export function TradeButton({
   label?: string;
 }) {
   const [open, setOpen] = useState(false);
+  const {data}=usePlatform();
+  const duplicate=side==="buy" && data.member?.holdings.some(h=>h.playerId===player?.id);
   return (
     <>
-      <button type="button" className={className} disabled={!player || !!player.status || player.price == null} title={player?.status || undefined} onClick={() => setOpen(true)}>
-        {player?.status || label || (side === "buy" ? "매입" : "매각")}
+      <button type="button" className={className} disabled={duplicate || !player || !!player.status || player.price == null} title={player?.status || undefined} onClick={() => setOpen(true)}>
+        {duplicate ? "보유 중" : player?.status || label || (side === "buy" ? "매입" : "매각")}
       </button>
       {open && player && <TradeDialog player={player} side={side} onClose={() => setOpen(false)} />}
     </>
