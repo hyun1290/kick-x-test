@@ -267,7 +267,7 @@ declare v jsonb;begin
  select valuation_rebuild into v from public.kickx_policy;
  if v->>'status' in('validated','active') then return v;end if;
  if p_manifest->>'status' is distinct from 'validated' or p_manifest#>>'{audit,complete}' is distinct from 'true'
- or length(p_manifest#>>'{backup,hash}')<>64 or not exists(select 1 from storage.objects where bucket_id='kickx-calculation-archives' and name=p_manifest#>>'{backup,path}')
+ or coalesce(length(p_manifest#>>'{backup,hash}'),0)<>64 or not exists(select 1 from storage.objects where bucket_id='kickx-calculation-archives' and name=p_manifest#>>'{backup,path}')
  then raise exception 'VALUATION_VALIDATION_REQUIRED';end if;
  update public.kickx_policy set valuation_rebuild=p_manifest||jsonb_build_object('startsAt','2026-09-30T15:00:00Z') where id=true;
  return p_manifest;

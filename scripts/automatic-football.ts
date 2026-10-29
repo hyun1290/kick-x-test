@@ -48,9 +48,11 @@ async function main() {
       process.exitCode = 1;
     }
   }
-  const finalized=await db.rpc('kickx_finish_valuation_rebuild');
-  if(finalized.error)throw new Error('VALUATION_FINISH_RETRY');
-  console.log(JSON.stringify({stage:'valuation-finish',...finalized.data}));
+  if(!archivesOnly){
+    const finalized=await db.rpc('kickx_finish_valuation_rebuild');
+    if(finalized.error)throw new Error('VALUATION_FINISH_RETRY');
+    console.log(JSON.stringify({stage:'valuation-finish',...finalized.data}));
+  }
   if (footballFailure) throw footballFailure;
 }
 main().catch(error => {

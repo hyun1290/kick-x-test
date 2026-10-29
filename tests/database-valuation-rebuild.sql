@@ -2,6 +2,16 @@ begin;
 do $$begin
  if has_function_privilege('anon','public.kickx_seed_non_participation()','execute') or has_function_privilege('authenticated','public.kickx_stage_valuation_rebuild(jsonb)','execute') then raise exception 'Rebuild helper exposed';end if;
  if has_table_privilege('anon','public.football_roster_observations','select') then raise exception 'Roster evidence exposed';end if;
+ if has_column_privilege('anon','public.kickx_policy','valuation_rebuild','select')then raise exception 'Private rebuild descriptor exposed';end if;
+end $$;
+create schema if not exists storage;
+create table if not exists storage.objects(bucket_id text,name text);
+insert into storage.objects(bucket_id,name)values('kickx-calculation-archives','valuation-test/private.json.gz');
+do $$begin
+ begin
+  perform public.kickx_stage_valuation_rebuild('{"status":"validated","audit":{"complete":true},"backup":{"path":"valuation-test/private.json.gz"}}');
+  raise exception 'Accepted a backup without integrity hash';
+ exception when others then if sqlerrm<>'VALUATION_VALIDATION_REQUIRED'then raise;end if;end;
 end $$;
 insert into public.leagues(id,name)values('bsd-1','Valuation test')on conflict do nothing;
 insert into public.teams(id,name,league_id)values('bsd-910','Home','bsd-1'),('bsd-911','Away','bsd-1');
