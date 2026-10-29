@@ -2,7 +2,7 @@ import {createHash} from 'node:crypto';
 import {gzipSync} from 'node:zlib';
 import {mkdir,writeFile} from 'node:fs/promises';
 import type {SupabaseClient} from '@supabase/supabase-js';
-import {createFootballClient,externalId,normalizeBatch} from './football.mjs';
+import {createFootballClient,externalId,normalizeBatch,SyncError} from './football.mjs';
 import {processBulkTask,BIG_FIVE} from './bulk-plan.mjs';
 
 const checked=<T>(r:{data:T;error:unknown})=>{if(r.error)throw new Error('VALUATION_DATABASE_RETRY');return r.data;};
@@ -27,8 +27,8 @@ export async function ensureValuationRebuild(db:SupabaseClient,key:string,{emit=
  const now=new Date().toISOString(),leagues:Record<string,unknown>[]=[],teamIds=new Set<string>(),fixtureIds=new Set<string>();
  const api=createFootballClient({key,budget:1000,delay:80,timeoutMs:12000,fetchImpl:async(...args:Parameters<typeof fetch>)=>{
   const budget=checked(await db.from('football_bulk_daily_budget').select('requests').eq('day',new Date().toISOString().slice(0,10)).maybeSingle());
-  if((budget?.requests??0)>=5500)throw new Error('VALUATION_LIVE_RESERVE');
-  checked(await db.rpc('kickx_reserve_provider_request'));return fetch(...args);
+  if((budget?.requests??0)>=5500)throw new SyncError('VALUATION_LIVE_RESERVE');
+  const reservation=await db.rpc('kickx_reserve_provider_request');if(reservation.error)throw new SyncError('VALUATION_REQUEST_RESERVATION_FAILED');return fetch(...args);
  }});
  const apply=async(outcome:unknown)=>checked(await db.rpc('kickx_apply_automatic_task',{p_outcome:outcome}));
  let squadPlayers=0;

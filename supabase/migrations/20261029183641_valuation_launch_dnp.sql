@@ -297,7 +297,10 @@ create function public.kickx_valuation_data_audit() returns jsonb language sql s
  ((select count(*)from jsonb_array_elements(incidents->'incidents')e where e->>'type'='goal' and e->>'is_home'='true')is distinct from home_score::bigint or
  (select count(*)from jsonb_array_elements(incidents->'incidents')e where e->>'type'='goal' and e->>'is_home'='false')is distinct from away_score::bigint)),
  'missingCurrentRosterPosition',(select count(*)from public.players p join public.teams t on t.id=p.team_id where t.league_id in('bsd-1','bsd-3','bsd-4','bsd-5','bsd-6') and p.position is null),
- 'repairFixtures',(select coalesce(jsonb_agg(id),'[]')from(select id from gaps where missing_starters>0 union select id from finished where lineups is null or incidents is null)q),
+ 'repairFixtures',(select coalesce(jsonb_agg(id),'[]')from(select id from gaps where missing_starters>0 union select id from finished where lineups is null or incidents is null
+ union select f.id from finished f where jsonb_typeof(incidents->'incidents')='array' and
+ ((select count(*)from jsonb_array_elements(incidents->'incidents')e where e->>'type'='goal' and e->>'is_home'='true')is distinct from home_score::bigint or
+ (select count(*)from jsonb_array_elements(incidents->'incidents')e where e->>'type'='goal' and e->>'is_home'='false')is distinct from away_score::bigint))q),
  'performanceStatuses',(select coalesce(jsonb_object_agg(status,n),'{}')from(select r.status,count(*)n from public.performance_results r join finished f on f.id=r.fixture_id group by r.status)q))
 $$;
 revoke all on function public.kickx_valuation_data_audit() from public,anon,authenticated;

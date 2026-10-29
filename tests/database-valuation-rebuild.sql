@@ -22,4 +22,17 @@ do $$declare n integer;begin
  if public.kickx_seed_non_participation()<>0 then raise exception 'DNP not idempotent';end if;
  if (select count(*)from public.player_match_records where fixture_id='valuation-evidence' and minutes=0)<>2 then raise exception 'DNP history absent';end if;
 end $$;
+-- The public chart must use the launch point and the game's completion, not today's replay time.
+update public.kickx_policy set version='report-v3',club_competitions_enabled=false,
+ report_parameters=report_parameters||'{"initialMin":100000,"initialMax":100000}',
+ report_reference='{"status":"ready","season":2025,"hash":"valuation-test","groups":{"FW":{"mean":6,"lower":0,"upper":30,"baselines":[6]}} ,"players":{}}';
+do $$declare answer jsonb;begin
+ answer:=public.kickx_publish_calculation_delta(null,'bsd-9001',public.kickx_calculation_token('bsd-9001'),
+ '[{"fixtureId":"valuation-evidence","position":"FW","score":null,"status":"not-played","ruleVersion":"report-v3","breakdown":[],"warnings":[]}]');
+ if (answer->>'price')::integer<>98500 then raise exception 'DNP publication price: %',answer;end if;
+ if (select count(*)from public.price_history where player_id='bsd-9001')<>2 then raise exception 'Launch and DNP chart points missing';end if;
+ if not exists(select 1 from public.price_history where player_id='bsd-9001' and recorded_at=timestamptz '2026-09-30T15:00:00Z' and value=100000) then raise exception 'Launch baseline missing';end if;
+ if exists(select 1 from public.price_history where player_id='bsd-9001' and recorded_at>timestamptz '2026-10-03T00:00:00Z')then raise exception 'Replay date leaked into historical chart';end if;
+ if (public.kickx_publish_calculation_delta(null,'bsd-9001',public.kickx_calculation_token('bsd-9001'),'[]')->>'unchanged')::boolean is distinct from true then raise exception 'DNP applied twice';end if;
+end $$;
 rollback;
