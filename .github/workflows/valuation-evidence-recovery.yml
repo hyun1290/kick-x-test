@@ -22,11 +22,14 @@ jobs:
           node-version: '22'
           cache: npm
       - run: npm ci
-      - run: node scripts/repair-valuation-evidence.mjs --probe
+      - name: Repair only ambiguous boundary calculations
+        run: node --conditions=react-server --import tsx scripts/repair-valuation-evidence.mjs --apply
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: valuation-evidence-probe
-          path: test-artifacts/valuation-evidence-probe.json
+          path: |
+            test-artifacts/valuation-evidence-probe.json
+            test-artifacts/valuation-recovery.json
           if-no-files-found: ignore
           retention-days: 7
