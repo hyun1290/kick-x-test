@@ -1,13 +1,33 @@
 begin;
 create schema if not exists storage;
-create table if not exists storage.objects(bucket_id text,name text);
+create table if not exists storage.objects(bucket_id text,name text,created_at timestamptz not null default now());
 do $$begin
  if has_function_privilege('anon','public.kickx_replace_regular_reference(text,jsonb)','execute')or has_function_privilege('authenticated','public.kickx_replace_regular_reference(text,jsonb)','execute')then raise exception 'Reference replacement exposed';end if;
  if public.kickx_duration_evidence('{"player_stats":[{"player_id":1,"minutes_played":90},{"player_id":2,"minutes_played":90},{"player_id":3,"minutes_played":12},{"player_id":4,"minutes_played":18}]}','{"incidents":[{"type":"substitution","minute":83,"player_in_id":3},{"type":"substitution","minute":77,"player_in_id":4}]}')<>95 then raise exception 'Corroborated added time not recovered';end if;
  if public.kickx_duration_evidence('{"player_stats":[{"player_id":1,"minutes_played":90},{"player_id":2,"minutes_played":90},{"player_id":3,"minutes_played":12}]}','{"incidents":[{"type":"substitution","minute":83,"player_in_id":3}]}')<>90 then raise exception 'Uncorroborated clock was invented';end if;
 end $$;
+do $$declare ref jsonb;params jsonb;b jsonb;begin
+ select report_parameters into params from public.kickx_policy;
+ ref:='{"status":"ready","season":2025,"hash":"ties","groups":{"MF":{"mean":6,"lower":0,"upper":30,"baselines":[1,6,6,10]}},"players":{}}';
+ b:=public.kickx_report_baseline('new','MF',ref,params);
+ if (b->>'percentile')::numeric<>0.5 or (b->>'price')::integer<>505000 then raise exception 'Binary tied midrank changed policy';end if;
+ ref:=jsonb_set(ref,'{players}','{"new":{"MF":{"n":1,"sum":21}}}');b:=public.kickx_report_baseline('new','MF',ref,params);
+ if (b->>'percentile')::numeric<>0.75 then raise exception 'Binary insertion percentile changed policy';end if;
+end $$;
 insert into public.leagues(id,name)values('bsd-5','Scope league')on conflict do nothing;
 insert into public.teams(id,name,league_id)values('scope-home','Home','bsd-5'),('scope-away','Away','bsd-5');
+insert into public.teams(id,name,league_id)values('bsd-919','Observed squad','bsd-5');
+insert into public.football_entity_sources(provider,kind,external_id,raw,updated_at)values('bsd','squad',919,'{"players":[{"id":9999}]}','2026-10-01T00:00:00Z');
+update public.football_entity_sources set updated_at='2026-10-02T00:00:00Z'where kind='squad'and external_id=919;
+do $$begin
+ if (select max(verified_at)from public.football_roster_observations where team_id='bsd-919')<>timestamptz '2026-10-02T00:00:00Z'then raise exception 'Unchanged source did not advance verification';end if;
+ if (select updated_at from public.football_entity_sources where kind='squad'and external_id=919)<>timestamptz '2026-10-01T00:00:00Z'then raise exception 'Verification changed semantic source time';end if;
+end $$;
+update public.football_entity_sources set updated_at='2026-10-20T00:00:00Z'where kind='squad'and external_id=919;
+do $$begin
+ if (select count(*)from public.football_roster_observations where team_id='bsd-919')<>2 then raise exception 'Verification gap was silently bridged';end if;
+ if exists(select 1 from public.football_roster_observations where team_id='bsd-919'and observed_at<=timestamptz '2026-10-15T00:00:00Z'and verified_at>=timestamptz '2026-10-08T00:00:00Z')then raise exception 'Fresh check was backdated into missing history';end if;
+end $$;
 insert into public.fixtures(id,league_id,home_team_id,away_team_id,starts_at,status,stage)
 values('scope-regular','bsd-5','scope-home','scope-away','2026-10-03T12:00:00Z','FT','league-phase'),('scope-final','bsd-5','scope-home','scope-away','2026-10-04T12:00:00Z','FT','final'),('scope-unknown','bsd-5','scope-home','scope-away','2026-10-05T12:00:00Z','FT',null);
 do $$begin

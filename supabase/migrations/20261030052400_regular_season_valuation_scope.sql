@@ -1,3 +1,23 @@
+create or replace function public.kickx_report_baseline(p_player text,p_position text,p_reference jsonb,p_parameters jsonb)
+returns jsonb language plpgsql immutable set search_path='' as $$
+declare g jsonb;o jsonb;n integer;mu numeric;b numeric;pct numeric;v bigint;season integer;size integer;lo integer;hi integer;mid integer;below integer;through integer;begin
+ g:=p_reference->'groups'->p_position;o:=p_reference->'players'->p_player->p_position;
+ if p_reference->>'status' is distinct from 'ready' or g is null or jsonb_array_length(g->'baselines')=0 then return null;end if;
+ n:=coalesce((o->>'n')::integer,0);mu:=(g->>'mean')::numeric;season:=(p_reference->>'season')::integer;
+ b:=round((coalesce((o->>'sum')::numeric,0)+(p_parameters->>'lambda')::numeric*mu)/(n+(p_parameters->>'lambda')::numeric),10);
+ -- The frozen position cohort is sorted. Two binary searches preserve tied midranks.
+ size:=jsonb_array_length(g->'baselines');lo:=0;hi:=size;
+ while lo<hi loop mid:=(lo+hi)/2;if (g->'baselines'->>mid)::numeric<b then lo:=mid+1;else hi:=mid;end if;end loop;below:=lo;
+ lo:=0;hi:=size;
+ while lo<hi loop mid:=(lo+hi)/2;if (g->'baselines'->>mid)::numeric<=b then lo:=mid+1;else hi:=mid;end if;end loop;through:=lo;
+ pct:=(below+0.5*(through-below))/size;
+ v:=round((p_parameters->>'initialMin')::numeric+((p_parameters->>'initialMax')::numeric-(p_parameters->>'initialMin')::numeric)*pct);
+ return jsonb_build_object('source',case when n>0 then 'previous-season' else 'position-prior' end,'season',season,'gameCount',n,
+ 'meanScore',case when n>0 then (o->>'sum')::numeric/n else null end,'seedScore',b,'percentile',pct,'price',v,
+ 'lower',g->'lower','upper',g->'upper','referenceHash',p_reference->>'hash','fixtures',coalesce(o->'fixtures','[]'),
+ 'warnings',case when n>0 then '[]'::jsonb else '["PREVIOUS_SEASON_PLAYER_UNAVAILABLE"]'::jsonb end);
+end $$;
+
 -- Compute match-clock evidence once per changed source, then read a small cached integer.
 alter table public.fixtures add column observed_duration_minutes integer check(observed_duration_minutes between 90 and 180);
 create function public.kickx_duration_evidence(p_stats jsonb,p_incidents jsonb) returns integer language sql immutable set search_path='' set jit=off as $$
@@ -165,8 +185,42 @@ begin
  return jsonb_build_object('unchanged',false,'price',value_now,'performance',latest,'initialPrice',plan#>'{baseline,price}','pricing',plan);
 end $$;
 
+create or replace function public.kickx_observe_roster() returns trigger language plpgsql set search_path='' as $$
+declare ids text[];last_row public.football_roster_observations%rowtype;begin
+ if new.kind<>'squad' or jsonb_typeof(new.raw->'players') is distinct from 'array' then return new;end if;
+ select array_agg('bsd-'||(x->>'id') order by (x->>'id')::bigint) into ids from jsonb_array_elements(new.raw->'players')x;
+ if coalesce(array_length(ids,1),0)=0 then return new;end if;
+ select * into last_row from public.football_roster_observations where team_id='bsd-'||new.external_id order by observed_at desc limit 1 for update;
+ if found and last_row.player_ids=ids and new.updated_at<=last_row.verified_at+interval '7 days' then
+  update public.football_roster_observations set verified_at=greatest(verified_at,new.updated_at) where team_id=last_row.team_id and observed_at=last_row.observed_at;
+ else insert into public.football_roster_observations values('bsd-'||new.external_id,new.updated_at,new.updated_at,ids);end if;
+ return new;
+end $$;
+drop trigger kickx_roster_observed on public.football_entity_sources;
+create trigger aa_roster_observed before insert or update on public.football_entity_sources for each row execute function public.kickx_observe_roster();
+
+-- The completed catalog audit proves these exact unchanged squad snapshots were
+-- checked before the backup existed. Its creation time is a conservative witness.
+create function public.kickx_attest_audited_rosters() returns integer language plpgsql set search_path='' as $$
+declare at_time timestamptz;n integer;begin
+ select o.created_at into at_time from public.kickx_policy p join storage.objects o on o.bucket_id='kickx-calculation-archives'and o.name=p.valuation_rebuild#>>'{backup,path}'
+ where p.valuation_rebuild#>>'{audit,complete}'='true'and p.valuation_rebuild#>>'{audit,teams}'='96';
+ if at_time is null then return 0;end if;
+ insert into public.football_roster_observations(team_id,observed_at,verified_at,player_ids)
+ select t.id,at_time,at_time,array_agg('bsd-'||(x->>'id')order by (x->>'id')::bigint)
+ from public.football_entity_sources e join public.teams t on t.id='bsd-'||e.external_id cross join lateral jsonb_array_elements(e.raw->'players')x
+ where e.kind='squad'and t.league_id in('bsd-1','bsd-3','bsd-4','bsd-5','bsd-6')and e.updated_at<=at_time group by t.id
+ on conflict(team_id,observed_at)do nothing;get diagnostics n=row_count;
+ if n>0 then
+  update public.football_event_sources s set non_participation_seeded_at=null from public.fixtures f where f.id=s.fixture_id and f.starts_at between at_time and at_time+interval '7 days'and f.status='FT'and public.kickx_regular_fixture(f.id)is true;
+  insert into public.operation_audit(action,detail)values('roster.audit-attested',jsonb_build_object('teams',n,'witnessedAt',at_time));
+ end if;return n;
+end $$;
+revoke all on function public.kickx_attest_audited_rosters()from public,anon,authenticated;
+grant execute on function public.kickx_attest_audited_rosters()to service_role;
+
 create function public.kickx_replace_regular_reference(p_expected_hash text,p_reference jsonb) returns jsonb language plpgsql set search_path='' as $$
-declare p public.kickx_policy%rowtype;n integer;before_hash jsonb;begin
+declare p public.kickx_policy%rowtype;n integer;before_hash jsonb;eligible text[];begin
  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended('kickx:bsd-import',0));perform public.kickx_economy_lock();
  select * into strict p from public.kickx_policy;
  if p.report_reference->>'hash'=p_reference->>'hash' and p.report_reference->>'regularSeasonScopeVerified'='true' then return jsonb_build_object('unchanged',true);end if;
@@ -176,15 +230,17 @@ declare p public.kickx_policy%rowtype;n integer;before_hash jsonb;begin
  or (p_reference->>'completed')::integer<>(p_reference->>'fixtureCount')::integer or (p_reference->>'fixtureCount')::integer<1500
  or not exists(select 1 from storage.objects where bucket_id='kickx-calculation-archives' and name=p_reference#>>'{scopeAudit,previousReferenceBackup,path}') then raise exception 'REGULAR_SEASON_SCOPE_REQUIRED';end if;
  before_hash:=public.kickx_valuation_integrity();
+ perform public.kickx_attest_audited_rosters();
+ select array_agg(id)into eligible from public.players where public.kickx_market_eligible(id);
  update public.kickx_policy set report_reference=p_reference,valuation_rebuild=(valuation_rebuild-'portfolioRebuiltAt'-'assetSnapshotsRebuilt')||jsonb_build_object('status','validated','scopeCorrectedAt',clock_timestamp())where id=true;
  n:=public.kickx_activate_report_policy();
  insert into public.player_initial_values(player_id,rule_version,detail,input_hash)
- select z.id,'report-v3',b.detail,p_reference->>'hash' from public.players z cross join lateral(select public.kickx_report_baseline(z.id,z.position,p_reference,p.report_parameters)detail)b where public.kickx_market_eligible(z.id) and b.detail is not null
+ select z.id,'report-v3',b.detail,p_reference->>'hash' from public.players z cross join lateral(select public.kickx_report_baseline(z.id,z.position,p_reference,p.report_parameters)detail)b where z.id=any(eligible) and b.detail is not null
  on conflict(player_id)do update set rule_version=excluded.rule_version,detail=excluded.detail,input_hash=excluded.input_hash,updated_at=clock_timestamp();
- delete from public.price_history where public.kickx_market_eligible(player_id);
- delete from public.player_price_results where public.kickx_market_eligible(player_id);
+ delete from public.price_history where player_id=any(eligible);
+ delete from public.player_price_results where player_id=any(eligible);
  insert into public.price_history(player_id,recorded_at,value,rule_version)
- select s.id,timestamptz '2026-09-30T15:00:00Z',s.price,'report-v3' from public.player_market_snapshots s where public.kickx_market_eligible(s.id);
+ select s.id,timestamptz '2026-09-30T15:00:00Z',s.price,'report-v3' from public.player_market_snapshots s where s.id=any(eligible);
  if before_hash is distinct from public.kickx_valuation_integrity()then raise exception 'VALUATION_FINANCIAL_INTEGRITY';end if;
  insert into public.operation_audit(action,detail)values('valuation.regular-scope',jsonb_build_object('fromHash',p_expected_hash,'hash',p_reference->>'hash','excluded',p_reference#>'{scopeAudit,excluded}','queued',n));
  return jsonb_build_object('queued',n,'hash',p_reference->>'hash');
@@ -252,3 +308,61 @@ declare p public.kickx_policy%rowtype;expected jsonb;combined jsonb;answer jsonb
   and r.source_hash is distinct from c.source_hash;
  return answer-'pricing';
 end $$;
+
+create or replace function public.kickx_seed_non_participation() returns integer language plpgsql set search_path='' set jit=off as $$
+declare inserted integer;affected text[];game_ids text[];begin
+ perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended('kickx:bsd-import',0));
+ select array_agg(id) into game_ids from(select f.id from public.fixtures f join public.football_event_sources s on s.fixture_id=f.id
+ where f.league_id in('bsd-1','bsd-3','bsd-4','bsd-5','bsd-6') and f.status='FT' and public.kickx_regular_fixture(f.id)is true
+ and f.starts_at>=timestamptz '2026-09-30T15:00:00Z'-interval '4 hours'
+ and case when f.starts_at>=timestamptz '2026-09-30T15:00:00Z' then true else public.kickx_fixture_valuation_at(f.id)>=timestamptz '2026-09-30T15:00:00Z' end
+ and s.lineups->>'lineup_status'='confirmed' and jsonb_typeof(s.incidents->'incidents')='array'
+ and (s.non_participation_seeded_at is null or s.non_participation_seeded_at<s.updated_at) order by s.updated_at,f.id limit 8) q;
+ if game_ids is null then return 0;end if;
+ with games as(
+ select f.*,s.lineups,s.incidents from public.fixtures f join public.football_event_sources s on s.fixture_id=f.id
+ where f.id=any(game_ids)
+ ), sides as(
+ select g.*,v.value side,v.key side_key,'bsd-'||(v.value->>'team_id') team_id
+ from games g cross join lateral jsonb_each(g.lineups->'lineups')v
+ ), members as(
+ select s.id fixture_id,s.team_id,'bsd-'||(x->>'id') player_id,'confirmed-lineup' kind from sides s cross join lateral jsonb_array_elements(coalesce(s.side->'substitutes','[]'))x
+ union
+ select s.id,s.team_id,'bsd-'||(x->>'id'),'unavailable-list' from sides s cross join lateral jsonb_array_elements(coalesce(s.lineups->'unavailable_players'->s.side_key,'[]'))x
+ union
+ select s.id,s.team_id,x,'observed-squad' from sides s
+ cross join lateral(select * from public.football_roster_observations o where o.team_id=s.team_id and o.observed_at<=s.starts_at
+ and o.verified_at>=s.starts_at-interval '7 days' order by o.observed_at desc limit 1)o cross join lateral unnest(o.player_ids)x
+ ), candidates as(
+ select distinct on(m.player_id,m.fixture_id)m.* from members m join games g on g.id=m.fixture_id join public.players p on p.id=m.player_id
+ where not exists(select 1 from jsonb_each(g.lineups->'lineups')side cross join lateral jsonb_array_elements(side.value->'players')x where 'bsd-'||(x->>'id')=m.player_id)
+ and not exists(select 1 from jsonb_array_elements(g.incidents->'incidents')e where (e->>'type'='substitution' and 'bsd-'||(e->>'player_in_id')=m.player_id)or(e->>'type'='goal' and 'bsd-'||(e->>'player_id')=m.player_id))
+ order by m.player_id,m.fixture_id,m.kind
+ ), written as(
+ insert into public.football_match_stats(player_id,fixture_id,team_id,stats,normalized)
+ select player_id,fixture_id,team_id,jsonb_build_object('minutes_played',0,'_roster_evidence',jsonb_build_object('fixtureId',fixture_id,'teamId',team_id,'playerId',player_id,'kind',kind)),
+ '{"version":"membership-v1","quality":{"minutes":"verified_non_participation"}}'::jsonb from candidates
+ on conflict(player_id,fixture_id)do nothing returning player_id,fixture_id,team_id
+ ), records as(
+ insert into public.player_match_records(player_id,fixture_id,played_at,opponent,minutes)
+ select w.player_id,w.fixture_id,f.starts_at,coalesce(t.name_ko,t.name),0 from written w join public.fixtures f on f.id=w.fixture_id join public.teams t on t.id=case when f.home_team_id=w.team_id then f.away_team_id else f.home_team_id end
+ on conflict(player_id,fixture_id)do nothing returning player_id
+ )
+ select count(*),array_agg(distinct player_id) into inserted,affected from written;
+ perform public.kickx_queue_player(x) from unnest(affected)x;
+ update public.football_event_sources set non_participation_seeded_at=updated_at where fixture_id=any(game_ids);
+ return inserted;
+end $$;
+
+create or replace function public.kickx_non_participation_work() returns jsonb language plpgsql set search_path='' set jit=off as $$
+declare n integer;remaining integer;begin
+ n:=public.kickx_seed_non_participation();
+ select count(*) into remaining from public.fixtures f join public.football_event_sources s on s.fixture_id=f.id where f.league_id in('bsd-1','bsd-3','bsd-4','bsd-5','bsd-6') and f.status='FT' and public.kickx_regular_fixture(f.id)is true
+ and f.starts_at>=timestamptz '2026-09-30T15:00:00Z'-interval '4 hours'
+ and case when f.starts_at>=timestamptz '2026-09-30T15:00:00Z' then true else public.kickx_fixture_valuation_at(f.id)>=timestamptz '2026-09-30T15:00:00Z' end
+ and s.lineups->>'lineup_status'='confirmed' and jsonb_typeof(s.incidents->'incidents')='array'
+ and (s.non_participation_seeded_at is null or s.non_participation_seeded_at<s.updated_at);
+ return jsonb_build_object('inserted',n,'remaining',remaining);
+end $$;
+revoke all on function public.kickx_non_participation_work() from public,anon,authenticated;
+grant execute on function public.kickx_non_participation_work() to service_role;

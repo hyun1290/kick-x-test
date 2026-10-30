@@ -50,6 +50,7 @@ end $$;
 -- The production API processes at most eight games per transaction and resumes.
 insert into public.fixtures(id,league_id,home_team_id,away_team_id,starts_at,status,home_score,away_score,season)
 select 'valuation-batch-'||lpad(n::text,2,'0'),'bsd-1','bsd-910','bsd-911','2026-10-02T12:00:00Z','FT',0,0,2026 from generate_series(1,10)n;
+update public.fixtures set stage='league-phase' where id like 'valuation-batch-%';
 insert into public.football_event_sources(fixture_id,detail,lineups,incidents)
 select f.id,s.detail,s.lineups,s.incidents from public.fixtures f cross join public.football_event_sources s where f.id like 'valuation-batch-%' and s.fixture_id='valuation-evidence';
 do $$declare work jsonb;begin
