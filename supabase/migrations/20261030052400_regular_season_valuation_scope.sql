@@ -171,13 +171,16 @@ declare p public.kickx_policy%rowtype;n integer;before_hash jsonb;begin
  select * into strict p from public.kickx_policy;
  if p.report_reference->>'hash'=p_reference->>'hash' and p.report_reference->>'regularSeasonScopeVerified'='true' then return jsonb_build_object('unchanged',true);end if;
  if p.report_reference->>'hash' is distinct from p_expected_hash then raise exception 'REFERENCE_CHANGED';end if;
- if p_reference->>'regularSeasonScopeVerified' is distinct from 'true' or p_reference->>'status' is distinct from 'ready'
+ if p_reference->>'regularSeasonScopeVerified' is distinct from 'true' or p_reference->>'status' is distinct from 'ready' or coalesce(length(p_reference->>'hash'),0)<>64
  or coalesce((p_reference->>'completed')::integer,0)<>jsonb_array_length(p_reference->'archives')
  or (p_reference->>'completed')::integer<>(p_reference->>'fixtureCount')::integer or (p_reference->>'fixtureCount')::integer<1500
  or not exists(select 1 from storage.objects where bucket_id='kickx-calculation-archives' and name=p_reference#>>'{scopeAudit,previousReferenceBackup,path}') then raise exception 'REGULAR_SEASON_SCOPE_REQUIRED';end if;
  before_hash:=public.kickx_valuation_integrity();
  update public.kickx_policy set report_reference=p_reference,valuation_rebuild=(valuation_rebuild-'portfolioRebuiltAt'-'assetSnapshotsRebuilt')||jsonb_build_object('status','validated','scopeCorrectedAt',clock_timestamp())where id=true;
  n:=public.kickx_activate_report_policy();
+ insert into public.player_initial_values(player_id,rule_version,detail,input_hash)
+ select z.id,'report-v3',b.detail,p_reference->>'hash' from public.players z cross join lateral(select public.kickx_report_baseline(z.id,z.position,p_reference,p.report_parameters)detail)b where public.kickx_market_eligible(z.id) and b.detail is not null
+ on conflict(player_id)do update set rule_version=excluded.rule_version,detail=excluded.detail,input_hash=excluded.input_hash,updated_at=clock_timestamp();
  delete from public.price_history where public.kickx_market_eligible(player_id);
  delete from public.player_price_results where public.kickx_market_eligible(player_id);
  insert into public.price_history(player_id,recorded_at,value,rule_version)
