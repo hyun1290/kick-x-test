@@ -23,6 +23,7 @@ async function main() {
     const catchUp=process.argv.includes('--report-reference');
     const reference = await prepareReportReference(db, bsd!, {budget:catchUp?3000:600,deadline:Date.now()+(catchUp?20*60000:240000),emit:v=>console.log(JSON.stringify(v))});
     console.log(JSON.stringify({stage:'report-reference-result',...reference}));
+    if(reference.pending==='REGULAR_SEASON_SCOPE_REQUIRED')return;
     if(process.argv.includes('--report-reference'))return;
   }
   let footballFailure: unknown;

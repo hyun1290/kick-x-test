@@ -27,10 +27,14 @@ jobs:
           node-version: '22'
           cache: npm
       - run: npm ci
+      - name: Correct a completed reference using verified regular-season archives
+        run: node --import tsx scripts/rebuild-reference-scope.ts --apply
       - name: Continue the verified previous-season reference
         run: npm run data:automatic -- --report-reference
       - name: Resume the reference within the same shared daily quota
         run: npm run data:automatic -- --report-reference
+      - name: Verify scope again after any resumed collection
+        run: node --import tsx scripts/rebuild-reference-scope.ts --apply
       - name: Replay calculations and refresh derived portfolios
         run: npm run data:automatic -- --maintenance
       - uses: actions/upload-artifact@v4

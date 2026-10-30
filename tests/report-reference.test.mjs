@@ -18,9 +18,9 @@ function setup({missingSeason=false,remaining=7000}={}) {
   if(path.endsWith('lineups/'))return {event_id:id,lineup_status:'confirmed',lineups:{home:{team_id:1,players},away:{team_id:2,players:players.map(p=>({...p,id:p.id+30}))}}};
   if(path.endsWith('player-stats/'))return {event_id:id,player_stats:players.slice(0,4).map(p=>({player_id:p.id,team_id:1,minutes_played:97,goals:0}))};
   if(path.endsWith('incidents/'))return {event_id:id,incidents:[]};
-  return {id,league_id:Math.floor(id/100),season_id:2025,status:'finished',home_team_id:1,away_team_id:2,home_score:0,away_score:0};
- },async page(_path,p){this.requests++;return {results:[{id:p.league_id*100+1}],next:null};}};
- const db={from(){const q={select(){return q;},eq(){return q;},single:async()=>({data:structuredClone(current),error:null}),maybeSingle:async()=>({data:{requests:0},error:null})};return q;},async rpc(name,args){
+  return {id,league_id:Math.floor(id/100),season_id:2025,status:'finished',stage:'league-phase',home_team_id:1,away_team_id:2,home_score:0,away_score:0};
+ },async page(_path,p){this.requests++;return {results:[{id:p.league_id*100+1,stage:'league-phase'}],next:null};}};
+ const db={from(){const q={select(){return q;},eq(){return q;},single:async()=>({data:{...structuredClone(current),regularScope:current.report_reference?.regularSeasonScopeVerified},error:null}),maybeSingle:async()=>({data:{requests:0},error:null})};return q;},async rpc(name,args){
   if(name==='kickx_save_report_reference'){assert.equal(args.p_revision,current.report_reference?.revision??0);const revision=args.p_revision+1;current.report_reference={...structuredClone(args.p_reference),revision};return {data:revision,error:null};}
   if(name==='kickx_activate_report_policy'){assert.equal(current.report_reference.status,'ready');current.version='report-v3';current.valuation_rebuild.status='active';return {data:20,error:null};}
   throw Error(name);
@@ -45,6 +45,12 @@ test('history reserves API capacity for live matches and resumes without duplica
 });
 test('added-time clock requires corroboration and rejects a single extreme counter',()=>{
  const {mod}=setup();assert.equal(mod.observedMatchDuration([97,97,45,180]),97);assert.equal(mod.observedMatchDuration([180]),90);assert.equal(mod.observedMatchDuration([96,97,90]),97);
+});
+test('corroborated substitute counters recover added time when starters are capped at 90',()=>{
+ const {mod}=setup(),stats=[{player_id:1,minutes_played:12},{player_id:2,minutes_played:18}];
+ const incidents={incidents:[{type:'substitution',minute:83,player_in_id:1},{type:'substitution',minute:77,player_in_id:2}]};
+ assert.equal(mod.observedMatchDuration([90,90,12,18],stats,incidents),95);
+ incidents.incidents.pop();assert.equal(mod.observedMatchDuration([90,90,12],stats,incidents),90);
 });
 
 test('a complete reference cannot activate before compatible production code is deployed',async()=>{
