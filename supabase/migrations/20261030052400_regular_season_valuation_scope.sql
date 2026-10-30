@@ -19,8 +19,8 @@ declare g jsonb;o jsonb;n integer;mu numeric;b numeric;pct numeric;v bigint;seas
 end $$;
 
 -- Compute match-clock evidence once per changed source, then read a small cached integer.
-alter table public.fixtures add column observed_duration_minutes integer check(observed_duration_minutes between 90 and 180);
-create function public.kickx_duration_evidence(p_stats jsonb,p_incidents jsonb) returns integer language sql immutable set search_path='' set jit=off as $$
+alter table public.fixtures add column if not exists observed_duration_minutes integer check(observed_duration_minutes between 90 and 180);
+create or replace function public.kickx_duration_evidence(p_stats jsonb,p_incidents jsonb) returns integer language sql immutable set search_path='' set jit=off as $$
  with stats as materialized(select x->>'player_id' player_id,case when jsonb_typeof(x->'minutes_played')='number' then (x->>'minutes_played')::numeric end n from jsonb_array_elements(coalesce(p_stats->'player_stats','[]'))x),
  events as materialized(select x from jsonb_array_elements(coalesce(p_incidents->'incidents','[]'))x),
  inferred as(select (e.x->>'minute')::numeric+case when (e.x->>'minute')::numeric in(45,90)and jsonb_typeof(e.x->'added_time')='number' then (e.x->>'added_time')::numeric else 0 end+s.n n
@@ -33,7 +33,7 @@ create function public.kickx_duration_evidence(p_stats jsonb,p_incidents jsonb) 
 $$;
 revoke all on function public.kickx_duration_evidence(jsonb,jsonb) from public,anon,authenticated;
 grant execute on function public.kickx_duration_evidence(jsonb,jsonb) to service_role;
-create function public.kickx_cache_fixture_duration() returns trigger language plpgsql set search_path='' as $$begin
+create or replace function public.kickx_cache_fixture_duration() returns trigger language plpgsql set search_path='' as $$begin
  if tg_op='UPDATE' and (new.player_stats,new.incidents)is not distinct from(old.player_stats,old.incidents)then return new;end if;
  if jsonb_typeof(new.player_stats->'player_stats')='array' and jsonb_array_length(new.player_stats->'player_stats')>0 then
   update public.fixtures set observed_duration_minutes=public.kickx_duration_evidence(new.player_stats,new.incidents)where id=new.fixture_id;
@@ -41,6 +41,7 @@ create function public.kickx_cache_fixture_duration() returns trigger language p
  return new;
 end $$;
 revoke all on function public.kickx_cache_fixture_duration() from public,anon,authenticated;
+drop trigger if exists cache_fixture_duration on public.football_event_sources;
 create trigger cache_fixture_duration after insert or update of player_stats,incidents on public.football_event_sources for each row execute function public.kickx_cache_fixture_duration();
 update public.fixtures f set observed_duration_minutes=public.kickx_duration_evidence(s.player_stats,s.incidents)from public.football_event_sources s where s.fixture_id=f.id and jsonb_typeof(s.player_stats->'player_stats')='array' and jsonb_array_length(s.player_stats->'player_stats')>0;
 create or replace function public.kickx_observed_fixture_minutes(p_fixture text) returns integer language sql stable set search_path='' as $$
@@ -51,7 +52,7 @@ create or replace function public.kickx_observed_fixture_minutes(p_fixture text)
 $$;
 
 -- League IDs also contain relegation playoffs. Missing scope stays unverified.
-create function public.kickx_regular_fixture(p_fixture text) returns boolean language sql stable set search_path='' as $$
+create or replace function public.kickx_regular_fixture(p_fixture text) returns boolean language sql stable set search_path='' as $$
  select case when f.league_id is null then null when f.league_id not in('bsd-1','bsd-3','bsd-4','bsd-5','bsd-6')then false
  when regexp_replace(lower(coalesce(nullif(f.stage,''),nullif(s.detail->>'stage',''),'')),'[^a-z]','','g') in('leaguephase','regularseason')then true
  when regexp_replace(lower(coalesce(nullif(f.stage,''),nullif(s.detail->>'stage',''),'')),'[^a-z]','','g')~'qualification|final|playoff|relegation|promotion|knockout|roundof'then false
@@ -196,12 +197,13 @@ declare ids text[];last_row public.football_roster_observations%rowtype;begin
  else insert into public.football_roster_observations values('bsd-'||new.external_id,new.updated_at,new.updated_at,ids);end if;
  return new;
 end $$;
-drop trigger kickx_roster_observed on public.football_entity_sources;
+drop trigger if exists kickx_roster_observed on public.football_entity_sources;
+drop trigger if exists aa_roster_observed on public.football_entity_sources;
 create trigger aa_roster_observed before insert or update on public.football_entity_sources for each row execute function public.kickx_observe_roster();
 
 -- The completed catalog audit proves these exact unchanged squad snapshots were
 -- checked before the backup existed. Its creation time is a conservative witness.
-create function public.kickx_attest_audited_rosters() returns integer language plpgsql set search_path='' as $$
+create or replace function public.kickx_attest_audited_rosters() returns integer language plpgsql set search_path='' as $$
 declare at_time timestamptz;n integer;begin
  select o.created_at into at_time from public.kickx_policy p join storage.objects o on o.bucket_id='kickx-calculation-archives'and o.name=p.valuation_rebuild#>>'{backup,path}'
  where p.valuation_rebuild#>>'{audit,complete}'='true'and p.valuation_rebuild#>>'{audit,teams}'='96';
@@ -219,7 +221,7 @@ end $$;
 revoke all on function public.kickx_attest_audited_rosters()from public,anon,authenticated;
 grant execute on function public.kickx_attest_audited_rosters()to service_role;
 
-create function public.kickx_replace_regular_reference(p_expected_hash text,p_reference jsonb) returns jsonb language plpgsql set search_path='' as $$
+create or replace function public.kickx_replace_regular_reference(p_expected_hash text,p_reference jsonb) returns jsonb language plpgsql set search_path='' as $$
 declare p public.kickx_policy%rowtype;n integer;before_hash jsonb;eligible text[];begin
  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended('kickx:bsd-import',0));perform public.kickx_economy_lock();
  select * into strict p from public.kickx_policy;
