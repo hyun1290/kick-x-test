@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { gzipSync, gunzipSync } from 'node:zlib';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { createFootballClient, externalId, normalizeStatus } from './football.mjs';
+import { createFootballClient, externalId, normalizeStatus, SyncError } from './football.mjs';
 import { calculatePerformance } from '../../server/kickx/engine/report-performance';
 import { validateReportParameters, type ReportParameters } from '../../server/kickx/engine/report-pricing';
 
@@ -14,7 +14,7 @@ type Reference = {
  groups?:Record<string,{mean:number;lower:number;upper:number;baselines:number[]}>;hash?:string;
 };
 const leagueIds=[1,3,4,5,6],positions=['GK','DF','MF','FW'];
-const checked=<T>(r:{data:T;error:unknown})=>{if(r.error)throw new Error('REFERENCE_DATABASE_RETRY');return r.data;};
+const checked=<T>(r:{data:T;error:unknown})=>{if(r.error){const code=(r.error as {code?:unknown}).code;throw new SyncError(`REFERENCE_DATABASE_${typeof code==='string'&&/^[A-Z0-9]{5}$/.test(code)?code:'RETRY'}`);}return r.data;};
 const digest=(b:Uint8Array|string)=>createHash('sha256').update(b).digest('hex');
 const quantile=(a:number[],q:number)=>{const sorted=[...a].sort((x,y)=>x-y),at=(sorted.length-1)*q,lo=Math.floor(at);return sorted[lo]+(sorted[Math.ceil(at)]-sorted[lo])*(at-lo);};
 export function observedMatchDuration(values:number[]) {
@@ -100,6 +100,7 @@ export async function prepareReportReference(db:SupabaseClient,key:string,{budge
   if(gate?.valuation_rebuild?.status!=='validated'&&gate?.valuation_rebuild?.status!=='active')return {pending:'WAITING_FOR_DATA_AUDIT',completed:ref.completed,total:ref.fixtureCount};
   const queued=checked(await db.rpc('kickx_activate_report_policy'));return {active:true,queued,completed:ref.completed};
  };
+ let currentFixture:string|undefined;
  try {
   if(ref.status==='ready')return await activate();
   while(ref.leagues.length<5){
@@ -130,7 +131,10 @@ export async function prepareReportReference(db:SupabaseClient,key:string,{budge
    const league=ref.leagues[ref.leagueIndex];
    if(ref.fixtureIndex>=league.fixtures.length){ref.leagueIndex++;ref.fixtureIndex=0;dirty=true;await save();continue;}
    const id=league.fixtures[ref.fixtureIndex],base=`/api/v2/events/${id}/`;
-   const detail=await api.get(base),stats=await api.get(base+'player-stats/'),lineups=await api.get(base+'lineups/'),incidents=await api.get(base+'incidents/');
+   currentFixture=externalId(id);
+   const fetched=await Promise.allSettled([base,base+'player-stats/',base+'lineups/',base+'incidents/'].map(path=>api.get(path)));
+   const failed=fetched.find(r=>r.status==='rejected');if(failed?.status==='rejected')throw failed.reason;
+   const [detail,stats,lineups,incidents]=fetched.map(r=>r.status==='fulfilled'?r.value:null);
    if(detail.id!==id||detail.league_id!==league.id||detail.season_id!==league.seasonId||!Array.isArray(stats.player_stats)||stats.event_id!==id||lineups.event_id!==id||incidents.event_id!==id)throw new Error('REFERENCE_FIXTURE_MISMATCH');
    const duration=observedMatchDuration(stats.player_stats.map((s:{minutes_played:number})=>s.minutes_played));
    const results=stats.player_stats.map((s:{player_id:number;team_id:number;minutes_played:number})=>{
@@ -154,9 +158,10 @@ export async function prepareReportReference(db:SupabaseClient,key:string,{budge
   await save();
   if(ref.status==='ready')return await activate();
   return {pending:'PREVIOUS_SEASON_COLLECTION',completed:ref.completed,total:ref.fixtureCount,requests:api.requests};
- }catch(error){await save();emit({stage:'report-reference',completed:ref.completed,total:ref.fixtureCount,pending:'REFERENCE_RETRY'});
+ }catch(error){await save();const reason=error instanceof SyncError?error.code:error instanceof Error&&/^[A-Z0-9_]+$/.test(error.message)?error.message:'REFERENCE_RESOURCE_RETRY';
+  emit({stage:'report-reference',completed:ref.completed,total:ref.fixtureCount,pending:'REFERENCE_RETRY',reason,fixtureId:currentFixture});
   // No raw responses, URLs, credentials or network errors enter logs.
   if(error instanceof Error && ['REFERENCE_SEASON_UNAVAILABLE','REFERENCE_SEASONS_UNAVAILABLE','REFERENCE_SEASON_EMPTY'].includes(error.message))return {pending:error.message,completed:ref.completed};
-  return {pending:'REFERENCE_RETRY',completed:ref.completed,total:ref.fixtureCount,requests:api.requests};
+  return {pending:'REFERENCE_RETRY',reason,completed:ref.completed,total:ref.fixtureCount,requests:api.requests};
  }
 }

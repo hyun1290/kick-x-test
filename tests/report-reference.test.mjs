@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
 import {gzipSync,gunzipSync} from 'node:zlib';
 import {loadTs} from './load-ts.mjs';
+import {SyncError} from '../scripts/lib/football.mjs';
 const policy=loadTs('../server/kickx/engine/report-policy.ts');
 const performance=loadTs('../server/kickx/engine/report-performance.ts',{'./report-policy':policy});
 const pricing=loadTs('../server/kickx/engine/report-pricing.ts',{'./report-policy':policy});
@@ -24,7 +25,7 @@ function setup({missingSeason=false,remaining=7000}={}) {
   if(name==='kickx_activate_report_policy'){assert.equal(current.report_reference.status,'ready');current.version='report-v3';current.valuation_rebuild.status='active';return {data:20,error:null};}
   throw Error(name);
  },storage:{getBucket:async()=>({data:{public:false},error:null}),from(){return {upload:async(path,bytes)=>{objects.set(path,bytes);return {error:null};},download:async path=>({data:new Blob([objects.get(path)]),error:null}),remove:async paths=>{for(const path of paths)objects.delete(path);return {error:null};}};}}};
- const mod=loadTs('../scripts/lib/report-reference.ts',{'node:crypto':{createHash},'node:zlib':{gzipSync,gunzipSync},'./football.mjs':{externalId,normalizeStatus:()=> 'FT',createFootballClient:()=>api},'../../server/kickx/engine/report-performance':performance,'../../server/kickx/engine/report-pricing':pricing});
+ const mod=loadTs('../scripts/lib/report-reference.ts',{'node:crypto':{createHash},'node:zlib':{gzipSync,gunzipSync},'./football.mjs':{externalId,SyncError,normalizeStatus:()=> 'FT',createFootballClient:()=>api},'../../server/kickx/engine/report-performance':performance,'../../server/kickx/engine/report-pricing':pricing});
  return {mod,api,db,calls,objects,current:()=>current};
 }
 test('full previous-season discovery freezes all four cohorts, verifies private archives and activates once',async()=>{
@@ -50,4 +51,11 @@ test('a complete reference cannot activate before compatible production code is 
  const x=setup();const result=await x.mod.prepareReportReference(x.db,'test-only-key',{runtimeReady:async()=>false});
  assert.equal(result.pending,'WAITING_FOR_DEPLOYMENT');assert.equal(x.current().version,'form-v2');assert.equal(x.current().report_reference.status,'ready');
  assert.equal((await x.mod.prepareReportReference(x.db,'test-only-key',{runtimeReady:async()=>true})).active,true);
+});
+test('partial resource failure never commits a fixture to the reference cohort',async()=>{
+ const x=setup(),get=x.api.get.bind(x.api);
+ x.api.get=async path=>{const reply=await get(path);if(path.endsWith('/incidents/'))throw new SyncError('PROVIDER_NETWORK_ERROR');return reply;};
+ const r=await x.mod.prepareReportReference(x.db,'test-only-key',{runtimeReady:async()=>true});
+ assert.equal(r.reason,'PROVIDER_NETWORK_ERROR');assert.equal(r.completed,0);assert.equal(x.current().version,'form-v2');
+ assert.equal([...x.objects.keys()].filter(p=>!p.includes('/checkpoints/')).length,0);
 });

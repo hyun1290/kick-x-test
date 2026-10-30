@@ -39,7 +39,7 @@ export function calculatePerformance(input: ScoreInput): ScoreResult {
  const unavailable=list(object(lineups.unavailable_players)[input.teamId===input.homeTeam?'home':'away']).some(p=>id(p.id)===input.playerId);
  const roster=object(input.stats._roster_evidence);
  const rosterVerified=roster.fixtureId===input.fixtureId&&roster.teamId===input.teamId&&roster.playerId===input.playerId&&['confirmed-lineup','unavailable-list','observed-squad'].includes(String(roster.kind));
- if ((!player || !result.position) && !(minutes===0&&(unavailable||rosterVerified))) return stop("MATCH_POSITION_REQUIRED");
+ if ((!player || !result.position) && !(minutes===0&&(player||unavailable||rosterVerified))) return stop("MATCH_POSITION_REQUIRED");
  if (!Array.isArray(input.source.incidents?.incidents)) return stop("INCIDENTS_REQUIRED");
  const isShootout=(e:Json)=>e.is_penalty_shootout===true || e.penalty_shootout===true || ['penalties','penaltyshootout','shootout'].some(v=>[e.period,e.phase,e.incident_class,e.goal_type].some(x=>code(x)===v));
  const events = list(input.source.incidents?.incidents).filter(e => e.rescinded !== true && e.cancelled !== true && e.disallowed !== true && !isShootout(e));

@@ -35,6 +35,11 @@ test('unknown counters and missing required facts stay distinguishable from DNP'
  const m=match();assert.ok(calc(m).warnings.some(x=>x.includes('UNVERIFIED')));m.playerId='bsd-30';m.stats.minutes_played=0;assert.equal(calc(m).status,'not-played');
  m.stats.minutes_played=15;m.source.lineups.lineup_status='predicted';assert.equal(calc(m).score,null);
 });
+test('a confirmed unused substitute does not require a match position for fixed DNP decay',()=>{
+ const m=match(null);m.playerId='bsd-30';m.stats.minutes_played=0;
+ assert.equal(calc(m).status,'not-played');assert.equal(calc(m).score,null);
+ m.stats.minutes_played=15;assert.equal(calc(m).status,'blocked');
+});
 test('report pricing reproduces its 104040-P example with every season appearance counted once',()=>{
  const plan=price([game(1,8),game(2,10)],baseline,p);assert.equal(plan.steps[0].priceAfter,102000);assert.equal(plan.price,104040);assert.equal(plan.steps[1].formScore,7);assert.equal(plan.steps[1].targetPrice,105127);
  assert.deepEqual(price([game(2,10),game(1,8)],baseline,p),plan);
