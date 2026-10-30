@@ -21,6 +21,7 @@ insert into public.football_entity_sources(provider,kind,external_id,raw,updated
 values('bsd','squad',910,'{"team_id":910,"count":3,"players":[{"id":9001},{"id":9002},{"id":9003}]}','2026-10-03T00:00:00Z');
 insert into public.fixtures(id,league_id,home_team_id,away_team_id,starts_at,status,home_score,away_score,season)
 values('valuation-evidence','bsd-1','bsd-910','bsd-911','2026-10-02T12:00:00Z','FT',0,0,2026);
+update public.fixtures set stage='league-phase' where id='valuation-evidence';
 insert into public.football_event_sources(fixture_id,detail,lineups,incidents)
 select 'valuation-evidence','{}',jsonb_build_object('lineup_status','confirmed','lineups',jsonb_build_object(
  'home',jsonb_build_object('team_id',910,'players',(select jsonb_agg(jsonb_build_object('id',n,'position','D'))from generate_series(100,110)n),'substitutes','[{"id":9001,"position":"F"}]'::jsonb),
@@ -39,7 +40,7 @@ update public.kickx_policy set version='report-v3',club_competitions_enabled=fal
  report_reference='{"status":"ready","season":2025,"hash":"valuation-test","groups":{"FW":{"mean":6,"lower":0,"upper":30,"baselines":[6]}} ,"players":{}}';
 do $$declare answer jsonb;begin
  answer:=public.kickx_publish_calculation_delta(null,'bsd-9001',public.kickx_calculation_token('bsd-9001'),
- '[{"fixtureId":"valuation-evidence","position":"FW","score":null,"status":"not-played","ruleVersion":"report-v3","breakdown":[],"warnings":[]}]');
+ '[{"fixtureId":"valuation-evidence","position":"FW","score":null,"status":"not-played","ruleVersion":"report-v3","scoringRevision":"regular-season-20261030","breakdown":[],"warnings":[]}]');
  if (answer->>'price')::integer<>98500 then raise exception 'DNP publication price: %',answer;end if;
  if (select count(*)from public.price_history where player_id='bsd-9001')<>2 then raise exception 'Launch and DNP chart points missing';end if;
  if not exists(select 1 from public.price_history where player_id='bsd-9001' and recorded_at=timestamptz '2026-09-30T15:00:00Z' and value=100000) then raise exception 'Launch baseline missing';end if;

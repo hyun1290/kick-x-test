@@ -17,6 +17,19 @@ test('report scoring applies its positional table and no v2 team-win bonus',()=>
   const r=calc(m);assert.equal(points(r,'minutes'),2);assert.equal(points(r,'goals'),goal);assert.equal(points(r,'assists'),assist);assert.equal(points(r,'team_win'),undefined);
  }
 });
+test('regular-season scope rejects league-code playoffs and keeps an unknown stage unverified',()=>{
+ const m=match();m.regularSeasonOnly=true;m.source.detail={stage:'league-phase'};assert.equal(calc(m).status,'provisional');
+ m.source.detail.stage='final';assert.deepEqual(calc(m).warnings,['OUTSIDE_COMPETITION_SCOPE']);
+ m.source.detail={};assert.deepEqual(calc(m).warnings,['REGULAR_SEASON_SCOPE_REQUIRED']);
+});
+test('settled card checks do not block verified final cards; an accepted upgrade requires a red-card incident',()=>{
+ const m=match();const review={type:'varDecision',minute:39,decision:'cardUpgrade',confirmed:false,player_id:2};
+ m.source.incidents.incidents=[review];assert.equal(calc(m).status,'provisional');
+ review.confirmed=true;assert.deepEqual(calc(m).warnings,['VAR_CARD_TIMELINE_REQUIRED']);
+ m.source.incidents.incidents.push({type:'card',minute:39,card_type:'red',player_id:2});m.stats.minutes_played=39;m.stats.red_card=1;
+ assert.equal(calc(m).status,'provisional');
+ delete review.confirmed;assert.deepEqual(calc(m).warnings,['VAR_REVIEW_REQUIRED']);
+});
 test('report counts DF defensive groups and MF individual actions, pass success above zero attempts',()=>{
  const m=match();Object.assign(m.stats,{won_tackle:4,interception:3,total_pass:10,accurate_pass:9});
  assert.equal(points(calc(m),'defensive_actions'),2);assert.equal(points(calc(m),'pass_accuracy'),1);
