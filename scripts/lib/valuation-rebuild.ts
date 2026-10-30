@@ -5,7 +5,13 @@ import type {SupabaseClient} from '@supabase/supabase-js';
 import {createFootballClient,externalId,normalizeBatch,SyncError} from './football.mjs';
 import {processBulkTask,BIG_FIVE} from './bulk-plan.mjs';
 
-const checked=<T>(r:{data:T;error:unknown})=>{if(r.error)throw new Error('VALUATION_DATABASE_RETRY');return r.data;};
+const checked=<T>(r:{data:T;error:unknown})=>{
+ if(r.error){
+  const code=(r.error as {code?:unknown}).code;
+  throw new SyncError(`VALUATION_DATABASE_${typeof code==='string'&&/^[A-Z0-9]{5}$/.test(code)?code:'RETRY'}`);
+ }
+ return r.data;
+};
 const hash=(v:Uint8Array)=>createHash('sha256').update(v).digest('hex');
 async function all(db:SupabaseClient,table:string,select='*'){
  const rows:Record<string,unknown>[]=[];
@@ -71,6 +77,7 @@ export async function ensureValuationRebuild(db:SupabaseClient,key:string,{emit=
   }
  }
  const qualityBefore=checked(await db.rpc('kickx_valuation_data_audit'));
+ emit({stage:'valuation-quality',...qualityBefore});
  const repairIds=new Set((qualityBefore?.repairFixtures??[]) as string[]);
  const missingStats=fixtures.filter(f=>fixtureIds.has(String(f.id))&&f.status==='FT'&&(!statFixtures.has(f.id)||!sourceFixtures.has(f.id)||repairIds.has(String(f.id))));
  for(const fixture of missingStats){
@@ -94,7 +101,10 @@ export async function ensureValuationRebuild(db:SupabaseClient,key:string,{emit=
  for(const [table,columns]of [
   ['performance_results','*'],['player_initial_values','*'],['player_price_results','*'],['price_history','*'],
   ['player_market_snapshots','*'],['player_match_records','player_id,fixture_id,performance,rule_version'],['ranking_snapshots','*'],['asset_snapshots','*']
- ])datasets[table]=await all(db,table,columns);
+ ]){
+  const rows=await all(db,table,columns);datasets[table]=rows;
+  emit({stage:'valuation-backup-read',table,rows:rows.length});
+ }
  const integrity=checked(await db.rpc('kickx_valuation_integrity'));
  const bytes=gzipSync(Buffer.from(JSON.stringify({format:'kickx-valuation-backup-v1',asOf:new Date().toISOString(),audit,integrity,datasets})),{level:9});
  const digest=hash(bytes),path=`valuation-rebuild/20261001/before-${digest}.json.gz`;
