@@ -1,15 +1,15 @@
 create or replace function public.kickx_report_baseline(p_player text,p_position text,p_reference jsonb,p_parameters jsonb)
 returns jsonb language plpgsql immutable set search_path='' as $$
-declare g jsonb;o jsonb;n integer;mu numeric;b numeric;pct numeric;v bigint;season integer;size integer;lo integer;hi integer;mid integer;below integer;through integer;begin
- g:=p_reference->'groups'->p_position;o:=p_reference->'players'->p_player->p_position;
- if p_reference->>'status' is distinct from 'ready' or g is null or jsonb_array_length(g->'baselines')=0 then return null;end if;
+declare g jsonb;o jsonb;cohort jsonb;n integer;mu numeric;b numeric;pct numeric;v bigint;season integer;size integer;lo integer;hi integer;mid integer;below integer;through integer;begin
+ g:=p_reference#>array['groups',p_position];o:=p_reference#>array['players',p_player,p_position];cohort:=g->'baselines';
+ if p_reference->>'status' is distinct from 'ready' or g is null or jsonb_array_length(cohort)=0 then return null;end if;
  n:=coalesce((o->>'n')::integer,0);mu:=(g->>'mean')::numeric;season:=(p_reference->>'season')::integer;
  b:=round((coalesce((o->>'sum')::numeric,0)+(p_parameters->>'lambda')::numeric*mu)/(n+(p_parameters->>'lambda')::numeric),10);
  -- The frozen position cohort is sorted. Two binary searches preserve tied midranks.
- size:=jsonb_array_length(g->'baselines');lo:=0;hi:=size;
- while lo<hi loop mid:=(lo+hi)/2;if (g->'baselines'->>mid)::numeric<b then lo:=mid+1;else hi:=mid;end if;end loop;below:=lo;
+ size:=jsonb_array_length(cohort);lo:=0;hi:=size;
+ while lo<hi loop mid:=(lo+hi)/2;if (cohort->>mid)::numeric<b then lo:=mid+1;else hi:=mid;end if;end loop;below:=lo;
  lo:=0;hi:=size;
- while lo<hi loop mid:=(lo+hi)/2;if (g->'baselines'->>mid)::numeric<=b then lo:=mid+1;else hi:=mid;end if;end loop;through:=lo;
+ while lo<hi loop mid:=(lo+hi)/2;if (cohort->>mid)::numeric<=b then lo:=mid+1;else hi:=mid;end if;end loop;through:=lo;
  pct:=(below+0.5*(through-below))/size;
  v:=round((p_parameters->>'initialMin')::numeric+((p_parameters->>'initialMax')::numeric-(p_parameters->>'initialMin')::numeric)*pct);
  return jsonb_build_object('source',case when n>0 then 'previous-season' else 'position-prior' end,'season',season,'gameCount',n,
@@ -184,6 +184,38 @@ begin
  end if;
  insert into public.operation_audit(actor,action,target,detail) values(p_actor,'calculation.publish',p_player,jsonb_build_object('price',value_now,'results',jsonb_array_length(p_results),'baseline',plan->'baseline','lastStep',plan->'steps'->-1,'correction',old_plan is not null));
  return jsonb_build_object('unchanged',false,'price',value_now,'performance',latest,'initialPrice',plan#>'{baseline,price}','pricing',plan);
+end $$;
+
+-- Queue the approved reset in one statement rather than one function call per player.
+create or replace function public.kickx_activate_report_policy() returns integer language plpgsql set search_path='' as $$
+declare p public.kickx_policy%rowtype;k text;n integer:=0;begin
+ perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended('kickx:bsd-import',0));perform public.kickx_economy_lock();
+ select * into strict p from public.kickx_policy;
+ if p.version='report-v3' and p.valuation_rebuild->>'status'='active' then return 0;end if;
+ if p.valuation_rebuild->>'status' is distinct from 'validated' then raise exception 'VALUATION_AUDIT_REQUIRED';end if;
+ -- Decompress the frozen JSON once for the whole reset, rather than per player.
+ p.report_reference:=p.report_reference||'{}'::jsonb;
+ if not exists(select 1 from storage.objects o where o.bucket_id='kickx-calculation-archives' and o.name=p.valuation_rebuild#>>'{backup,path}') then raise exception 'VALUATION_BACKUP_REQUIRED';end if;
+ if p.report_reference->>'status' is distinct from 'ready' or jsonb_array_length(p.report_reference->'archives')=0
+ or (p.report_reference->>'completed')::integer<>(p.report_reference->>'fixtureCount')::integer then raise exception 'REFERENCE_NOT_READY';end if;
+ foreach k in array array['GK','DF','MF','FW'] loop
+  if coalesce(jsonb_array_length(p.report_reference->'groups'->k->'baselines'),0)=0 then raise exception 'REFERENCE_NOT_READY';end if;
+ end loop;
+ if exists(select 1 from jsonb_array_elements(p.report_reference->'archives') a where not exists(
+  select 1 from storage.objects o where o.bucket_id='kickx-calculation-archives' and o.name=a->>'path')) then raise exception 'REFERENCE_ARCHIVE_MISSING';end if;
+ if p.report_reference->>'regularSeasonScopeVerified' is distinct from 'true' then raise exception 'REGULAR_SEASON_SCOPE_REQUIRED';end if;
+ update public.kickx_policy set version='report-v3',club_competitions_enabled=false,pricing_reference_at=timestamptz '2026-09-30T15:00:00Z',valuation_rebuild=valuation_rebuild||jsonb_build_object('status','active','activatedAt',clock_timestamp()),pricing_reference_season=(report_reference->>'season')::integer+1 where id=true;
+ perform public.kickx_report_refresh_summaries();
+ delete from public.realtime_fixture_tasks t using public.fixtures f where f.id=t.fixture_id and f.league_id not in('bsd-1','bsd-3','bsd-4','bsd-5','bsd-6');
+ -- Reset derived market prices to the audited initial basis. Never alter trades, wallet balances or acquisition costs.
+ with baseline as materialized(select z.id,public.kickx_report_baseline(z.id,z.position,p.report_reference,p.report_parameters)detail from public.players z where public.kickx_market_eligible(z.id))
+ update public.player_market_snapshots s set price=(b.detail->>'price')::numeric,performance=null,change_percent=0,pricing_status='pending',performance_rule_version=null,pricing_rule_version='report-v3',updated_at=clock_timestamp()
+ from baseline b where s.id=b.id and b.detail is not null;
+ insert into public.calculation_queue(player_id)select id from public.players where public.kickx_market_eligible(id)
+ on conflict(player_id)do update set revision=gen_random_uuid(),queued_at=now(),retry_at=now(),attempts=0,error_code=null;
+ get diagnostics n=row_count;
+ insert into public.operation_audit(action,detail) values('policy.report-v3',jsonb_build_object('referenceHash',p.report_reference->>'hash','parameters',p.report_parameters));
+ return n;
 end $$;
 
 create or replace function public.kickx_observe_roster() returns trigger language plpgsql set search_path='' as $$

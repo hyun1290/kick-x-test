@@ -52,6 +52,7 @@ insert into storage.objects(bucket_id,name)values('kickx-calculation-archives','
 insert into public.players(id,name,provider,position,team_id)values('scope-player','Scope player','bsd','MF','scope-home');
 insert into public.player_market_snapshots(id,price,pricing_status,pricing_rule_version)values('scope-player',123000,'ready','report-v3');
 insert into public.price_history(player_id,recorded_at,value,rule_version)values('scope-player',now(),123000,'report-v3');
+insert into public.calculation_queue(player_id,attempts,error_code,retry_at)values('scope-player',7,'OLD_FAILURE',now()+interval '1 day')on conflict(player_id)do update set attempts=7,error_code='OLD_FAILURE',retry_at=now()+interval '1 day';
 update public.kickx_policy set version='report-v3',report_reference='{"hash":"scope-old"}',valuation_rebuild='{"status":"active","backup":{"path":"scope/old"},"portfolioRebuiltAt":"old"}';
 do $$declare ref jsonb;answer jsonb;before_hash jsonb;begin
  select jsonb_build_object('status','ready','season',2025,'hash',repeat('c',64),'regularSeasonScopeVerified',true,'completed',1500,'fixtureCount',1500,
@@ -59,6 +60,7 @@ do $$declare ref jsonb;answer jsonb;before_hash jsonb;begin
  'players','{}'::jsonb,'groups',(select jsonb_object_agg(pos,'{"mean":6,"lower":0,"upper":30,"baselines":[6]}'::jsonb)from unnest(array['GK','DF','MF','FW'])pos),
  'scopeAudit','{"previousReferenceBackup":{"path":"scope/reference"},"excluded":[]}'::jsonb)into ref;
  before_hash:=public.kickx_valuation_integrity();answer:=public.kickx_replace_regular_reference('scope-old',ref);
+ if not exists(select 1 from public.calculation_queue where player_id='scope-player'and attempts=0 and error_code is null and retry_at<=now())then raise exception 'Bulk reset did not clear retry backoff';end if;
  if (select price from public.player_market_snapshots where id='scope-player')<>505000 or (select pricing_status from public.player_market_snapshots where id='scope-player')<>'pending'then raise exception 'Corrected baseline not staged';end if;
  if (select detail->>'referenceHash' from public.player_initial_values where player_id='scope-player')<>repeat('c',64)then raise exception 'Incomplete players retained an old initial value';end if;
  if (select count(*)from public.price_history where player_id='scope-player')<>1 or not exists(select 1 from public.price_history where player_id='scope-player' and recorded_at=timestamptz '2026-09-30T15:00:00Z')then raise exception 'Stale derived history retained';end if;
