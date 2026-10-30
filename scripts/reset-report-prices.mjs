@@ -48,8 +48,8 @@ async function main(){
   if(batch%20===0||result.remaining===0)console.log(JSON.stringify({stage:'approved-reset-replay',processed,withheld,remaining:result.remaining}));
   if(result.remaining===0)break;
   if(result.processed===0){
-   const module=await import('../server/kickx/engine/service.ts');
-   const calculatePlayer=module.calculatePlayer??module.default?.calculatePlayer;
+   const calculatorModule=await import('../server/kickx/engine/service.ts');
+   const calculatePlayer=calculatorModule.calculatePlayer??calculatorModule.default?.calculatePlayer;
    if(typeof calculatePlayer!=='function')throw Error('RESET_CALCULATOR_REQUIRED');
    const pending=checked(await db.from('calculation_queue').select('player_id,revision').is('error_code',null).order('queued_at').limit(60));
    if(!pending.length)throw Error('RESET_QUEUE_CHANGED');

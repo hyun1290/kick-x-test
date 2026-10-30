@@ -37,7 +37,7 @@ grant execute on function public.kickx_reset_october15_prices(jsonb,jsonb,jsonb)
 -- retains source-token checks and the standard publisher's withholding rules.
 create function public.kickx_replay_cached_prices(p_limit integer default 15) returns jsonb
 language plpgsql set search_path='' set jit=off as $$
-declare q record;answer jsonb;n integer:=0;held integer:=0;remaining integer;begin
+declare q record;answer jsonb;n integer:=0;held integer:=0;remaining integer;started timestamptz:=clock_timestamp();begin
  if p_limit<1 or p_limit>25 then raise exception 'INVALID_BATCH_SIZE';end if;
  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended('kickx:bsd-import',0));
  perform public.kickx_economy_lock();
@@ -45,11 +45,12 @@ declare q record;answer jsonb;n integer:=0;held integer:=0;remaining integer;beg
  and report_parameters->>'initialMin'='50000' and report_parameters->>'initialMax'='150000')then raise exception 'RESET_POLICY_REQUIRED';end if;
  for q in select c.player_id,c.revision from public.calculation_queue c
  where c.error_code is null and public.kickx_market_eligible(c.player_id)
- and not exists(select 1 from public.kickx_calculation_sources(c.player_id)where not cached)
  order by c.queued_at,c.player_id limit p_limit for update skip locked loop
+  if exists(select 1 from public.kickx_calculation_sources(q.player_id)where not cached)then continue;end if;
   answer:=public.kickx_publish_calculation_delta(null,q.player_id,public.kickx_calculation_token(q.player_id),'[]');
   perform public.kickx_ack_calculation(q.player_id,q.revision,case when answer->>'withheld'='true'then 'CALCULATION_WITHHELD'end);
   n:=n+1;if answer->>'withheld'='true'then held:=held+1;end if;
+  exit when clock_timestamp()-started>interval '3 seconds';
  end loop;
  select count(*) into remaining from public.calculation_queue c where error_code is null and public.kickx_market_eligible(c.player_id);
  return jsonb_build_object('processed',n,'withheld',held,'remaining',remaining);
