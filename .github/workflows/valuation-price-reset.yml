@@ -2,7 +2,7 @@ name: Apply approved October 15 price reset
 on:
   push:
     branches: [main]
-    paths: ['.github/workflows/valuation-price-reset.yml']
+    paths: ['.github/workflows/valuation-price-reset.yml', 'scripts/reset-report-prices.mjs']
   workflow_dispatch:
 permissions:
   contents: read

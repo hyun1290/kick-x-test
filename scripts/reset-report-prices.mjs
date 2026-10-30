@@ -3,7 +3,6 @@ import {createHash} from 'node:crypto';
 import {gzipSync} from 'node:zlib';
 import {mkdir,writeFile} from 'node:fs/promises';
 import {nameImportFetch} from './lib/korean-catalog.mjs';
-import {calculatePlayer} from '../server/kickx/engine/service.ts';
 const RESET='launch-20261015-initial50k150k';
 const checked=r=>{if(r.error)throw Error(`RESET_DATABASE_${/^[A-Z0-9]+$/.test(r.error.code??'')?r.error.code:'RETRY'}`);return r.data;};
 const digest=b=>createHash('sha256').update(b).digest('hex');
@@ -49,6 +48,9 @@ async function main(){
   if(batch%20===0||result.remaining===0)console.log(JSON.stringify({stage:'approved-reset-replay',processed,withheld,remaining:result.remaining}));
   if(result.remaining===0)break;
   if(result.processed===0){
+   const module=await import('../server/kickx/engine/service.ts');
+   const calculatePlayer=module.calculatePlayer??module.default?.calculatePlayer;
+   if(typeof calculatePlayer!=='function')throw Error('RESET_CALCULATOR_REQUIRED');
    const pending=checked(await db.from('calculation_queue').select('player_id,revision').is('error_code',null).order('queued_at').limit(60));
    if(!pending.length)throw Error('RESET_QUEUE_CHANGED');
    for(let at=0;at<pending.length;at+=3)await Promise.all(pending.slice(at,at+3).map(async q=>{
