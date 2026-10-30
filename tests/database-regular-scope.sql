@@ -1,4 +1,6 @@
 begin;
+create schema if not exists storage;
+create table if not exists storage.objects(bucket_id text,name text);
 do $$begin
  if has_function_privilege('anon','public.kickx_replace_regular_reference(text,jsonb)','execute')or has_function_privilege('authenticated','public.kickx_replace_regular_reference(text,jsonb)','execute')then raise exception 'Reference replacement exposed';end if;
  if public.kickx_duration_evidence('{"player_stats":[{"player_id":1,"minutes_played":90},{"player_id":2,"minutes_played":90},{"player_id":3,"minutes_played":12},{"player_id":4,"minutes_played":18}]}','{"incidents":[{"type":"substitution","minute":83,"player_in_id":3},{"type":"substitution","minute":77,"player_in_id":4}]}')<>95 then raise exception 'Corroborated added time not recovered';end if;

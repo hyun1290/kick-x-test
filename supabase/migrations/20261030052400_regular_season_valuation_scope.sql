@@ -32,7 +32,7 @@ $$;
 
 -- League IDs also contain relegation playoffs. Missing scope stays unverified.
 create function public.kickx_regular_fixture(p_fixture text) returns boolean language sql stable set search_path='' as $$
- select case when f.league_id not in('bsd-1','bsd-3','bsd-4','bsd-5','bsd-6')then false
+ select case when f.league_id is null then null when f.league_id not in('bsd-1','bsd-3','bsd-4','bsd-5','bsd-6')then false
  when regexp_replace(lower(coalesce(nullif(f.stage,''),nullif(s.detail->>'stage',''),'')),'[^a-z]','','g') in('leaguephase','regularseason')then true
  when regexp_replace(lower(coalesce(nullif(f.stage,''),nullif(s.detail->>'stage',''),'')),'[^a-z]','','g')~'qualification|final|playoff|relegation|promotion|knockout|roundof'then false
  when coalesce(nullif(f.stage,''),nullif(s.detail->>'stage',''))is null and coalesce(f.round_label,s.detail->>'round_label','')~*'^(league phase|regular season)\y'then true else null end
