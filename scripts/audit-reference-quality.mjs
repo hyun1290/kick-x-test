@@ -3,19 +3,24 @@ import {gunzipSync} from 'node:zlib';
 import {createHash} from 'node:crypto';
 import {mkdir,writeFile} from 'node:fs/promises';
 import {nameImportFetch} from './lib/korean-catalog.mjs';
-import {createFootballClient} from './lib/football.mjs';
+import {createFootballClient,normalizeStatus} from './lib/football.mjs';
 const checked=r=>{if(r.error)throw Error('REFERENCE_QUALITY_DATABASE_RETRY');return r.data;};
 const describe=d=>({statsRows:d.stats?.player_stats?.length??null,declaredStats:d.stats?.count??null,lineupStatus:d.lineups?.lineup_status??null,
- homeStarters:d.lineups?.lineups?.home?.players?.length??0,awayStarters:d.lineups?.lineups?.away?.players?.length??0,incidents:d.incidents?.incidents?.length??null});
+ homeStarters:d.lineups?.lineups?.home?.players?.length??0,awayStarters:d.lineups?.lineups?.away?.players?.length??0,incidents:d.incidents?.incidents?.length??null,
+ status:d.detail?.status,normalizedStatus:normalizeStatus(d.detail),extraTimeScore:d.detail?.extra_time_score,shootout:d.detail?.penalty_shootout,
+ positiveMinutes:d.stats?.player_stats?.filter(s=>s.minutes_played>0).length??0,
+ priorResultReasons:(d.results??[]).reduce((out,r)=>{if(r.status==='blocked'){const reason=r.warnings?.at(-1)??'unknown';out[reason]=(out[reason]??0)+1;}return out;},{})});
 async function main(){
  const key=process.env.SUPABASE_SERVICE_ROLE_KEY;
  const db=createClient(process.env.SUPABASE_URL,key,{global:{fetch:nameImportFetch(key)},auth:{persistSession:false,autoRefreshToken:false}});
  const ref=checked(await db.from('kickx_policy').select('report_reference').single()).report_reference;
  const valid=new Set(Object.values(ref.players).flatMap(p=>Object.values(p).flatMap(h=>h.fixtures)));
+ const samplesOnly=process.argv.includes('--samples');
+ const archives=samplesOnly?ref.leagues.flatMap(l=>[ref.archives.find(a=>a.league===l.id&&!valid.has(a.fixtureId)),ref.archives.find(a=>a.league===l.id&&valid.has(a.fixtureId))].filter(Boolean)):ref.archives;
  const leagues=new Map(ref.leagues.map(l=>[l.id,{league:l.id,archives:0,scorableFixtures:0,emptyStats:0,unconfirmedLineups:0,missingIncidents:0,statisticsRows:0,examples:[]}]))
  const unavailable=[];
- for(let at=0;at<ref.archives.length;at+=8){
-  const results=await Promise.allSettled(ref.archives.slice(at,at+8).map(async a=>{
+ for(let at=0;at<archives.length;at+=8){
+  const results=await Promise.allSettled(archives.slice(at,at+8).map(async a=>{
    const blob=checked(await db.storage.from('kickx-calculation-archives').download(a.path));
    const bytes=Buffer.from(await blob.arrayBuffer());if(createHash('sha256').update(bytes).digest('hex')!==a.hash)throw Error('REFERENCE_QUALITY_ARCHIVE_HASH');
    const d=JSON.parse(gunzipSync(bytes,{maxOutputLength:15*1024*1024}).toString());
@@ -27,7 +32,7 @@ async function main(){
    l.archives++;l.scorableFixtures+=Number(valid.has(a.fixtureId));l.emptyStats+=Number(facts.statsRows===0);l.unconfirmedLineups+=Number(facts.lineupStatus!=='confirmed');l.missingIncidents+=Number(facts.incidents===null);l.statisticsRows+=facts.statsRows??0;
    const example={fixtureId:a.fixtureId,date:d.detail.event_date,home:d.detail.home_team,away:d.detail.away_team,scorable:valid.has(a.fixtureId),...facts};
    if(l.examples.filter(x=>x.scorable===example.scorable).length<2)l.examples.push(example);
-   if(facts.statsRows===0&&!unavailable.some(x=>x.league===a.league))unavailable.push({...example,league:a.league});
+   if(!valid.has(a.fixtureId)&&!unavailable.some(x=>x.league===a.league))unavailable.push({...example,league:a.league});
   }
   if(at%400===0)console.log(JSON.stringify({stage:'reference-quality-progress',checked:Math.min(at+8,ref.archives.length)}));
  }
@@ -45,7 +50,7 @@ async function main(){
   }
  }
  const latest=checked(await db.from('kickx_policy').select('hash:report_reference->hash').single());if(latest.hash!==ref.hash)throw Error('REFERENCE_QUALITY_CHANGED');
- const report={stage:'reference-quality-complete',checkedAt:new Date().toISOString(),referenceHash:ref.hash,archives:ref.archives.length,scorableFixtures:valid.size,
+ const report={stage:'reference-quality-complete',checkedAt:new Date().toISOString(),referenceHash:ref.hash,archives:archives.length,samplesOnly,referenceArchives:ref.archives.length,scorableFixtures:valid.size,
   archivesHashVerified:true,leagues:[...leagues.values()],freshChecks:fresh,freshChecksDeferred:!fresh.length&&unavailable.length>0};
  await mkdir('test-artifacts',{recursive:true});await writeFile('test-artifacts/reference-quality.json',JSON.stringify(report,null,2));console.log(JSON.stringify(report));
 }
