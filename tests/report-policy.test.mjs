@@ -109,3 +109,12 @@ test('unavailable club member can be DNP but a missing player without membership
  assert.equal(calc(m).status,'not-played');m.source.incidents.incidents=[{type:'substitution',minute:70,player_in_id:77}];
  assert.equal(calc(m).status,'blocked');
 });
+test('corrected lineup evidence cannot keep an obsolete DNP eligible for decay',()=>{
+ const m=match();m.playerId='bsd-77';m.stats.minutes_played=0;
+ m.stats._roster_evidence={fixtureId:m.fixtureId,teamId:m.teamId,playerId:m.playerId,kind:'confirmed-lineup'};
+ assert.equal(calc(m).status,'blocked');
+ m.source.lineups.lineups.home.substitutes.push({id:77});assert.equal(calc(m).status,'not-played');
+ m.source.lineups.lineups.home.substitutes.pop();m.stats._roster_evidence.kind='unavailable-list';assert.equal(calc(m).status,'blocked');
+ m.source.lineups.unavailable_players={home:[{id:77}]};assert.equal(calc(m).status,'not-played');
+ m.source.lineups.unavailable_players={home:[]};m.stats._roster_evidence.kind='observed-squad';assert.equal(calc(m).status,'not-played');
+});

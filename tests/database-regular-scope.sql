@@ -52,6 +52,12 @@ insert into storage.objects(bucket_id,name)values('kickx-calculation-archives','
 insert into public.players(id,name,provider,position,team_id)values('scope-player','Scope player','bsd','MF','scope-home');
 insert into public.player_market_snapshots(id,price,pricing_status,pricing_rule_version)values('scope-player',123000,'ready','report-v3');
 insert into public.price_history(player_id,recorded_at,value,rule_version)values('scope-player',now(),123000,'report-v3');
+update public.fixtures set season=2026 where id in('scope-regular','scope-final');
+insert into public.fixtures(id,league_id,home_team_id,away_team_id,starts_at,status,stage,season)values('scope-dnp','bsd-5','scope-home','scope-away','2026-10-06T12:00:00Z','FT','league-phase',2026);
+insert into public.football_match_stats(player_id,fixture_id,team_id,stats,normalized)values
+ ('scope-player','scope-regular','scope-home','{"minutes_played":90}','{"values":{"goals":1,"assists":0,"minutes":90}}'),
+ ('scope-player','scope-dnp','scope-home','{"minutes_played":0,"_roster_evidence":{}}','{"version":"membership-v1"}'),
+ ('scope-player','scope-final','scope-home','{"minutes_played":90}','{"values":{"goals":99,"assists":99,"minutes":90}}');
 insert into public.calculation_queue(player_id,attempts,error_code,retry_at)values('scope-player',7,'OLD_FAILURE',now()+interval '1 day')on conflict(player_id)do update set attempts=7,error_code='OLD_FAILURE',retry_at=now()+interval '1 day';
 update public.kickx_policy set version='report-v3',report_reference='{"hash":"scope-old"}',valuation_rebuild='{"status":"active","backup":{"path":"scope/old"},"portfolioRebuiltAt":"old"}';
 do $$declare ref jsonb;answer jsonb;before_hash jsonb;begin
@@ -60,11 +66,34 @@ do $$declare ref jsonb;answer jsonb;before_hash jsonb;begin
  'players','{}'::jsonb,'groups',(select jsonb_object_agg(pos,'{"mean":6,"lower":0,"upper":30,"baselines":[6]}'::jsonb)from unnest(array['GK','DF','MF','FW'])pos),
  'scopeAudit','{"previousReferenceBackup":{"path":"scope/reference"},"excluded":[]}'::jsonb)into ref;
  before_hash:=public.kickx_valuation_integrity();answer:=public.kickx_replace_regular_reference('scope-old',ref);
+ if not exists(select 1 from public.player_season_summaries where id='scope-player'and matches_imported=1 and goals=1 and assists=0 and minutes=90)then raise exception 'DNP or playoff corrupted appearance totals';end if;
  if not exists(select 1 from public.calculation_queue where player_id='scope-player'and attempts=0 and error_code is null and retry_at<=now())then raise exception 'Bulk reset did not clear retry backoff';end if;
  if (select price from public.player_market_snapshots where id='scope-player')<>505000 or (select pricing_status from public.player_market_snapshots where id='scope-player')<>'pending'then raise exception 'Corrected baseline not staged';end if;
  if (select detail->>'referenceHash' from public.player_initial_values where player_id='scope-player')<>repeat('c',64)then raise exception 'Incomplete players retained an old initial value';end if;
  if (select count(*)from public.price_history where player_id='scope-player')<>1 or not exists(select 1 from public.price_history where player_id='scope-player' and recorded_at=timestamptz '2026-09-30T15:00:00Z')then raise exception 'Stale derived history retained';end if;
  if (public.kickx_replace_regular_reference('scope-old',ref)->>'unchanged')::boolean is distinct from true then raise exception 'Correction retry not idempotent';end if;
  if before_hash is distinct from public.kickx_valuation_integrity()then raise exception 'Reference correction touched financial facts';end if;
+end $$;
+-- A complete provider snapshot does not contain every club member. Keep derived
+-- DNPs, while allowing a later real appearance to replace their evidence.
+insert into public.players(id,name,provider,position,team_id)values('bsd-919002','Absent','bsd','DF','bsd-919'),('bsd-919003','Played','bsd','DF','bsd-919');
+insert into public.fixtures(id,provider,external_id,league_id,home_team_id,away_team_id,starts_at,status,stage,season)values('bsd-919001','bsd',919001,'bsd-5','bsd-919','scope-away','2026-10-07T12:00:00Z','FT','league-phase',2026);
+insert into public.football_match_stats(player_id,fixture_id,team_id,stats,normalized)values('bsd-919002','bsd-919001','bsd-919','{"minutes_played":0,"_roster_evidence":{"fixtureId":"bsd-919001","teamId":"bsd-919","playerId":"bsd-919002","kind":"observed-squad"}}','{"version":"membership-v1"}');
+insert into public.player_match_records(player_id,fixture_id,played_at,opponent,minutes)values('bsd-919002','bsd-919001','2026-10-07T12:00:00Z','Away',0);
+do $$declare payload jsonb;begin
+ payload:='{"provider":"bsd","sources":[{"fixture_id":"bsd-919001","detail":{"id":919001},"player_stats":{"event_id":919001,"count":1,"player_stats":[{"player_id":919003}]}}],"matches":[{"player_id":"bsd-919003","fixture_id":"bsd-919001","team_id":"bsd-919","stats":{"minutes_played":90},"normalized":{"values":{"minutes":90,"goals":2,"assists":0}}}]}';
+ perform public.apply_bsd_batch(payload);perform public.apply_bsd_batch(payload);
+ if not exists(select 1 from public.football_match_stats where player_id='bsd-919002'and stats?'_roster_evidence')or not exists(select 1 from public.player_match_records where player_id='bsd-919002'and minutes=0)then raise exception 'Provider refresh erased derived DNP';end if;
+ if not exists(select 1 from public.player_season_summaries where id='bsd-919003'and matches_imported=1 and goals=2 and minutes=90)then raise exception 'Incremental import did not count actual appearances';end if;
+ payload:=jsonb_set(payload,'{sources,0,player_stats,count}','2');
+ payload:=jsonb_set(payload,'{sources,0,player_stats,player_stats}','[{"player_id":919003},{"player_id":919002}]');
+ payload:=jsonb_set(payload,'{matches}',(payload->'matches')||'[{"player_id":"bsd-919002","fixture_id":"bsd-919001","team_id":"bsd-919","stats":{"minutes_played":15},"normalized":{"values":{"minutes":15,"goals":0,"assists":0}}}]'::jsonb);
+ perform public.apply_bsd_batch(payload);
+ if exists(select 1 from public.football_match_stats where player_id='bsd-919002'and stats?'_roster_evidence')or not exists(select 1 from public.player_season_summaries where id='bsd-919002'and matches_imported=1 and minutes=15)then raise exception 'Real appearance could not replace DNP';end if;
+end $$;
+do $$declare before_revision uuid;begin
+ select revision into before_revision from public.calculation_queue where player_id='bsd-919003';
+ update public.football_event_sources set non_participation_seeded_at=updated_at where fixture_id='bsd-919001';
+ if (select revision from public.calculation_queue where player_id='bsd-919003')is distinct from before_revision then raise exception 'Checkpoint-only write queued unchanged evidence';end if;
 end $$;
 rollback;

@@ -186,6 +186,25 @@ begin
  return jsonb_build_object('unchanged',false,'price',value_now,'performance',latest,'initialPrice',plan#>'{baseline,price}','pricing',plan);
 end $$;
 
+-- A non-appearance is neither an appearance nor a source of missing played-match totals.
+create or replace function public.kickx_report_refresh_summaries() returns void language plpgsql set search_path='' as $$begin
+ perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended('kickx:bsd-import',0));
+ with games as materialized(select id,season,league_id from public.fixtures where status='FT'and public.kickx_regular_fixture(id)is true),
+ played as materialized(select ms.player_id,ms.normalized,f.season,f.league_id from public.football_match_stats ms join games f on f.id=ms.fixture_id where coalesce((ms.stats->>'minutes_played')::numeric,0)>0),
+ latest as(select player_id,max(season)season from played group by player_id),
+ removed as(delete from public.player_season_summaries ss where ss.stats_scope='imported_matches'and not exists(select 1 from played p where p.player_id=ss.id) returning ss.id)
+ insert into public.player_season_summaries(id,season,goals,assists,minutes,league_ids,stats_scope,matches_imported)
+ select ms.player_id,ms.season,
+ case when count(ms.normalized#>>'{values,goals}')=count(*)then sum((ms.normalized#>>'{values,goals}')::integer)end,
+ case when count(ms.normalized#>>'{values,assists}')=count(*)then sum((ms.normalized#>>'{values,assists}')::integer)end,
+ case when count(ms.normalized#>>'{values,minutes}')=count(*)then sum((ms.normalized#>>'{values,minutes}')::integer)end,
+ array_agg(distinct ms.league_id),'imported_matches',count(*)
+ from played ms join latest l on l.player_id=ms.player_id and l.season is not distinct from ms.season group by ms.player_id,ms.season
+ on conflict(id)do update set season=excluded.season,goals=excluded.goals,assists=excluded.assists,minutes=excluded.minutes,
+ league_ids=excluded.league_ids,stats_scope=excluded.stats_scope,matches_imported=excluded.matches_imported,updated_at=clock_timestamp();
+end $$;
+
+
 -- Queue the approved reset in one statement rather than one function call per player.
 create or replace function public.kickx_activate_report_policy() returns integer language plpgsql set search_path='' as $$
 declare p public.kickx_policy%rowtype;k text;n integer:=0;begin
@@ -400,3 +419,29 @@ declare n integer;remaining integer;begin
 end $$;
 revoke all on function public.kickx_non_participation_work() from public,anon,authenticated;
 grant execute on function public.kickx_non_participation_work() to service_role;
+
+-- Keep verified derived non-appearances on replay and count actual regular-league appearances in totals.
+do $migration$
+declare d text;begin
+ d:=pg_get_functiondef('public.apply_bsd_batch(jsonb)'::regprocedure);
+ if strpos(d,'report-summary-appearances-20261030')>0 then return;end if;
+ if strpos(d,'and ms.player_id=any(affected) and f.provider=')=0 or strpos(d,'and ms2.player_id=ms.player_id and f2.status')=0 then raise exception 'SUMMARY_IMPORT_PREDICATE_CHANGED';end if;
+ d:=replace(d,'and ms.player_id=any(affected) and f.provider=', $new$and /* report-summary-appearances-20261030 */ (not exists(select 1 from public.kickx_policy where version='report-v3')or(coalesce((ms.stats->>'minutes_played')::numeric,0)>0 and public.kickx_regular_fixture(f.id)is true)) and ms.player_id=any(affected) and f.provider=$new$);
+ d:=replace(d,'and ms2.player_id=ms.player_id and f2.status', $new$and (not exists(select 1 from public.kickx_policy where version='report-v3')or(coalesce((ms2.stats->>'minutes_played')::numeric,0)>0 and public.kickx_regular_fixture(f2.id)is true)) and ms2.player_id=ms.player_id and f2.status$new$);
+ d:=replace(d,'delete from public.player_match_records r where r.fixture_id in',$new$delete from public.player_match_records r where not exists(select 1 from public.football_match_stats proof where proof.player_id=r.player_id and proof.fixture_id=r.fixture_id and proof.stats?'_roster_evidence') and r.fixture_id in$new$);
+ d:=replace(d,'delete from public.football_match_stats r where r.fixture_id in',$new$delete from public.football_match_stats r where not(r.stats?'_roster_evidence') and r.fixture_id in$new$);
+ execute d;
+end $migration$;
+
+
+-- Processing checkpoints do not change scoring evidence and must not queue every match participant.
+do $migration$
+declare d text;begin
+ d:=pg_get_functiondef('public.kickx_queue_match_change()'::regprocedure);
+ if strpos(d,$find$-'non_participation_seeded_at'$find$)>0 then return;end if;
+ if strpos(d,$find$to_jsonb(new)-'updated_at'$find$)=0 then raise exception 'QUEUE_TRIGGER_DEFINITION_CHANGED';end if;
+ d:=replace(d,$old$to_jsonb(new)-'updated_at'$old$,$new$to_jsonb(new)-'updated_at'-'non_participation_seeded_at'$new$);
+ d:=replace(d,$old$to_jsonb(old)-'updated_at'$old$,$new$to_jsonb(old)-'updated_at'-'non_participation_seeded_at'$new$);
+ execute d;
+end $migration$;
+
