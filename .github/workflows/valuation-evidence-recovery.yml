@@ -22,8 +22,8 @@ jobs:
           node-version: '22'
           cache: npm
       - run: npm ci
-      - name: Repair only ambiguous boundary calculations
-        run: node --conditions=react-server --import tsx scripts/repair-valuation-evidence.mjs --apply
+      - name: Validate unique historical identities without publishing prices
+        run: node --conditions=react-server --import tsx scripts/repair-valuation-evidence.mjs --identity-preview
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -31,5 +31,6 @@ jobs:
           path: |
             test-artifacts/valuation-evidence-probe.json
             test-artifacts/valuation-recovery.json
+            test-artifacts/identity-preview.json
           if-no-files-found: ignore
           retention-days: 7

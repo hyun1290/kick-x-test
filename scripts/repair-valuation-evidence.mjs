@@ -2,10 +2,29 @@ import {createClient} from '@supabase/supabase-js';
 import {mkdir,writeFile} from 'node:fs/promises';
 import {createFootballClient} from './lib/football.mjs';
 import {nameImportFetch} from './lib/korean-catalog.mjs';
+import {gunzipSync} from 'node:zlib';
+import {createHash} from 'node:crypto';
+import {resolveFixtureIdentities,loadFixtureProfiles} from './lib/fixture-identities.mjs';
+import {normalizeStatus} from './lib/football.mjs';
 const checked=r=>{if(r.error)throw Error(`EVIDENCE_DATABASE_${/^[A-Z0-9]+$/.test(r.error.code??'')?r.error.code:'RETRY'}`);return r.data;};
 async function main(){
  const key=process.env.SUPABASE_SERVICE_ROLE_KEY;
  const db=createClient(process.env.SUPABASE_URL,key,{global:{fetch:nameImportFetch(key)},auth:{persistSession:false,autoRefreshToken:false}});
+ if(process.argv.includes('--identity-preview')){
+  const {calculatePerformance}=await import('../server/kickx/engine/report-performance.ts');
+  const {observedMatchDuration}=await import('./lib/report-reference.ts');
+  const ref=checked(await db.from('kickx_policy').select('report_reference').single()).report_reference;
+  const profiles=await loadFixtureProfiles(db),valid=new Set(Object.values(ref.players).flatMap(p=>Object.values(p).flatMap(h=>h.fixtures))),results=[];
+  for(const league of ref.leagues){
+   const a=ref.archives.find(a=>a.league===league.id&&!valid.has(a.fixtureId));if(!a)continue;
+   const blob=checked(await db.storage.from('kickx-calculation-archives').download(a.path)),bytes=Buffer.from(await blob.arrayBuffer());
+   if(createHash('sha256').update(bytes).digest('hex')!==a.hash)throw Error('IDENTITY_ARCHIVE_HASH');
+   const d=JSON.parse(gunzipSync(bytes).toString()),resolved=resolveFixtureIdentities(d,profiles),duration=observedMatchDuration(d.stats.player_stats.map(s=>s.minutes_played),d.stats.player_stats,resolved.incidents);
+   const scores=d.stats.player_stats.map(s=>calculatePerformance({fixtureId:a.fixtureId,playerId:`bsd-${s.player_id}`,teamId:`bsd-${s.team_id}`,status:normalizeStatus(d.detail),homeTeam:`bsd-${d.detail.home_team_id}`,awayTeam:`bsd-${d.detail.away_team_id}`,homeScore:d.detail.home_score,awayScore:d.detail.away_score,stats:s,legacy:null,source:{detail:d.detail,lineups:resolved.lineups,incidents:resolved.incidents},durationMinutes:duration,regularSeasonOnly:true}));
+   results.push({fixtureId:a.fixtureId,league:league.id,resolved:resolved.proof.length,scorable:scores.filter(r=>r.score!=null).length,reasons:scores.filter(r=>r.status==='blocked').reduce((m,r)=>{const k=r.warnings.at(-1);m[k]=(m[k]??0)+1;return m;},{})});
+  }
+  await mkdir('test-artifacts',{recursive:true});await writeFile('test-artifacts/identity-preview.json',JSON.stringify(results,null,2));console.log(JSON.stringify({stage:'identity-preview',results}));return;
+ }
  const api=createFootballClient({key:process.env.BSD_API_KEY,budget:15,delay:100,fetchImpl:async(...args)=>{checked(await db.rpc('kickx_reserve_provider_request'));return fetch(...args);}});
  const replies=await Promise.all(['GOAL_BOUNDARY_TIME_AMBIGUOUS','MINUTES_INTERVAL_MISMATCH'].map(reason=>db.from('performance_results').select('fixture_id').eq('status','blocked').filter('warnings','cs',JSON.stringify([reason])).order('fixture_id').limit(1)));
  const ids=[...new Set(replies.flatMap(r=>checked(r).map(x=>x.fixture_id)))];
