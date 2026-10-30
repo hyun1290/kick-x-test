@@ -52,3 +52,10 @@ test('a complete reference cannot activate before compatible production code is 
  assert.equal(result.pending,'WAITING_FOR_DEPLOYMENT');assert.equal(x.current().version,'form-v2');assert.equal(x.current().report_reference.status,'ready');
  assert.equal((await x.mod.prepareReportReference(x.db,'test-only-key',{runtimeReady:async()=>true})).active,true);
 });
+test('partial resource failure never commits a fixture to the reference cohort',async()=>{
+ const x=setup(),get=x.api.get.bind(x.api);
+ x.api.get=async path=>{const reply=await get(path);if(path.endsWith('/incidents/'))throw new SyncError('PROVIDER_NETWORK_ERROR');return reply;};
+ const r=await x.mod.prepareReportReference(x.db,'test-only-key',{runtimeReady:async()=>true});
+ assert.equal(r.reason,'PROVIDER_NETWORK_ERROR');assert.equal(r.completed,0);assert.equal(x.current().version,'form-v2');
+ assert.equal([...x.objects.keys()].filter(p=>!p.includes('/checkpoints/')).length,0);
+});

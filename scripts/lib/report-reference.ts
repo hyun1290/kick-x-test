@@ -132,7 +132,9 @@ export async function prepareReportReference(db:SupabaseClient,key:string,{budge
    if(ref.fixtureIndex>=league.fixtures.length){ref.leagueIndex++;ref.fixtureIndex=0;dirty=true;await save();continue;}
    const id=league.fixtures[ref.fixtureIndex],base=`/api/v2/events/${id}/`;
    currentFixture=externalId(id);
-   const detail=await api.get(base),stats=await api.get(base+'player-stats/'),lineups=await api.get(base+'lineups/'),incidents=await api.get(base+'incidents/');
+   const fetched=await Promise.allSettled([base,base+'player-stats/',base+'lineups/',base+'incidents/'].map(path=>api.get(path)));
+   const failed=fetched.find(r=>r.status==='rejected');if(failed?.status==='rejected')throw failed.reason;
+   const [detail,stats,lineups,incidents]=fetched.map(r=>r.status==='fulfilled'?r.value:null);
    if(detail.id!==id||detail.league_id!==league.id||detail.season_id!==league.seasonId||!Array.isArray(stats.player_stats)||stats.event_id!==id||lineups.event_id!==id||incidents.event_id!==id)throw new Error('REFERENCE_FIXTURE_MISMATCH');
    const duration=observedMatchDuration(stats.player_stats.map((s:{minutes_played:number})=>s.minutes_played));
    const results=stats.player_stats.map((s:{player_id:number;team_id:number;minutes_played:number})=>{
