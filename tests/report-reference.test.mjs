@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
 import {gzipSync,gunzipSync} from 'node:zlib';
 import {loadTs} from './load-ts.mjs';
+import {SyncError} from '../scripts/lib/football.mjs';
 const policy=loadTs('../server/kickx/engine/report-policy.ts');
 const performance=loadTs('../server/kickx/engine/report-performance.ts',{'./report-policy':policy});
 const pricing=loadTs('../server/kickx/engine/report-pricing.ts',{'./report-policy':policy});
@@ -24,7 +25,7 @@ function setup({missingSeason=false,remaining=7000}={}) {
   if(name==='kickx_activate_report_policy'){assert.equal(current.report_reference.status,'ready');current.version='report-v3';current.valuation_rebuild.status='active';return {data:20,error:null};}
   throw Error(name);
  },storage:{getBucket:async()=>({data:{public:false},error:null}),from(){return {upload:async(path,bytes)=>{objects.set(path,bytes);return {error:null};},download:async path=>({data:new Blob([objects.get(path)]),error:null}),remove:async paths=>{for(const path of paths)objects.delete(path);return {error:null};}};}}};
- const mod=loadTs('../scripts/lib/report-reference.ts',{'node:crypto':{createHash},'node:zlib':{gzipSync,gunzipSync},'./football.mjs':{externalId,normalizeStatus:()=> 'FT',createFootballClient:()=>api},'../../server/kickx/engine/report-performance':performance,'../../server/kickx/engine/report-pricing':pricing});
+ const mod=loadTs('../scripts/lib/report-reference.ts',{'node:crypto':{createHash},'node:zlib':{gzipSync,gunzipSync},'./football.mjs':{externalId,SyncError,normalizeStatus:()=> 'FT',createFootballClient:()=>api},'../../server/kickx/engine/report-performance':performance,'../../server/kickx/engine/report-pricing':pricing});
  return {mod,api,db,calls,objects,current:()=>current};
 }
 test('full previous-season discovery freezes all four cohorts, verifies private archives and activates once',async()=>{
