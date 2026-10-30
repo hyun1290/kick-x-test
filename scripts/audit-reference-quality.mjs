@@ -5,10 +5,12 @@ import {mkdir,writeFile} from 'node:fs/promises';
 import {nameImportFetch} from './lib/korean-catalog.mjs';
 import {createFootballClient,normalizeStatus} from './lib/football.mjs';
 const checked=r=>{if(r.error)throw Error('REFERENCE_QUALITY_DATABASE_RETRY');return r.data;};
+const sample=p=>({keys:Object.keys(p),id:p.id,playerId:p.player_id,position:p.position,pos:p.pos,role:p.role,grid:p.grid,nestedPlayer:p.player?{id:p.player.id,position:p.player.position}:null});
 const describe=d=>({statsRows:d.stats?.player_stats?.length??null,declaredStats:d.stats?.count??null,lineupStatus:d.lineups?.lineup_status??null,
  homeStarters:d.lineups?.lineups?.home?.players?.length??0,awayStarters:d.lineups?.lineups?.away?.players?.length??0,incidents:d.incidents?.incidents?.length??null,
  status:d.detail?.status,normalizedStatus:normalizeStatus(d.detail),extraTimeScore:d.detail?.extra_time_score,shootout:d.detail?.penalty_shootout,
  positiveMinutes:d.stats?.player_stats?.filter(s=>s.minutes_played>0).length??0,
+ lineupSamples:(d.lineups?.lineups?.home?.players??[]).slice(0,3).map(sample),statisticsSamples:(d.stats?.player_stats??[]).slice(0,3).map(p=>({playerId:p.player_id,teamId:p.team_id,minutes:p.minutes_played,position:p.position})),
  priorResultReasons:(d.results??[]).reduce((out,r)=>{if(r.status==='blocked'){const reason=r.warnings?.at(-1)??'unknown';out[reason]=(out[reason]??0)+1;}return out;},{})});
 async function main(){
  const key=process.env.SUPABASE_SERVICE_ROLE_KEY;

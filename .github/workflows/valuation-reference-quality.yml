@@ -22,7 +22,7 @@ jobs:
           node-version: '22'
           cache: npm
       - run: npm ci
-      - name: Inspect scoring rejection reasons and recheck five historical fixtures
+      - name: Inspect historical match-position identities and recheck provider payloads
         run: node scripts/audit-reference-quality.mjs --samples
       - uses: actions/upload-artifact@v4
         if: always()
