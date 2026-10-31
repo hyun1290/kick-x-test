@@ -117,7 +117,7 @@ function WatchPanel() {
   const watched=remote.enabled ? (data.session && remote.status === "ready" ? remote.data.items : []) : data.players.filter(player=>data.member?.watchlist.includes(player.id));
   return (
     <section className="dash-panel dash-watch" aria-labelledby="dash-watch">
-      <PanelHead title="관심 선수" href="/players?watchlist=1" />
+      <PanelHead title="관심 선수" href="/market?watchlist=1" />
       {watched.length ? (
         <div className="dash-watch-grid">
           {watched.slice(0, 4).map(player => (

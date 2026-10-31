@@ -17,7 +17,6 @@ const links = [
   { href: "/community/clubs", label: "구단 커뮤니티" },
 ];
 const utility = [
-  { href: "/players", label: "선수 탐색" },
   { href: "/fixtures", label: "경기 일정" },
   { href: "/portfolio", label: "내 자산" },
   { href: "/transactions", label: "거래 내역" },
@@ -100,7 +99,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const isHome = pathname === "/";
   const submit = (event: FormEvent) => {
     event.preventDefault();
-    router.push(`/players?q=${encodeURIComponent(query.trim())}`);
+    router.push(`/market?q=${encodeURIComponent(query.trim())}`);
   };
   if (standalone) return <>{children}</>;
   return (
@@ -154,7 +153,6 @@ export function AppShell({ children }: { children: ReactNode }) {
         <nav aria-label="서비스 메뉴">
           <strong>서비스</strong>
           <Link href="/market">선수 시장</Link>
-          <Link href="/players">선수 탐색</Link>
           <Link href="/fixtures">경기 일정</Link>
           <Link href="/ranking">랭킹</Link>
         </nav>
