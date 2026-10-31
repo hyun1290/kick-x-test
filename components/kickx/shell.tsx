@@ -28,8 +28,26 @@ function isActive(href: string, pathname: string) {
   if (href === "/market") return pathname.startsWith("/market") || (pathname.startsWith("/players") && pathname !== "/players");
   return pathname === href || pathname.startsWith(href + "/");
 }
+/** Striker mark: a forward-leaning volley with tapered limbs, drawn to match the heavy wordmark. */
+function LogoMark() {
+  return (
+    <svg className="logo-mark" viewBox="0 0 64 64" aria-hidden="true" focusable="false">
+      <g fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M43 18.5 51 22 59 13.5" strokeWidth="4.2" />
+        <path d="M36.5 17.5 27 15.5 20.5 8" strokeWidth="4.2" />
+        <path d="M30.5 32 20.5 38.5" strokeWidth="7" />
+        <path d="M20.5 38.5 10.5 46 7 45.5" strokeWidth="4.8" />
+        <path d="M32 32.5 38.5 44" strokeWidth="7" />
+        <path d="M38.5 44 36.5 55.5 42.5 57" strokeWidth="4.8" />
+      </g>
+      <path d="M35 14.5 45.5 16.5Q46.5 17.2 46 18.4L35 34Q32.5 35.5 28.5 32.5Q27.6 31.4 28.3 30.2Z" fill="currentColor" />
+      <circle cx="42.5" cy="8" r="5.6" fill="currentColor" />
+      <circle cx="7.5" cy="55.5" r="5.2" fill="currentColor" />
+    </svg>
+  );
+}
 export function Logo() {
-  return <Link href="/" className="logo wordmark" aria-label="KICK-X 홈">KICK-X</Link>;
+  return <Link href="/" className="logo wordmark" aria-label="KICK-X 홈"><LogoMark />KICK-X</Link>;
 }
 function AccountMenu() {
   const { data, mock, notify } = usePlatform();
@@ -104,7 +122,6 @@ export function AppShell({ children }: { children: ReactNode }) {
             <>
               <span>상승 <b className="up num">{money(data.market.rising)}</b></span>
               <span>하락 <b className="down num">{money(data.market.falling)}</b></span>
-              <span>경기 확인 <b className="num">{dateText(data.freshness?.lastCheckedAt ?? null)}</b></span>
               <span>가격 적용 <b className="num">{dateText(data.updatedAt)}</b></span>
             </>
           ) : <span>REAL FOOTBALL. YOUR GAME.</span>}

@@ -205,7 +205,7 @@ export function HomeScreen() {
             <div className="home-hero-copy">
               <span className="eyebrow">PLAYER MARKET</span>
               <h1 id="home-title">다음 선수를 찾아라.</h1>
-              <p>발견하고, 분석하고, 당신의 스쿼드를 완성하세요.</p>
+              <p className="home-hero-motto">Discover. Analyze. Build your XI.</p>
             </div>
             <PlaybookArt variant="hero" className="home-hero-art" />
           </div>
