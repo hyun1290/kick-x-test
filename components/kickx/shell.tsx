@@ -1,4 +1,5 @@
 "use client";
+import { UserAvatar } from "./avatar";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { FormEvent, ReactNode, useEffect, useRef, useState } from "react";
@@ -68,7 +69,7 @@ function AccountMenu() {
   return (
     <div className="account" ref={ref}>
       <button type="button" className="account-trigger" aria-expanded={open} aria-haspopup="menu" onClick={() => setOpen(value => !value)}>
-        <span className="account-avatar" aria-hidden="true">{nickname.slice(0, 1)}</span>
+        <UserAvatar className="account-avatar" avatar={data.session?.profile?.avatar} seed={data.session?.userId ?? nickname} />
         <span className="account-text">
           <strong>{nickname}</strong>
           <span className="num">{money(points)}<span className="unit">P</span></span>

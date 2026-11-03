@@ -220,10 +220,11 @@ try {
   state.players[0].importedMatches=2;
   await mock.route("https://sports.bzzoiro.com/img/player/9/",route=>route.fulfill({status:204}));
   await mockPage.goto(base+"/players/test-player",{waitUntil:"networkidle"});
-  await mockPage.getByText("수집된 2경기 득점 · 도움",{exact:true}).waitFor();
   await mockPage.locator(".detail-photo .portrait svg").waitFor();
   assert.equal(await mockPage.locator(".detail-photo .portrait img").count(),0);
-  report.checks.push("BSD missing photo falls back; imported-match totals are labeled explicitly");
+  // The 11-03 player detail removed the stat strip below the banner.
+  assert.equal(await mockPage.getByText("수집된 2경기 득점 · 도움",{exact:true}).count(),0);
+  report.checks.push("BSD missing photo falls back; the removed stat strip stays removed");
   // Opening a match report is the only trigger; reopening shares the cached result.
   const reportFacts={playerName:"CI-only player",opponent:"리포트 상대",playedAt:"2026-10-18T12:00:00Z",minutes:90,score:57,scoreStatus:"provisional",ruleVersion:"form-v2",contributions:[{metric:"minutes",value:90,points:30},{metric:"goals",value:1,points:30},{metric:"yellow_cards",value:1,points:-3}],warningCount:1,priceBefore:100000,priceAfter:92000,targetPrice:80000,formScore:40,changePercent:-8,windowSize:5};
   state.players[0].records=[{id:"report-record",fixtureId:"test-fixture",reportAvailable:true,playedAt:reportFacts.playedAt,opponent:reportFacts.opponent,result:"승",minutes:90,goals:1,assists:0,performance:57}];
