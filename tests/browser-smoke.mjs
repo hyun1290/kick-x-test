@@ -99,7 +99,7 @@ try {
       await concurrentPage.goto(base+(detail?'/players/test-player':'/market'),{waitUntil:'domcontentloaded'});
       await requested;
       assert.equal(released,false);
-      await (detail?concurrentPage.getByRole('heading',{name:'CI-only player',exact:true}):concurrentPage.locator('.market-table').getByText('CI-only player',{exact:true})).waitFor({timeout:10000});
+      await concurrentPage.getByRole('heading',{name:'CI-only player',exact:true}).waitFor({timeout:10000});
     } finally {
       const completed=concurrentPage.waitForResponse(response=>new URL(response.url()).pathname==='/api/kickx',{timeout:5000}).catch(()=>null);
       released=true;release();await completed;await concurrent.close();
@@ -156,6 +156,7 @@ try {
   assert.deepEqual(state.member.watchlist,["test-player"]);
   report.checks.push("Zero price renders; failed watchlist writes do not pretend to succeed");
   await mockPage.goto(base+"/market?watchlist=1",{waitUntil:"networkidle"});
+  await mockPage.getByRole('button',{name:'목록 보기',exact:true}).click();
   assert.ok(await mockPage.locator('.market-table').getByText("CI-only player",{exact:true}).isVisible());
   report.checks.push("Saved watchlist feeds the filtered player list");
   await mockPage.getByRole("button",{name:"전체 선수",exact:true}).click();
@@ -591,10 +592,14 @@ try {
     assert.equal(await marketPage.locator('.market-stats,.market-pending').count(),0);
     assert.equal(await marketPage.locator('.market-heading .page-heading p').count(),0);
     assert.equal(await marketPage.locator('.market-browser .league-tiles').count(),1);
-    assert.equal(await marketPage.locator('.market-table tbody tr').count(),12);
+    const columns=await marketPage.locator('.player-grid').evaluate(el=>getComputedStyle(el).gridTemplateColumns.split(' ').length);
+    assert.equal(await marketPage.locator('.player-grid .pcard').count(),columns*2);
+    assert.equal(await marketPage.locator('.player-grid .pcard').evaluateAll(cards=>new Set(cards.map(card=>card.offsetTop)).size),2);
     assert.equal(await marketPage.getByRole('heading',{name:'선수 시장',exact:true}).evaluate(el=>parseFloat(getComputedStyle(el).fontSize)),width===1440?40:30);
     assert.ok(await marketPage.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
     await marketPage.screenshot({path:`test-artifacts/market-scope-${width}.png`,fullPage:true});
+    await marketPage.getByRole('button',{name:'목록 보기',exact:true}).click();
+    assert.equal(await marketPage.locator('.market-table tbody tr').count(),12);
   }
   await marketPage.setViewportSize({width:1440,height:900});
   const marketPages=marketPage.getByRole('navigation',{name:'선수 시장 페이지 선택',exact:true});

@@ -1,4 +1,5 @@
 "use client";
+import {MatchNotificationToggle} from "./notifications";
 import { useId, useState, useRef, type CSSProperties } from "react";
 import { clubIdentity, luminance } from "@/lib/kickx/club-identity";
 import { Plus, RotateCcw, Save, X } from "lucide-react";
@@ -148,7 +149,9 @@ export function SquadScreen() {
     id => owned.find(p => p.id === id));
   const filled = safeSlots.filter(Boolean).length;
   const lineup = safeSlots.map((id) => getPlayer(id)).filter(Boolean) as Player[];
-  const visible = owned.filter((p) => (filter === "전체" || p.position === filter) && (!target || p.position === target));
+  const visible = owned.filter((p) => target ? p.position === target : filter === "전체" || p.position === filter);
+  const lineupValue = member && member.financialReady !== false && lineup.every(p => p.price != null)
+    ? lineup.reduce((sum, p) => sum + p.price!, 0) : null;
   const counts = ROWS.slice().reverse().map((pos) => [pos, rule?.positions.filter((x) => x === pos).length ?? 0, lineup.filter((p) => p.position === pos).length] as const);
   function captureRevision(){if(baseRevision.current==null)baseRevision.current=member?.squad?.revision??0;setSavedAt(null);}
   function discardDraft(){setDraft(null);baseRevision.current=null;setSelected(null);setSaveError(null);reload();}
@@ -190,6 +193,7 @@ export function SquadScreen() {
         }
       />
       <MemberNotice />
+      <MatchNotificationToggle/>
       <div className="squad-layout">
         <section className="squad-board">
           <div className="squad-toolbar">
@@ -215,7 +219,7 @@ export function SquadScreen() {
           )}
           <Pitch slots={safeSlots} formation={formation || null} selected={selected} onSelect={(i) => setSelected(selected === i ? null : i)} />
           <div className="squad-footer">
-            <div><span>라인업 가치</span><strong className="num">{lineup.length ? money(lineup.every(p=>p.price!=null)?lineup.reduce((s,p)=>s+p.price!,0):null) : money(member?.squad?.value)}<span className="unit">P</span></strong></div>
+            <div><span>라인업 가치</span><strong className="num">{money(lineupValue)}<span className="unit">P</span></strong></div>
             <div><span>저장된 평균 Performance</span><strong className="num">{score(member?.squad?.performance)}</strong></div>
             <div className="squad-composition">
               <span>포지션 구성</span>

@@ -6,9 +6,11 @@ import { FormEvent, ReactNode, useEffect, useRef, useState } from "react";
 import { ArrowRight, ChevronDown, History, LogOut, Search, Settings, Wallet } from "lucide-react";
 import { apiRequest } from "@/lib/kickx/client";
 import { dateText, money } from "@/lib/kickx/data";
+import { CATALOG_SEARCH_MAX_LENGTH, normalizeCatalogSearch } from "@/lib/kickx/catalog-query";
 import { DataNotice, MockBadge } from "./ui";
 import { usePlatform } from "./provider";
 import { PlaybookArt } from "./playbook-art";
+import { NotificationBell, NotificationProvider } from "./notifications";
 
 const links = [
   { href: "/", label: "홈" },
@@ -68,7 +70,7 @@ function AccountMenu() {
   }
   return (
     <div className="account" ref={ref}>
-      <button type="button" className="account-trigger" aria-expanded={open} aria-haspopup="menu" onClick={() => setOpen(value => !value)}>
+      <button type="button" className="account-trigger" aria-label={`${nickname} 계정 메뉴`} aria-expanded={open} aria-haspopup="menu" onClick={() => setOpen(value => !value)}>
         <UserAvatar className="account-avatar" avatar={data.session?.profile?.avatar} seed={data.session?.userId ?? nickname} />
         <span className="account-text">
           <strong>{nickname}</strong>
@@ -96,15 +98,23 @@ export function AppShell({ children }: { children: ReactNode }) {
   const router = useRouter();
   const { data, status, reload } = usePlatform();
   const [query, setQuery] = useState("");
+  const searchInput = useRef<HTMLInputElement>(null);
   const standalone = pathname === "/login" || pathname === "/onboarding";
   const isHome = pathname === "/";
   const submit = (event: FormEvent) => {
     event.preventDefault();
-    router.push(`/market?q=${encodeURIComponent(query.trim())}`);
+    try {
+      const normalized = normalizeCatalogSearch(query);
+      searchInput.current?.setCustomValidity("");
+      router.push(`/market?q=${encodeURIComponent(normalized)}`);
+    } catch (error) {
+      searchInput.current?.setCustomValidity(error instanceof Error ? error.message : "검색어를 확인해 주세요.");
+      searchInput.current?.reportValidity();
+    }
   };
   if (standalone) return <>{children}</>;
   return (
-    <div className="app">
+    <NotificationProvider key={data.session?.userId??"guest"}><div className="app">
       <a className="skip-link" href="#main-content">본문으로 바로가기</a>
       <div className="topbar">
         <span className="topbar-market">
@@ -127,7 +137,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           ))}
         </nav>
         <PlaybookArt variant="header" className="masthead-art" />
-        <AccountMenu />
+        <div className="masthead-account"><NotificationBell/><AccountMenu /></div>
         <span className="masthead-manifesto">PLAYERS<br />MARKET<br />SQUAD<br />COMMUNITY<br />FOR A BIGGER FOOTBALL</span>
       </header>
       <div className="subnav">
@@ -138,7 +148,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </nav>
         <form onSubmit={submit} role="search" className="subnav-search">
           <Search size={16} />
-          <input aria-label="선수, 구단, 리그 통합 검색" value={query} onChange={event => setQuery(event.target.value)} placeholder="선수 · 구단 · 리그 검색" />
+          <input ref={searchInput} aria-label="선수, 구단, 리그 통합 검색" maxLength={CATALOG_SEARCH_MAX_LENGTH} value={query} onChange={event => { event.target.setCustomValidity(""); setQuery(event.target.value); }} placeholder="선수 · 구단 · 리그 검색" />
           <button type="submit">검색</button>
         </form>
       </div>
@@ -173,6 +183,6 @@ export function AppShell({ children }: { children: ReactNode }) {
           <span>© 2026 KICK-X · Capstone Design Project</span>
         </p>
       </footer>
-    </div>
+    </div></NotificationProvider>
   );
 }
