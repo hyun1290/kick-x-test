@@ -72,7 +72,7 @@ export function WritePost() {
 }
 function PostEditor() {
   const sp = useSearchParams();
-  const { data, status, mock, notify, getTeam, reload } = usePlatform();
+  const { data, status, mock, notify, getTeam, getPlayer, reload } = usePlatform();
   const detail=usePost(sp.get("edit"));
   const existing=detail.data.post?.authorId===data.session?.userId?detail.data.post:undefined;
   const requestId=useRef("");
@@ -182,7 +182,7 @@ function PostEditor() {
               <Select id="post-target" invalid={!!visible("target")} describedBy="post-target-hint" onBlur={blur("target")}
                 disabled={isEdit || phase !== "edit" || !myTeam} value={value.target} onChange={target => update({ target, transaction: "" })} placeholder="구단 선택" options={clubTargets}/>
               <small id="post-target-hint">응원 구단 라운지에만 작성할 수 있습니다.</small>
-            </> : <div id="post-target" className="post-fixed-target" tabIndex={-1}><strong>{targetName ? `${targetName} 커뮤니티` : "선수 상세페이지에서 글쓰기를 시작해 주세요."}</strong><small>이 선수에 대한 게시글을 작성합니다.</small>{!value.target && <Link className="text-link" href="/market">선수 시장으로 이동 →</Link>}</div>}
+            </> : <div id="post-target" className={`post-fixed-target${value.target ? "" : " missing"}`} tabIndex={-1}>{(() => { const target = getPlayer(value.target); return target ? <PlayerPortrait player={target} size="sm" /> : <span className="post-fixed-icon" aria-hidden="true"><MessageCircle size={18} /></span>; })()}<span className="post-fixed-text"><small>게시 대상</small><strong>{targetName ? `${targetName} 커뮤니티` : "선수 상세페이지에서 글쓰기를 시작해 주세요."}</strong>{value.target ? <small>이 선수에 대한 게시글을 작성합니다.</small> : <Link className="text-link" href="/market">선수 시장으로 이동 →</Link>}</span>{value.target && <span className="post-fixed-lock"><Lock size={12} />고정</span>}</div>}
             {fieldError("target")}
           </div>
         </div>
@@ -210,12 +210,13 @@ function PostEditor() {
           {fieldError("transaction")}
           {attached && (
             <div className="attached-trade compact">
-              <span className="attached-label"><Paperclip size={14} />첨부 미리보기 <button type="button" className="text-link attachment-remove" aria-label="거래 첨부 취소" disabled={phase !== "edit"} onClick={() => update({ transaction: "" })}><X size={14}/>첨부 취소</button></span>
+              <span className="attached-label"><Paperclip size={14} />첨부 미리보기</span>
               <div className="attached-row">
                 <span className={`trade-type ${attached.type}`}>{attached.type === "buy" ? "매입" : "매각"}</span>
                 <strong>{attached.playerName}</strong>
                 <span className="num">{money(attached.price)} P</span>
                 <span className="muted">{dateText(attached.date)}</span>
+                <button type="button" className="attachment-remove" aria-label="거래 첨부 취소" disabled={phase !== "edit"} onClick={() => update({ transaction: "" })}><X size={14}/>첨부 취소</button>
               </div>
             </div>
           )}

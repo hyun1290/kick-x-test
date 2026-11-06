@@ -60,7 +60,7 @@ function ComposerForm({ scope, target, targetName, onSaved, onClose }: { scope: 
         {attachments.loading&&<small role="status">거래 내역을 확인하고 있습니다…</small>}
         {attachments.error&&<button type="button" className="text-link" onClick={attachments.reload}>거래 내역 다시 불러오기</button>}
         {attachments.hasMore&&<button type="button" className="text-link" onClick={attachments.loadMore}>이전 거래 더 불러오기</button>}
-        {transaction && <button type="button" className="text-link attachment-remove" aria-label="빠른 글 거래 첨부 취소" onClick={() => { changed(); setTransaction(""); }}><X size={14}/>거래 첨부 취소</button>}
+        {(() => { const t = transactions.find(x => x.id === transaction); return t ? <div className="attached-trade compact"><span className="attached-label"><Paperclip size={14} />첨부 미리보기</span><div className="attached-row"><span className={`trade-type ${t.type}`}>{t.type === "buy" ? "매입" : "매각"}</span><strong>{t.playerName}</strong><span className="num">{money(t.price)} P</span><span className="muted">{dateText(t.date)}</span><button type="button" className="attachment-remove" aria-label="빠른 글 거래 첨부 취소" onClick={() => { changed(); setTransaction(""); }}><X size={14}/>첨부 취소</button></div></div> : null; })()}
       </div>}
       {error && <p className="field-error" role="alert">{error}</p>}
       <div className="feed-composer-foot"><span className="fine-print">내용 {POST_LIMITS.bodyMin}자 이상 · {scope === "club" ? "응원 구단에 게시" : "이 선수에 게시"}</span><button className="button primary small" disabled={busy || !title.trim() || !body.trim() || !selected}>{busy ? <LoaderCircle size={15} className="kx-spin" /> : <Send size={15} />}게시하기</button></div>
