@@ -115,7 +115,7 @@ function FixturesPanel() {
         </ul>
       ) : (
         <div className="dash-placeholder"><Shield size={22} />
-          <span>{loading ? "응원 구단 경기를 불러오고 있습니다." : failed ? "응원 구단 경기를 불러오지 못했습니다." : personalized ? teams.length ? "본진·서브팀의 경기 일정이 아직 없습니다." : "본진과 서브팀을 설정하면 해당 구단의 경기가 표시됩니다." : "경기 일정이 준비되면 표시됩니다."}</span>
+          <span>{loading ? "응원 구단 경기를 불러오고 있습니다." : failed ? "응원 구단 경기를 불러오지 못했습니다." : personalized ? teams.length ? "메인 응원 구단·서브팀의 경기 일정이 아직 없습니다." : "메인 응원 구단과 서브팀을 설정하면 해당 구단의 경기가 표시됩니다." : "경기 일정이 준비되면 표시됩니다."}</span>
           {failed && <button type="button" className="text-link" onClick={remote.reload}>다시 시도</button>}
           {personalized && !teams.length && <Link className="text-link" href="/mypage">응원 구단 설정</Link>}
         </div>

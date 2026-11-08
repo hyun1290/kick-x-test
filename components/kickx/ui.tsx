@@ -13,6 +13,7 @@ import {
 import {
   ArrowLeft,
   ArrowRight,
+  ArrowUp,
   CheckCircle2,
   Database,
   FlaskConical,
@@ -792,6 +793,22 @@ export function TradeNotice({ player }: { player: Player }) {
   if (data.member?.holdings.some(h => h.playerId === player.id)) return null;
   if (!player.position) return <p className="trade-notice" role="note"><b>포지션 확인 중</b><span>포지션 정보가 없는 선수는 매입할 수 없습니다.</span></p>;
   return null;
+}
+/** Floating "back to top" for long pages; appears after the first screenful. */
+export function ScrollTopButton() {
+  const [show, setShow] = useState(false);
+  useEffect(() => {
+    const update = () => setShow(window.scrollY > 600);
+    update();
+    window.addEventListener("scroll", update, { passive: true });
+    return () => window.removeEventListener("scroll", update);
+  }, []);
+  if (!show) return null;
+  return (
+    <button type="button" className="scroll-top" aria-label="페이지 맨 위로" onClick={() => window.scrollTo({ top: 0, behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" })}>
+      <ArrowUp size={20} /><span>맨 위로</span>
+    </button>
+  );
 }
 export function BackLink({ href = "/market", label = "선수 목록" }: { href?: string; label?: string }) {
   return (

@@ -151,7 +151,7 @@ export function SquadScreen() {
   const excess = member?.holdings.filter(h => !slots.includes(h.playerId)) ?? [];
   function selectSlot(i: number) { setSelected(selected === i ? null : i); setPosition(null); setPage(1); }
   return <>
-    <PageHeading eyebrow="BUILD YOUR STARTING XI" title="내 스쿼드" description="4-3-3 · GK 1명, DF 4명, MF 3명, FW 3명. 매입하면 경기장에 바로 반영됩니다."/>
+    <PageHeading eyebrow="BUILD YOUR STARTING XI" title="내 스쿼드"/>
     <MemberNotice/>
     <MatchNotificationToggle/>
     <div className="squad-layout automatic-squad">
