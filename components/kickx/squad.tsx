@@ -3,7 +3,8 @@ import {MatchNotificationToggle} from "./notifications";
 import { useId, useState, type CSSProperties } from "react";
 import { clubIdentity, luminance } from "@/lib/kickx/club-identity";
 import { Plus, Search, X } from "lucide-react";
-import { money, score } from "@/lib/kickx/data";
+import { dateText, money, score } from "@/lib/kickx/data";
+import { benchReason } from "@/lib/kickx/bench";
 import { ownedSquadSlots, squadCapacity, POSITION_LIMITS, SQUAD_FORMATION } from "@/lib/kickx/squad";
 import type { Player, Position } from "@/lib/kickx/types";
 import { usePlatform } from "./provider";
@@ -148,7 +149,8 @@ export function SquadScreen() {
   const filled = slots.filter(Boolean).length;
   const lineup = slots.map(id => getPlayer(id)).filter(Boolean) as Player[];
   const value = member?.financialReady !== false && member && lineup.every(p => p.price != null) ? lineup.reduce((sum, p) => sum + p.price!, 0) : null;
-  const excess = member?.holdings.filter(h => !slots.includes(h.playerId)) ?? [];
+  const bench = member?.holdings.filter(h => h.bench) ?? [];
+  const excess = member?.holdings.filter(h => !h.bench && !slots.includes(h.playerId)) ?? [];
   function selectSlot(i: number) { setSelected(selected === i ? null : i); setPosition(null); setPage(1); }
   return <>
     <PageHeading eyebrow="BUILD YOUR STARTING XI" title="내 스쿼드"/>
@@ -187,14 +189,27 @@ export function SquadScreen() {
         <label className="input-search"><Search size={16}/><input aria-label="스쿼드 선수 검색" placeholder="선수·구단 검색" maxLength={100} value={query} onChange={e => { setQuery(e.target.value); setPage(1); }}/></label>
         {listStatus !== "ready" ? <DataEmpty entity="선수" status={listStatus} retry={mock ? reload : remote.reload} rows={3}/> : <>
           <ul className="squad-market-list">{players.map(p => {
-            const owned = member?.holdings.some(h => h.playerId === p.id);
-            return <li key={p.id} className={owned ? "owned" : ""}><Link href={`/players/${p.id}`} aria-label={`${p.name} 상세`}><PlayerPortrait player={p} size="sm"/></Link><div className="squad-market-name"><Link href={`/players/${p.id}`}><strong>{p.name}</strong>{owned && <span className="tag ink">보유</span>}</Link><span>{getTeam(p.team)?.name ?? "—"} · {p.position ?? "—"}</span><b className="num">{money(p.price)} P <Change value={p.change}/></b></div><TradeButton player={p} side={owned ? "sell" : "buy"} className={`button ${owned ? "secondary" : "primary"} small`}/></li>;
+            const holding = member?.holdings.find(h => h.playerId === p.id), owned = !!holding;
+            return <li key={p.id} className={owned ? "owned" : ""}><Link href={`/players/${p.id}`} aria-label={`${p.name} 상세`}><PlayerPortrait player={p} size="sm"/></Link><div className="squad-market-name"><Link href={`/players/${p.id}`}><strong>{p.name}</strong>{owned && <span className="tag ink">{holding.bench ? "동결 벤치" : "보유"}</span>}</Link><span>{getTeam(p.team)?.name ?? "—"} · {p.position ?? "—"}</span><b className="num">{money(holding?.bench?.price ?? p.price)} P {!holding?.bench && <Change value={p.change}/>}</b></div><TradeButton player={p} side={owned ? "sell" : "buy"} className={`button ${owned ? "secondary" : "primary"} small`}/></li>;
           })}</ul>
           {!players.length && <p className="feed-empty">검색 조건에 맞는 선수가 없습니다.</p>}
           <Pagination page={mock ? page : remote.data.page} total={total} size={MARKET_SIZE} onPage={setPage} label="스쿼드 선수"/>
         </>}
       </section>
     </div>
+    {!!bench.length && <section className="panel squad-bench" aria-label="변경 선수 벤치">
+      <div className="section-title"><h2>변경 선수 벤치 <span className="muted num">{bench.length}명</span></h2></div>
+      <p>소속 구단·포지션이 변경된 보유 선수입니다. 변경 당시 가격으로 동결되며, 주전 11명 정원에 포함되지 않습니다. 14일 안에 매각하지 않으면 수수료 2%를 적용해 자동 매각됩니다.</p>
+      <ul>{bench.map(h => {
+        const p = getPlayer(h.playerId), frozen = h.bench!;
+        return <li key={h.playerId}>
+          {p && <PlayerPortrait player={p} size="sm"/>}
+          <div className="bench-player"><strong>{p ? <Link href={`/players/${p.id}`}>{p.name}</Link> : h.playerName}</strong><span>{benchReason(frozen.reason)} · 가격 동결</span><small>자동 매각 기한 <time dateTime={frozen.expiresAt}>{dateText(frozen.expiresAt)}</time></small></div>
+          <strong className="bench-price num">{money(frozen.price)}<small> P</small></strong>
+          <TradeButton player={p} side="sell" className="button secondary small"/>
+        </li>;
+      })}</ul>
+    </section>}
     {!!excess.length && <section className="panel squad-legacy" aria-label="정원 조정이 필요한 보유 선수"><h2>정원 조정이 필요한 보유 선수</h2><p>기존 보유 자산은 유지됩니다. 포지션 정원을 넘겨 경기장에 표시되지 않은 선수는 여기서 매각할 수 있습니다.</p><ul>{excess.map(h => {
       const p = getPlayer(h.playerId);
       return <li key={h.playerId}>{p ? <><PlayerPortrait player={p} size="sm"/><Link href={`/players/${p.id}`}>{p.name}</Link><PositionBadge position={p.position}/><TradeButton player={p} side="sell" className="button secondary small"/></> : <span>선수 정보를 확인하고 있습니다.</span>}</li>;
