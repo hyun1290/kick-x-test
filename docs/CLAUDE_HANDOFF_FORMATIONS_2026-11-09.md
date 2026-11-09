@@ -90,7 +90,7 @@
 | `server/kickx/prototype.ts` | 공통 목록, API 오류 문구 |
 | `server/kickx/mock-data.ts` | 예시 데이터 포메이션 목록 |
 | `app/api/kickx/squad/formation/route.ts` | 포메이션 변경 입력·로그인·origin 검사 |
-| `supabase/migrations/20261109095029_formation_selection_bench.sql` | 원자적 변경, 동결·정원·배치·권한 검사 |
+| `supabase/migrations/20261109101429_formation_selection_bench.sql` | 원자적 변경, 동결·정원·배치·권한 검사 |
 
 포메이션 변경은 `POST /api/kickx/squad/formation`에 `{formationId, benchPlayerIds, revision}`을 보낸다. 가격·벤치 시각·회원 ID는 클라이언트가 정하지 않는다. SQL RPC는 `kickx_change_formation(text,text[],integer)`다.
 
@@ -100,7 +100,7 @@
 
 새 테이블, 가격 스냅샷, API 수집, 주기적 HTTP 요청, Cron은 추가하지 않았다. 기존 holdings의 동결 필드와 14일 자동 매각 작업을 재사용한다. 포메이션 변경을 확정할 때 스쿼드 1행과 선택한 보유분만 갱신한다. 배치 변경은 스쿼드 1행만 갱신한다. 카운트다운은 DB 저장값을 매번 변경하지 않는다.
 
-마이그레이션은 함수와 기존 제약을 변경하며 기존 선수를 자동 벤치 이동시키거나 가격·지갑·거래를 재산정하지 않는다. 운영 적용 여부는 작업 완료 보고를 함께 확인하고, 이미 적용된 마이그레이션을 재실행하지 않는다.
+마이그레이션은 운영 DB에 적용했다. 함수와 기존 제약을 변경하며 기존 선수를 자동 벤치 이동시키거나 가격·지갑·거래를 재산정하지 않는다. 적용 전후 거래·지갑·보유분 체크섬이 동일하고 기존 54개 스쿼드도 유지됨을 확인했다. DB 크기 증가는 적용 직후 8KB였다. 파일명은 운영에 기록된 마이그레이션 버전과 맞췄으므로 재실행하지 않는다.
 
 ## 8. 검증 지점
 
