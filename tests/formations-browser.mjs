@@ -87,8 +87,9 @@ try {
         assert.equal(await page.locator('.squad-formation > strong').innerText(),f.id);
         assert.equal(await page.locator('.pitch .pitch-row').count(),f.rows.length);
         assert.equal(await page.locator('.pitch .pitch-player').count(),11);
-        assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),`${f.id} overflow at ${width}`);
         if(f.id==='4-2-3-1')await page.screenshot({path:`${out}/five-lines-${width}.png`,fullPage:true});
+        const overflow=await page.evaluate(()=>({width:innerWidth,scrollWidth:document.documentElement.scrollWidth,elements:[...document.querySelectorAll('body *')].filter(e=>e.getBoundingClientRect().right>innerWidth+1).map(e=>({tag:e.tagName,class:e.className,right:e.getBoundingClientRect().right})).slice(0,8)}));
+        assert(overflow.scrollWidth<=overflow.width+1,`${f.id} overflow at ${width}: ${JSON.stringify(overflow)}`);
         report.layouts.push({width,formation:f.id,rows:f.rows.length});
       }
     }
