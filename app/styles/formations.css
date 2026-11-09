@@ -2,7 +2,10 @@
 .squad-formation { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
 .squad-edit-actions { display:flex; gap:8px; margin-left:auto; flex-wrap:wrap; }
 .placement-hint { margin:0; padding:12px 16px; font-size:12px; line-height:1.7; background:var(--yellow-wash); border-bottom:var(--border); }
+.pitch-rows { grid-template-columns:minmax(0,1fr); }
+.pitch-row { min-width:0; width:100%; }
 .pitch-row > .pitch-player { min-width:0; max-width:calc(100% / var(--row-count, 4)); flex:0 1 92px; }
+.pitch-player { grid-template-columns:minmax(0,1fr); }
 .automatic-squad .pitch[data-lines="5"] { width:100%; max-width:100%; aspect-ratio:680 / 560; min-height:440px; }
 .pitch.compact[data-lines="5"] .jersey { width:20px; height:19px; }
 .formation-dialog { display:grid; gap:18px; min-width:0; }

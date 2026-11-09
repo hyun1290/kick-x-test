@@ -29,7 +29,8 @@ try {
       if(path==='/api/kickx')return ready(state);
       if(path==='/api/kickx/notifications')return ready({hasUnread:false,matchNotifications:true});
       if(path==='/api/kickx/players'){
-        const pos=url.searchParams.get('position'),items=players.filter(p=>!pos||p.position===pos);return ready({items,total:items.length,page:1,size:8});
+        const pos=url.searchParams.get('position'),q=url.searchParams.get('q')||'',page=Number(url.searchParams.get('page')||1),size=Number(url.searchParams.get('size')||8);
+        const items=players.filter(p=>(!pos||p.position===pos)&&p.name.includes(q));return ready({items:items.slice((page-1)*size,page*size),total:items.length,page,size});
       }
       if(path==='/api/kickx/squad/formation'){
         changes++;const body=req.postDataJSON();assert.equal(body.revision,state.member.squad.revision);
@@ -73,6 +74,7 @@ try {
     await page.waitForFunction(()=>document.querySelector('.pitch-player[aria-label^="6번"]')?.textContent.includes('선수5'));
     assert.equal(moves,1);assert.equal(await page.locator('.pitch-player.filled').count(),9);
     await page.getByRole('button',{name:'배치 완료',exact:true}).click();
+    await page.getByRole('textbox',{name:'스쿼드 선수 검색'}).fill('영입대상');
     const row=page.locator('.squad-market-list li').filter({hasText:'영입대상 미드필더'});await row.getByRole('button',{name:'매입',exact:true}).click();
     dialog=page.getByRole('dialog');await dialog.locator('.trade-capacity').waitFor();assert.match(await dialog.locator('.trade-capacity').innerText(),/3\s*\/\s*5/);assert.equal(quotes,1);
     await dialog.getByRole('button',{name:'닫기',exact:true}).click();
@@ -87,6 +89,8 @@ try {
         assert.equal(await page.locator('.squad-formation > strong').innerText(),f.id);
         assert.equal(await page.locator('.pitch .pitch-row').count(),f.rows.length);
         assert.equal(await page.locator('.pitch .pitch-player').count(),11);
+        const clipped=await page.locator('.pitch').evaluate(pitch=>{const p=pitch.getBoundingClientRect();return [...pitch.querySelectorAll('.pitch-player')].filter(e=>{const r=e.getBoundingClientRect();return r.left<p.left-1||r.right>p.right+1||r.top<p.top-1||r.bottom>p.bottom+1;}).map(e=>e.getAttribute('aria-label'));});
+        assert.deepEqual(clipped,[],`${f.id} clipped players at ${width}`);
         if(f.id==='4-2-3-1')await page.screenshot({path:`${out}/five-lines-${width}.png`,fullPage:true});
         const overflow=await page.evaluate(()=>({width:innerWidth,scrollWidth:document.documentElement.scrollWidth,elements:[...document.querySelectorAll('body *')].filter(e=>e.getBoundingClientRect().right>innerWidth+1).map(e=>({tag:e.tagName,class:e.className,right:e.getBoundingClientRect().right})).slice(0,8)}));
         assert(overflow.scrollWidth<=overflow.width+1,`${f.id} overflow at ${width}: ${JSON.stringify(overflow)}`);
