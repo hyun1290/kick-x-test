@@ -6,7 +6,7 @@ import { useMemo, useState } from "react";
 import { ArrowRight, BookOpen, Search, Shield, TrendingUp, X } from "lucide-react";
 import { Pagination } from './pagination';
 import { dateText, money, score } from "@/lib/kickx/data";
-import { fixedSquadSlots, SQUAD_FORMATION } from "@/lib/kickx/squad";
+import { fixedSquadSlots, formationRule } from "@/lib/kickx/squad";
 import { fixtureGroup, fixtureStatus, selectFeaturedFixtures, featuredTeamIds, selectSupportedFixtures } from "@/lib/kickx/fixtures";
 import type { Fixture, Player } from "@/lib/kickx/types";
 import { clubIdentity } from "@/lib/kickx/club-identity";
@@ -66,7 +66,7 @@ function AssetsPanel() {
 function SquadPanel() {
   const { data, getPlayer } = usePlatform();
   const squad = data.member?.squad;
-  const formation = SQUAD_FORMATION;
+  const formation = formationRule(squad?.formationId);
   const slots = squad ? fixedSquadSlots(squad.slots, squad.formationId, getPlayer) : [];
   const filled = slots.filter(Boolean).length;
   return (

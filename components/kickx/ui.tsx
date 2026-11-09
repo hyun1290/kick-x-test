@@ -27,7 +27,8 @@ import {
 } from "lucide-react";
 import { dateText, money, percent, unavailableAction } from "@/lib/kickx/data";
 import { tradeService } from "@/lib/kickx/trade";
-import { POSITION_LIMITS, purchaseBlock, squadCapacity } from "@/lib/kickx/squad";
+import { purchaseBlock, squadCapacity } from "@/lib/kickx/squad";
+import { BenchDeadline } from "./bench-deadline";
 import { benchExpired, benchReason, benchSalePlayer } from "@/lib/kickx/bench";
 import type { DataStatus, Holding, Player, Position, SeriesPoint, TradeQuote } from "@/lib/kickx/types";
 import { usePlatform } from "./provider";
@@ -589,7 +590,7 @@ export function Modal({
       ref={ref}
       className={`modal ${size}`}
       aria-labelledby={id}
-      onCancel={onClose}
+      onCancel={(event) => { event.preventDefault(); onClose(); }}
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
@@ -610,8 +611,9 @@ export function Modal({
 type TradeState = "loading" | "review" | "submitting" | "done" | "failed";
 function TradeDialog({ player, side, bench, onClose }: { player: Player; side: "buy" | "sell"; bench?: Holding['bench']; onClose: () => void }) {
   const { data, mock, getTeam, getPlayer, notify, reload } = usePlatform();
-  const capacity = squadCapacity(data.member?.holdings ?? [], getPlayer);
-  const buyBlocked = side === "buy" && data.member ? purchaseBlock(player, data.member.holdings, getPlayer) : null;
+  const capacity = squadCapacity(data.member?.holdings ?? [], getPlayer, data.member?.squad?.formationId);
+  const POSITION_LIMITS = capacity.limits;
+  const buyBlocked = side === "buy" && data.member ? purchaseBlock(player, data.member.holdings, getPlayer, data.member.squad?.formationId) : null;
   const service = tradeService(mock);
   const [quote, setQuote] = useState<TradeQuote | null>(null);
   const [attempt, setAttempt] = useState(0);
@@ -688,7 +690,7 @@ function TradeDialog({ player, side, bench, onClose }: { player: Player; side: "
             </div>
             <Change value={player.change} />
           </div>
-          {bench && <p className="trade-notice" role="note"><b>{benchReason(bench.reason)} · 동결 벤치</b><span>변경 당시 {money(bench.price)}P로 매각합니다. 자동 매각 기한은 {dateText(bench.expiresAt)}이며, 수수료 2%가 적용됩니다. 주전 정원에는 포함되지 않습니다.</span></p>}
+          {bench && <div className="trade-notice" role="note"><b>{benchReason(bench.reason)} · 동결 벤치</b><span>이동 당시 {money(bench.price)}P로 매각합니다. 수수료 2%가 적용되며 재배치는 불가능합니다.</span><BenchDeadline expiresAt={bench.expiresAt}/></div>}
           {data.member && !bench && <section className="trade-capacity" aria-label="현재 포지션별 보유 현황">
             <div><strong>현재 보유 현황</strong><span className={`num trade-capacity-total ${capacity.total >= 11 ? "full" : ""}`}>{capacity.total} / 11명</span></div>
             <ul>{(["GK", "DF", "MF", "FW"] as const).map(pos => {
@@ -792,7 +794,7 @@ export function TradeButton({
 export function TradeNotice({ player }: { player: Player }) {
   const { data } = usePlatform();
   const bench = data.member?.holdings.find(h => h.playerId === player.id)?.bench;
-  if (bench) return <p className="trade-notice" role="note"><b>변경 선수 · 동결 벤치</b><span>{benchReason(bench.reason)}로 기존 보유분은 {money(bench.price)}P로 동결됩니다. {dateText(bench.expiresAt)}까지 직접 매각할 수 있으며, 이후 수수료 2%를 적용해 자동 매각됩니다.</span></p>;
+  if (bench) return <p className="trade-notice" role="note"><b>동결 벤치</b><span>{benchReason(bench.reason)}에 따라 기존 보유분은 {money(bench.price)}P로 동결됩니다. 기한까지 직접 매각할 수 있으며, 이후 수수료 2%를 적용해 자동 매각됩니다.<BenchDeadline expiresAt={bench.expiresAt}/></span></p>;
   const lock = player.tradeWindow;
   if (lock?.locked) return (
     <p className="trade-notice lock" role="note">
