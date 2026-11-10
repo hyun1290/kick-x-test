@@ -73,12 +73,19 @@ try {
     state.member = structuredClone(originalMember); await p.reload({ waitUntil: 'networkidle' });
     const returnedBench = p.locator('.squad-bench');
     await returnedBench.getByRole('button', { name: '주전 복귀', exact: true }).waitFor();
+    const marketBench = p.locator('.squad-market-list li').filter({ hasText: players[0].name });
+    assert(await marketBench.getByRole('button', { name: '주전 복귀', exact: true }).isEnabled());
+    assert(await marketBench.getByRole('button', { name: '매각', exact: true }).isEnabled());
     await p.screenshot({ path: `${out}/live-bench-${width}.png`, fullPage: true });
     await returnedBench.screenshot({ path: `${out}/live-bench-panel-${width}.png` });
-    await returnedBench.getByRole('button', { name: '주전 복귀', exact: true }).click();
+    await marketBench.screenshot({ path: `${out}/market-bench-${width}.png` });
+    assert(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), `Market actions overflow at ${width}`);
+    await marketBench.getByRole('button', { name: '주전 복귀', exact: true }).click();
     await p.waitForFunction(() => !document.querySelector('.squad-bench'));
     assert.equal(restores, 1); assert.equal(state.member.points, originalMember.points); assert.equal(state.member.holdings[0].cost, 50000);
     assert.match(await p.locator('.squad-count').innerText(), /2\s*\/\s*11/);
+    assert.equal(await marketBench.getByRole('button', { name: '주전 복귀', exact: true }).count(), 0);
+    assert.equal(await marketBench.getByText('보유', { exact: true }).count(), 1);
     report.checks.push({ width, price: 120000, net: 117600, quotes, submissions, restores }); await c.close();
   }
   assert.deepEqual(report.errors, []); console.log(JSON.stringify(report));

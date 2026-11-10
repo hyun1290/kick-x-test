@@ -69,8 +69,9 @@ try {
     const box=await checkbox.evaluate(el=>({width:el.getBoundingClientRect().width,height:el.getBoundingClientRect().height,minHeight:getComputedStyle(el).minHeight,padding:getComputedStyle(el).padding,outline:getComputedStyle(el).outlineStyle}));
     assert.equal(box.width,18);assert.equal(box.height,18);assert.equal(box.minHeight,'18px');assert.equal(box.padding,'0px');assert.equal(box.outline,'solid');
     report.layouts.push({width,checkbox:box});
-    assert.match(await dialog.innerText(),/재배치할 수 없습니다/);
-    assert.match(await dialog.innerText(),/7일 안에 직접 매각/);
+    assert.match(await dialog.innerText(),/벤치도 현재 시세를 반영합니다/);
+    assert.match(await dialog.innerText(),/7일 안에 빈 포지션으로 복귀하거나 매각/);
+    assert.doesNotMatch(await dialog.innerText(),/재배치할 수 없습니다/);
     assert.doesNotMatch(await dialog.innerText(),/14일/);
     assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
     if(width===390)await page.screenshot({path:`${out}/modal-390.png`,fullPage:true});
