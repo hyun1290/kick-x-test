@@ -373,7 +373,7 @@ export function SquadScreen() {
               <span className="tag outline">자동 반영</span>
             </div>
             <div className="squad-count">
-              <span>보유 선수</span>
+              <span>주전 선수</span>
               <strong className="num">
                 {member ? capacity.total : "—"}
                 <small> / 11</small>
@@ -632,7 +632,7 @@ export function SquadScreen() {
                           {getTeam(p.team)?.name ?? "—"} · {p.position ?? "—"}
                         </span>
                         <b className="num">
-                          
+
                           {money(p.price ?? holding?.bench?.price)} P{" "}
                           <Change value={p.change} />
                         </b>
@@ -737,7 +737,7 @@ export function SquadScreen() {
                       <PlayerPortrait player={p} size="sm" />
                       <Link href={`/players/${p.id}`}>{p.name}</Link>
                       <PositionBadge position={p.position} />
-                      <><BenchRestoreButton playerId={h.playerId}/><TradeButton player={p} side="sell" className="button secondary small" /></>
+                      <TradeButton player={p} side="sell" className="button secondary small" />
                     </>
                   ) : (
                     <span>선수 정보를 확인하고 있습니다.</span>
