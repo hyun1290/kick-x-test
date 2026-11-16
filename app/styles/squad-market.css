@@ -43,6 +43,9 @@
 .squad-market-name > b { display: flex; flex-wrap: wrap; gap: 5px; font-size: 12px; }
 .squad-market-name .change { font-size: 11px; }
 .squad-market-list .button { max-width: 105px; white-space: normal; text-align: center; font-size: 12px; padding: 7px 10px; }
+.squad-market-actions { display: grid; gap: 6px; max-width: 105px; }
+.squad-market-actions .button { width: 100%; }
+.squad-market-actions .bench-restore > small { max-width: 105px; }
 .squad-market .pagination { flex-wrap: wrap; }
 .squad-legacy { margin-top: 20px; }
 /* Bench: a neutral reserve area under the pitch. Rows read player → reason → sale base price → deadline → action. */

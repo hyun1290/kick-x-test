@@ -637,11 +637,14 @@ export function SquadScreen() {
                           <Change value={p.change} />
                         </b>
                       </div>
-                      <TradeButton
-                        player={p}
-                        side={owned ? "sell" : "buy"}
-                        className={`button ${owned ? "secondary" : "primary"} small`}
-                      />
+                      <div className="squad-market-actions" role="group" aria-label={`${p.name} 관리`}>
+                        {holding?.bench && <BenchRestoreButton playerId={p.id} />}
+                        <TradeButton
+                          player={p}
+                          side={owned ? "sell" : "buy"}
+                          className={`button ${owned ? "secondary" : "primary"} small`}
+                        />
+                      </div>
                     </li>
                   );
                 })}
