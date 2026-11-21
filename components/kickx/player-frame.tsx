@@ -5,7 +5,7 @@ import { PlayerPortrait } from './ui';
 
 /** Ornament themes drawn as vector artwork. The face occupies the circle r=40 at the centre;
     every ornament stays outside r=42 and above y=140 so it never covers the face or the name. */
-export const ORNAMENT_THEMES=['laurel','circuit','arcane','seraph','dragon','astral','tempest'];
+export const ORNAMENT_THEMES=['laurel','circuit','arcane','seraph','dragon','astral','tempest','bronze','silver','gold','platinum','diamond','master','legend','frost'];
 const LAUREL_LEAVES=[0,1,2,3,4,5,6];
 /** Original vector ornaments shared by the actual squad and store previews. */
 function FrameOrnament({theme}:{theme:string}) {
@@ -59,6 +59,44 @@ function FrameOrnament({theme}:{theme:string}) {
    <path d="m52 37 6-17 12 9L80 9l10 20 12-9 6 17M52 121l10 10h36l10-10" fill={`url(#${id}-metal)`} stroke="var(--frame-light)" strokeWidth="2"/>
    <path d="m42 111-9 10 13 6 12 11h44l12-11 13-6-9-10" stroke="var(--frame-main)" strokeWidth="2"/>
    <circle cx="80" cy="80" r="51" stroke="var(--frame-light)" strokeDasharray="9 5 2 8"/>
+  </>}
+  {['bronze','silver','gold','master','legend'].includes(theme)&&[1,-1].map(side=><g key={`wing${side}`} transform={side<0?'matrix(-1 0 0 1 160 0)':undefined}>
+   {/* Tiered wing: bronze has two feathers, each tier adds one. */}
+   {Array.from({length:{bronze:2,silver:3,gold:3,master:4,legend:5}[theme]??3},(_,i)=><path key={i} d={`M39 ${70+i*6}Q${20-i*3} ${58+i*9} ${8-i*1} ${46+i*13}Q${22-i*2} ${74+i*6} 40 ${84+i*4}Z`} fill={`url(#${id}-metal)`} stroke="var(--frame-deep)" strokeWidth=".9"/>)}
+  </g>)}
+  {theme==='bronze'&&<path d="m64 124 16 15 16-15-4-6H68Z" fill={`url(#${id}-metal)`} stroke="var(--frame-deep)" strokeWidth="1.2"/>}
+  {theme==='silver'&&<><path d="m80 22 7 10-7 9-7-9Z" fill="var(--frame-light)" stroke="var(--frame-deep)"/><path d="m70 126 10 12 10-12" stroke={`url(#${id}-metal)`} strokeWidth="3" strokeLinejoin="round"/></>}
+  {theme==='gold'&&<>
+   <path d="M62 20h36v10c0 9-8 14-18 18-10-4-18-9-18-18Z" fill={`url(#${id}-metal)`} stroke="var(--frame-deep)" strokeWidth="1.2"/>
+   <path d="M71 26h18M80 22v18" stroke="var(--frame-deep)" strokeWidth="1.5"/>
+   <path d="m80 122 7 8-7 9-7-9Z" fill="#e0344a" stroke="var(--frame-light)"/>
+  </>}
+  {theme==='platinum'&&<>
+   {[[-24,15],[0,22],[24,15]].map(([dx,h])=><path key={dx} d={`m${80+dx} ${37-h}l7 ${h-4}-7 6-7-6Z`} fill={`url(#${id}-metal)`} stroke="var(--frame-light)" strokeWidth="1"/>)}
+   {[1,-1].map(side=><path key={side} d={side>0?'m124 70 18-8-6 18 6 18-18-8Z':'m36 70-18-8 6 18-6 18 18-8Z'} fill="var(--frame-main)" stroke="var(--frame-light)"/>)}
+   <path d="m70 126 10 10 10-10" stroke="var(--frame-light)" strokeWidth="2"/>
+  </>}
+  {theme==='diamond'&&<>
+   <ellipse className="frame-halo" cx="80" cy="22" rx="24" ry="6" stroke="var(--frame-light)" strokeWidth="2.5"/>
+   <path d="M66 32h28l-14 20Zm0 0 6-8h16l6 8" fill={`url(#${id}-metal)`} stroke="var(--frame-light)" strokeWidth="1.2" strokeLinejoin="round"/>
+   {[1,-1].map(side=><path key={side} d={side>0?'m122 64 22-10-8 22 10 14-22-4Z':'m38 64-22-10 8 22-10 14 22-4Z'} fill={`url(#${id}-metal)`} stroke="var(--frame-light)"/>)}
+   <path d="m80 122 6 8-6 8-6-8Z" fill="var(--frame-light)"/>
+  </>}
+  {theme==='master'&&<>
+   <path d="m54 36-6-22 14 10 8-16 10 14 10-14 8 16 14-10-6 22Z" fill={`url(#${id}-metal)`} stroke="var(--frame-light)" strokeWidth="1.3" strokeLinejoin="round"/>
+   {[62,80,98].map(x=><circle key={x} cx={x} cy={x===80?22:27} r="3" fill="#ff5fd1" stroke="var(--frame-light)"/>)}
+   <path d="m66 124 14 14 14-14-6-4H72Z" fill={`url(#${id}-metal)`} stroke="var(--frame-light)"/>
+  </>}
+  {theme==='legend'&&<>
+   <g className="frame-rays">{Array.from({length:16},(_,i)=>i>=5&&i<=11?null:<path key={i} d="M80 26V8" stroke="var(--frame-light)" strokeWidth={i%2?1.2:2.4} strokeLinecap="round" opacity={i%2?.6:1} transform={`rotate(${i*22.5} 80 80)`}/>)}</g>
+   <circle cx="80" cy="80" r="50" stroke="var(--frame-main)" strokeWidth="3"/>
+   <circle cx="80" cy="80" r="50" stroke="var(--frame-light)" strokeWidth="1.2" strokeDasharray="40 8 4 8"/>
+   <path d="m58 34-4-18 12 8 14-14 14 14 12-8-4 18Z" fill={`url(#${id}-metal)`} stroke="var(--frame-deep)" strokeWidth="1.2" strokeLinejoin="round"/>
+   <circle cx="80" cy="22" r="4" fill="#fff6c9"/>
+  </>}
+  {theme==='frost'&&<>
+   {[0,45,90,135,180,225,270,315].map(a=><path key={a} d={a%90?'M80 30 84 17 80 8 76 17Z':'M80 32 86 15 80 2 74 15Z'} fill={`url(#${id}-metal)`} stroke="var(--frame-light)" strokeWidth=".8" transform={`rotate(${a} 80 80)`} opacity={a===180?0:1}/>)}
+   {[[26,40],[134,40],[30,120],[130,120]].map(([x,y])=><path key={`${x}${y}`} className="frame-snow" d={`M${x} ${y-6}v12M${x-6} ${y}h12M${x-4} ${y-4}l8 8m0-8-8 8`} stroke="var(--frame-light)" strokeWidth="1.4" strokeLinecap="round"/>)}
   </>}
  </svg>;
 }
