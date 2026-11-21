@@ -1,6 +1,7 @@
 "use client";
 import { useLoadout } from "./engagement-provider";
 import { FramedPlayer } from "./player-frame";
+import { PitchScenery } from "./pitch-scenery";
 import { cosmeticTheme } from "@/lib/kickx/engagement";
 import { MatchNotificationToggle } from "./notifications";
 import { useId, useRef, useState, type CSSProperties } from "react";
@@ -159,6 +160,7 @@ export function Pitch({
       data-lines={rows.length}
     >
       <PitchMarkings />
+      {!compact && <PitchScenery theme={cosmeticTheme(appearance.pitch)} />}
       <div
         className="pitch-rows"
         style={{

@@ -10,6 +10,7 @@ import { useEngagement } from './engagement-provider';
 import { EngagementNotice } from './missions';
 import { Nameplate } from './nameplate';
 import { FramedPlayer } from './player-frame';
+import { PitchScenery } from './pitch-scenery';
 import { Modal, PageHeading } from './ui';
 const CATEGORIES:{id:ShopCategory|'all';label:string}[]=[{id:'all',label:'전체'},{id:'nameplate',label:'네임태그'},{id:'frame',label:'선수 테두리'},{id:'pitch',label:'경기장'},{id:'ticket',label:'출석 복구권'}];
 export function ShopPreview({item}:{item:ShopItem}) {
@@ -17,7 +18,7 @@ export function ShopPreview({item}:{item:ShopItem}) {
  const player=data.member?.ownedPlayers?.[0]??data.players[0];
  if(item.category==='nameplate')return <div className={`shop-preview nameplate-preview preview-${item.theme}`}><Nameplate skin={item.id} primaryTeam={data.session?.profile?.primaryTeam??data.teams[0]?.id} preview>{data.session?.profile?.nickname??'KICK-X PLAYER'}</Nameplate></div>;
  if(item.category==='frame')return <div className={`shop-preview frame-preview preview-${item.theme}`}><FramedPlayer player={player} theme={item.theme} preview/></div>;
- if(item.category==='pitch')return <div className={`shop-preview pitch-preview pitch-theme-${item.theme}`}><svg viewBox="0 0 280 150" aria-hidden="true"><rect x="28" y="13" width="224" height="124"/><path d="M140 13v124M28 45h37v60H28M252 45h-37v60h37"/><circle cx="140" cy="75" r="25"/><circle className="fill" cx="140" cy="75" r="2"/></svg><span className="preview-pitch-label">{({myth:'OLYMPUS',engineering:'MECHA GRID',christmas:'WINTER VILLAGE',volcano:'MAGMA ARENA',cosmos:'STARLIGHT'} as Record<string,string>)[item.theme]}</span></div>;
+ if(item.category==='pitch')return <div className={`shop-preview pitch-preview pitch-theme-${item.theme}`}><PitchScenery theme={item.theme}/><svg viewBox="0 0 280 150" aria-hidden="true"><rect x="28" y="13" width="224" height="124"/><path d="M140 13v124M28 45h37v60H28M252 45h-37v60h37"/><circle cx="140" cy="75" r="25"/><circle className="fill" cx="140" cy="75" r="2"/></svg><span className="preview-pitch-label">{({myth:'OLYMPUS',engineering:'MECHA GRID',christmas:'WINTER VILLAGE',volcano:'MAGMA ARENA',cosmos:'STARLIGHT'} as Record<string,string>)[item.theme]}</span></div>;
  return <div className="shop-preview ticket-preview"><span className="ticket-art"><Ticket size={42}/><strong>ATTENDANCE<br/>RECOVERY</strong><small>×1 DAY</small></span></div>;
 }
 export function ShopScreen() {
