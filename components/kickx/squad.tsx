@@ -1,4 +1,7 @@
 "use client";
+import { useLoadout } from "./engagement-provider";
+import { FramedPlayer } from "./player-frame";
+import { cosmeticTheme } from "@/lib/kickx/engagement";
 import { MatchNotificationToggle } from "./notifications";
 import { useId, useRef, useState, type CSSProperties } from "react";
 import { clubIdentity, luminance } from "@/lib/kickx/club-identity";
@@ -146,12 +149,13 @@ export function Pitch({
   targets?: number[];
 }) {
   const { getPlayer, getTeam } = usePlatform();
+  const appearance = useLoadout();
   const rule = formation ? formationRule(formation) : undefined;
   const positions = (rule ?? SQUAD_FORMATION).positions;
   const rows = [...(rule ?? SQUAD_FORMATION).rows].reverse();
   return (
     <div
-      className={`pitch ${compact ? "compact" : ""} ${rule ? "" : "is-empty"} ${targets ? "placing" : ""}`}
+      className={`pitch pitch-theme-${cosmeticTheme(appearance.pitch)} ${compact ? "compact" : ""} ${rule ? "" : "is-empty"} ${targets ? "placing" : ""}`}
       data-lines={rows.length}
     >
       <PitchMarkings />
@@ -179,33 +183,39 @@ export function Pitch({
                 : "";
               const body = p ? (
                 <>
-                  <Jersey kit={kit(getTeam(p.team))} />
+                  {compact ? <Jersey kit={kit(getTeam(p.team))} /> : <FramedPlayer player={p} theme={cosmeticTheme(appearance.frame)} />}
                   <span
                     className="pitch-name"
                     title={p.name}
                     style={{
-                      letterSpacing: "-0.8px",
+                      letterSpacing: p.name.length >= 10 ? "-1px" : "-0.8px",
                       fontSize: compact
                         ? row.slots.length >= 5
                           ? "8px"
                           : displayName.length >= 5
                             ? "9px"
                             : "10px"
-                        : displayName.length > 5
-                          ? "10px"
-                          : "11px",
+                        : p.name.length >= 11
+                          ? "8.5px"
+                          : p.name.length >= 8
+                            ? "9.5px"
+                            : p.name.length > 5
+                              ? "10px"
+                              : "11px",
                       lineHeight: compact ? "1.1" : "1.2",
                       maxWidth: compact
                         ? row.slots.length >= 5
                           ? "58px"
                           : "72px"
-                        : "min(88px, 100%)",
+                        : "none",
                       width: "max-content",
                       whiteSpace: "nowrap",
+                      overflow: compact ? "hidden" : "visible",
+                      textOverflow: compact ? "ellipsis" : "clip",
                       marginTop: compact ? "1px" : "2px",
                     }}
                   >
-                    {displayName}
+                    {compact ? displayName : p.name}
                   </span>
                   {!compact && (
                     <span className="pitch-value num">{money(p.price)}</span>
@@ -361,6 +371,7 @@ export function SquadScreen() {
       <PageHeading eyebrow="BUILD YOUR STARTING XI" title="내 스쿼드" />
       <MemberNotice />
       <MatchNotificationToggle />
+      <div className="squad-appearance"><Link href="/shop">경기장·선수 테두리 꾸미기</Link></div>
       <div className="squad-layout automatic-squad">
         <section className="squad-board">
           <div className="squad-toolbar">
@@ -632,7 +643,6 @@ export function SquadScreen() {
                           {getTeam(p.team)?.name ?? "—"} · {p.position ?? "—"}
                         </span>
                         <b className="num">
-
                           {money(p.price ?? holding?.bench?.price)} P{" "}
                           <Change value={p.change} />
                         </b>
@@ -667,7 +677,12 @@ export function SquadScreen() {
               벤치 <span className="muted num">{bench.length}명</span>
             </h2>
           </div>
-          <p className="squad-bench-rule">벤치도 현재 시세로 평가되어 전체 보유 인원은 11명을 넘을 수 있습니다. 주전은 11명과 포지션별 정원을 지켜야 합니다. 7일 안에 빈 포지션으로 복귀하거나 매각할 수 있으며, 기한이 지나면 수수료 2%를 적용해 자동 매각합니다. 경기 거래 제한 중에는 해제 후 처리합니다.</p>
+          <p className="squad-bench-rule">
+            벤치도 현재 시세로 평가되어 전체 보유 인원은 11명을 넘을 수
+            있습니다. 주전은 11명과 포지션별 정원을 지켜야 합니다. 7일 안에 빈
+            포지션으로 복귀하거나 매각할 수 있으며, 기한이 지나면 수수료 2%를
+            적용해 자동 매각합니다. 경기 거래 제한 중에는 해제 후 처리합니다.
+          </p>
           {/* Read order: who, why, price, deadline, action. */}
           <ul>
             {bench.map((h) => {
@@ -708,7 +723,14 @@ export function SquadScreen() {
                     {overdue ? (
                       <span className="status-pill">자동 매각 처리 중</span>
                     ) : (
-                      <><BenchRestoreButton playerId={h.playerId}/><TradeButton player={p} side="sell" className="button secondary small" /></>
+                      <>
+                        <BenchRestoreButton playerId={h.playerId} />
+                        <TradeButton
+                          player={p}
+                          side="sell"
+                          className="button secondary small"
+                        />
+                      </>
                     )}
                   </div>
                 </li>
@@ -737,7 +759,11 @@ export function SquadScreen() {
                       <PlayerPortrait player={p} size="sm" />
                       <Link href={`/players/${p.id}`}>{p.name}</Link>
                       <PositionBadge position={p.position} />
-                      <TradeButton player={p} side="sell" className="button secondary small" />
+                      <TradeButton
+                        player={p}
+                        side="sell"
+                        className="button secondary small"
+                      />
                     </>
                   ) : (
                     <span>선수 정보를 확인하고 있습니다.</span>
