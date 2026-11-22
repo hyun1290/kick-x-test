@@ -50,9 +50,9 @@ try{
   });
   const p=await c.newPage();p.on('pageerror',e=>errors.push(e.message));
   await p.goto(base+'/mypage',{waitUntil:'networkidle'});assert.match(await p.locator('.topbar-market:visible').first().innerText(),/상승[\s\S]*하락[\s\S]*미출전\s*3/);
-  // Profile icons were removed: no picker, and the main club emblem takes the icon's place.
+  // Profile icons were removed: no picker and no icon in the header or the profile summary.
   assert.equal(await p.locator('.avatar-picker').count(),0);assert.equal(await p.locator('.masthead-account .account-avatar').count(),0);
-  assert.equal(await p.locator('.my-hero .profile-avatar.club-mark:visible').count(),1);
+  assert.equal(await p.locator('.my-hero .profile-avatar').count(),0);
   await p.screenshot({path:`test-artifacts/profile-icons-${width}.png`,fullPage:true});
   await p.goto(base+'/market',{waitUntil:'networkidle'});
   const small=p.locator('.player-grid .pcard').filter({has:p.getByRole('heading',{name:player.name,exact:true})});

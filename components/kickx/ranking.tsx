@@ -1,6 +1,6 @@
 "use client";
 import Link from 'next/link';
-import { ClubMark, MemberName } from "./avatar";
+import { MemberName } from "./avatar";
 import { Select } from "./select";
 import { useState } from "react";
 import { Medal } from "lucide-react";
@@ -40,7 +40,7 @@ export function RankingScreen() {
               <div className="podium-user">
                 <TeamBadge id={r.team} size="large" />
                 <div>
-                  <strong><Link href={`/community/authors/${r.userId}`}><MemberName crest={false} userId={r.userId} primaryTeam={r.userId===data.session?.userId?data.session?.profile?.primaryTeam:r.primaryTeam}>{r.nickname}</MemberName></Link></strong>
+                  <strong><Link href={`/community/authors/${r.userId}`}><MemberName userId={r.userId} primaryTeam={r.userId===data.session?.userId?data.session?.profile?.primaryTeam:r.primaryTeam}>{r.nickname}</MemberName></Link></strong>
                   <span>{getTeam(r.team)?.name || "응원 구단 없음"}</span>
                 </div>
               </div>
@@ -53,10 +53,9 @@ export function RankingScreen() {
         </ol>
       )}
       <div className="my-rank">
-        <ClubMark className="my-rank-avatar" team={data.session?.profile?.primaryTeam} />
         <div className="my-rank-text">
           <span>나의 {period} 순위</span>
-          <strong><MemberName crest={false} userId={data.session?.userId} primaryTeam={data.session?.profile?.primaryTeam}>{data.session?.profile?.nickname || (data.session ? "내 계정" : "로그인 후 확인")}</MemberName></strong>
+          <strong><MemberName userId={data.session?.userId} primaryTeam={data.session?.profile?.primaryTeam}>{data.session?.profile?.nickname || (data.session ? "내 계정" : "로그인 후 확인")}</MemberName></strong>
         </div>
         <div className="my-rank-figure"><span>순위</span><b className="num">{mine ? `${mine.rank}위` : "—"}</b></div>
         <div className="my-rank-figure"><span>수익률</span><Change value={mine?.returnRate} /></div>
@@ -84,8 +83,7 @@ export function RankingScreen() {
                   <td className={`rank-index num ${r.rank <= 3 ? "top" : ""}`}>{r.rank}</td>
                   <td>
                     <div className="rank-user">
-                      <ClubMark className="rank-avatar" team={r.userId===data.session?.userId?data.session?.profile?.primaryTeam:r.primaryTeam} />
-                      <strong><Link href={`/community/authors/${r.userId}`}><MemberName crest={false} userId={r.userId} primaryTeam={r.userId===data.session?.userId?data.session?.profile?.primaryTeam:r.primaryTeam}>{r.nickname}</MemberName></Link></strong>
+                      <strong><Link href={`/community/authors/${r.userId}`}><MemberName userId={r.userId} primaryTeam={r.userId===data.session?.userId?data.session?.profile?.primaryTeam:r.primaryTeam}>{r.nickname}</MemberName></Link></strong>
                       {r.userId === data.session?.userId && <span className="tag yellow">나</span>}
                     </div>
                   </td>

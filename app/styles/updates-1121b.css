@@ -367,3 +367,39 @@
 .club-mark, .rank-avatar.club-mark, .my-rank-avatar.club-mark, .profile-avatar.club-mark, .author-avatar.club-mark { box-shadow:none!important;outline:0!important; }
 .club-mark > * { width:100%!important;height:100%!important;max-width:none!important; }
 .club-mark-none > svg { width:78%!important;height:78%!important; }
+
+/* 2026-11-22 (4): every nameplate uses the header design and size: emblem inside the plate, white
+   outline, same type size, natural width (7+ character names shortened). Shop previews keep their own. */
+.kx-nameplate:not(.is-preview) { font-size:16px!important;min-height:38px!important;min-width:0!important;gap:9px!important;padding:3px 11px 3px 3px!important;margin-right:24px!important;transform:none!important;
+  filter:drop-shadow(1.5px 0 0 #fff) drop-shadow(-1.5px 0 0 #fff) drop-shadow(0 1.5px 0 #fff) drop-shadow(0 -1.5px 0 #fff) drop-shadow(0 2px 6px #0006)!important; }
+.kx-nameplate:not(.is-preview) .nameplate-sigil { display:grid!important;width:32px!important;height:32px!important; }
+.kx-nameplate:not(.is-preview) .nameplate-sigil .club-crest { width:26px!important;height:26px!important; }
+.kx-nameplate:not(.is-preview) .nameplate-art { width:38px!important;height:36px!important; }
+.member-plain-name { font-size:15px!important;padding:3px 10px 3px 4px!important;border-radius:999px;background:#fffffff0;box-shadow:0 0 0 1px #0000001a;color:var(--ink,#111);font-weight:800; }
+.member-plain-name .primary-name-crest .club-crest { width:24px!important;height:24px!important; }
+.community-board-table th:nth-child(3) { width:240px; }
+.board-author-link { gap:0; }
+@media (max-width: 860px) {
+  .kx-nameplate:not(.is-preview) { font-size:13.5px!important;min-height:32px!important; }
+  .kx-nameplate:not(.is-preview) .nameplate-sigil { width:27px!important;height:27px!important; }
+  .kx-nameplate:not(.is-preview) .nameplate-sigil .club-crest { width:22px!important;height:22px!important; }
+  .kx-nameplate:not(.is-preview) .nameplate-art { width:26px!important;height:24px!important; }
+}
+@media (max-width: 480px) {
+  .kx-nameplate:not(.is-preview) { font-size:12px!important;min-height:28px!important;padding-right:8px!important;margin-right:18px!important; }
+  .kx-nameplate:not(.is-preview) .nameplate-sigil { width:23px!important;height:23px!important; }
+  .kx-nameplate:not(.is-preview) .nameplate-sigil .club-crest { width:19px!important;height:19px!important; }
+  .kx-nameplate:not(.is-preview) .nameplate-art { width:22px!important;height:20px!important; }
+  .member-plain-name { font-size:12px!important; }
+  .member-plain-name .primary-name-crest .club-crest { width:18px!important;height:18px!important; }
+}
+@media (max-width: 360px) {
+  .kx-nameplate:not(.is-preview) .nameplate-art { display:none; }
+  .kx-nameplate:not(.is-preview) { margin-right:2px!important;font-size:10.5px!important; }
+}
+/* My page header without the icon column. */
+.my-hero { grid-template-columns:minmax(0,1fr) auto auto; }
+@media (max-width: 1100px) { .my-hero { grid-template-columns:minmax(0,1fr) auto; } }
+@media (max-width: 640px) { .my-hero { grid-template-columns:minmax(0,1fr); } }
+.board-author .member-name, .board-author-link>span, .community-board-table td.board-author { overflow:visible!important; }
+.board-author .member-name { padding:2px 2px 2px 1px; }

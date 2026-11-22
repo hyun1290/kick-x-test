@@ -2,7 +2,7 @@
 import type { CSSProperties } from "react";
 import { clubIdentity, luminance } from "@/lib/kickx/club-identity";
 import {CommunityPoll} from "./community-poll";
-import { ClubMark, MemberName } from "./avatar";
+import { MemberName } from "./avatar";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -135,9 +135,9 @@ function PostDetailContent({ postId, focusComment }: { postId: string; focusComm
         </div>
         <h1>{postHeading(post.title,post.body) || `${targetName ?? (post.scope === "club" ? "구단" : "선수")} 이야기`}</h1>
         <div className="article-author">
-          <Link href={`/community/authors/${post.authorId}`} aria-label={`${post.author} 활동 보기`}><ClubMark className="rank-avatar" team={post.authorPrimaryTeam} /></Link>
+          
           <div>
-            <strong><Link href={`/community/authors/${post.authorId}`}><MemberName crest={false} userId={post.authorId} primaryTeam={post.authorPrimaryTeam} holdsPlayer={post.authorHoldsPlayer}>{post.author}</MemberName></Link></strong>
+            <strong><Link href={`/community/authors/${post.authorId}`}><MemberName userId={post.authorId} primaryTeam={post.authorPrimaryTeam} holdsPlayer={post.authorHoldsPlayer}>{post.author}</MemberName></Link></strong>
             <span>{dateText(post.date)} · 조회 {money(post.views)}</span>
           </div>
           {owner && (
@@ -211,10 +211,10 @@ function PostDetailContent({ postId, focusComment }: { postId: string; focusComm
             return (
               <li id={`comment-${c.id}`} className={`comment ${isReply ? "reply" : ""} ${editing?.id === c.id ? "editing" : ""}`} key={c.id}>
                 {isReply && <CornerDownRight size={16} className="comment-reply-mark" aria-hidden="true" />}
-                <Link href={`/community/authors/${c.authorId}`} aria-label={`${c.author} 활동 보기`}><ClubMark className="rank-avatar" team={c.authorPrimaryTeam} /></Link>
+                
                 <div>
                   <div className="comment-head">
-                    <strong><Link href={`/community/authors/${c.authorId}`}><MemberName crest={false} userId={c.authorId} primaryTeam={c.authorPrimaryTeam} holdsPlayer={c.authorHoldsPlayer}>{c.author}</MemberName></Link></strong>
+                    <strong><Link href={`/community/authors/${c.authorId}`}><MemberName userId={c.authorId} primaryTeam={c.authorPrimaryTeam} holdsPlayer={c.authorHoldsPlayer}>{c.author}</MemberName></Link></strong>
                     {c.authorId === post.authorId && <span className="tag yellow">작성자</span>}
                     <time dateTime={c.date} title={dateText(c.date)}>{relativeTime(c.date)}</time>
                   </div>
