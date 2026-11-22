@@ -1,15 +1,21 @@
--- KICK-X 운영 DB 적용 SQL (2026-11-22)
--- 전제: 운영 DB에 20261122010013_market_goal_assist_totals.sql까지 적용된 상태.
--- 사용법: Supabase SQL Editor에 1부를 그대로 붙여 넣고 실행한다. 전체가 하나의 트랜잭션이라 중간에 실패하면 아무것도 바뀌지 않는다.
--- 2부(치장 24종)는 가격을 확정한 뒤 따로 실행한다.
--- 이미 적용한 마이그레이션을 다시 실행하지 않는다(create function이 '이미 존재' 오류로 멈춘다).
+-- KICK-X 운영 DB 적용 SQL (2026-11-22, 재실행 안전판)
+-- 이미 적용된 부분은 건너뛰고 빠진 부분만 적용한다. 여러 번 실행해도 결과가 같다.
+-- 전제: 20261122010013_market_goal_assist_totals.sql까지 적용된 운영 DB.
+-- 사용법: Supabase SQL Editor에서 1부를 실행한 뒤 끝의 확인 쿼리 결과가 모두 true인지 본다.
+
+-- 0. (선택) 현재 상태 확인: 실행 전에 무엇이 이미 들어가 있는지 본다.
+select exists(select 1 from pg_proc where proname='mission_now') as mission_now,
+       exists(select 1 from pg_proc where proname='mission_week_now') as mission_week_now,
+       exists(select 1 from pg_proc where proname='kickx_set_player_frame') as player_frames,
+       exists(select 1 from pg_proc where proname='kickx_player_trends') as trends,
+       to_regclass('kickx_private.weekly_item_claims') is not null as weekly_item_claims,
+       (select initial_points from public.kickx_policy) as initial_points,
+       (select price from kickx_private.shop_items where id='attendance-ticket') as ticket_price;
 
 -- ===================== 1부: 기능 변경 (필수) =====================
 begin;
 
--- ---------- 20261122100000_supported_club_posting.sql ----------
--- Members with a confirmed primary club may author posts in any of their supported clubs
--- (previously the primary club only). Comment and poll participation rules are unchanged.
+-- 1) 서브 응원 구단 글쓰기: 메인 응원 구단이 있으면 모든 응원 구단에 게시 가능
 create or replace function public.kickx_can_write_lounge(u uuid,s text,t text) returns boolean
 language sql stable security definer set search_path='' as $$
  select exists(select 1 from public.profiles p where p.id=u and (s='player' or s='club' and p.primary_team_id is not null and t=any(p.team_ids)))
@@ -17,57 +23,56 @@ $$;
 revoke all on function public.kickx_can_write_lounge(uuid,text,text) from public,anon,authenticated;
 grant execute on function public.kickx_can_write_lounge(uuid,text,text) to service_role;
 
--- ---------- 20261122110000_weekly_item_rewards_ticket_player_frames.sql ----------
--- 1) Weekly missions: each completed mission can be claimed for 1,000P; clearing all six adds 4,000P
---    (the weekly maximum stays 10,000P). 2) Attendance recovery ticket costs 2,500P.
--- 3) Members can give each owned player their own frame (falls back to the equipped frame).
-
-create table kickx_private.weekly_item_claims(
+-- 2) 주간 미션별 보상 1,000P + 올 클리어 4,000P, 출석 복구권 2,500P
+create table if not exists kickx_private.weekly_item_claims(
  user_id uuid not null references auth.users(id) on delete cascade,week date not null,mission text not null,
  claimed_at timestamptz not null default clock_timestamp(),primary key(user_id,week,mission));
 alter table kickx_private.weekly_item_claims enable row level security;
 revoke all on kickx_private.weekly_item_claims from public,anon,authenticated,service_role;
 
 do $patch$ declare d text;begin
+ -- weekly_progress: 미션별 수령 기록(claimedItems) 추가
  d:=pg_get_functiondef('kickx_private.weekly_progress(uuid,date)'::regprocedure);
- if position($q$'claimed',(select exists(select 1 from kickx_private.weekly_claims where user_id=u and week=w)));$q$ in d)=0 then raise exception 'weekly_progress shape changed';end if;
- d:=replace(d,$q$'claimed',(select exists(select 1 from kickx_private.weekly_claims where user_id=u and week=w)));$q$,
-  $q$'claimed',(select exists(select 1 from kickx_private.weekly_claims where user_id=u and week=w)),
+ if position('claimedItems' in d)=0 then
+  if position($q$'claimed',(select exists(select 1 from kickx_private.weekly_claims where user_id=u and week=w)));$q$ in d)=0 then raise exception 'weekly_progress 모양이 예상과 다릅니다';end if;
+  d:=replace(d,$q$'claimed',(select exists(select 1 from kickx_private.weekly_claims where user_id=u and week=w)));$q$,
+   $q$'claimed',(select exists(select 1 from kickx_private.weekly_claims where user_id=u and week=w)),
  'claimedItems',(select coalesce(jsonb_agg(c.mission order by c.mission),'[]'::jsonb) from kickx_private.weekly_item_claims c where c.user_id=u and c.week=w));$q$);
- execute d;
-
+  execute d;
+ end if;
+ -- kickx_engagement: 화면에 보낼 보상 금액
  d:=pg_get_functiondef('public.kickx_engagement()'::regprocedure);
- if position($q$jsonb_build_object('reward',10000)$q$ in d)=0 then raise exception 'kickx_engagement shape changed';end if;
- d:=replace(d,$q$jsonb_build_object('reward',10000)$q$,$q$jsonb_build_object('reward',4000,'itemReward',1000)$q$);
- execute d;
-
+ if position($q$jsonb_build_object('reward',10000)$q$ in d)>0 then
+  d:=replace(d,$q$jsonb_build_object('reward',10000)$q$,$q$jsonb_build_object('reward',4000,'itemReward',1000)$q$);execute d;
+ elsif position($q$'itemReward',1000$q$ in d)=0 then raise exception 'kickx_engagement 모양이 예상과 다릅니다';end if;
+ -- kickx_engagement_action: 올 클리어 4,000P와 미션별 수령(claim_weekly_item)
  d:=pg_get_functiondef('public.kickx_engagement_action(text,jsonb)'::regprocedure);
- if position($q$if found then amount:=10000;end if;$q$ in d)=0 or position($q$ elsif p_action='purchase' then$q$ in d)=0 then raise exception 'kickx_engagement_action shape changed';end if;
- d:=replace(d,$q$if found then amount:=10000;end if;$q$,$q$if found then amount:=4000;end if;$q$);
- d:=replace(d,$q$ elsif p_action='purchase' then$q$,$q$ elsif p_action='claim_weekly_item' then
+ if position('claim_weekly_item' in d)=0 then
+  if position($q$if found then amount:=10000;end if;$q$ in d)=0 or position($q$ elsif p_action='purchase' then$q$ in d)=0 then raise exception 'kickx_engagement_action 모양이 예상과 다릅니다';end if;
+  d:=replace(d,$q$if found then amount:=10000;end if;$q$,$q$if found then amount:=4000;end if;$q$);
+  d:=replace(d,$q$ elsif p_action='purchase' then$q$,$q$ elsif p_action='claim_weekly_item' then
   progress:=kickx_private.weekly_progress(u,w);
   if not exists(select 1 from jsonb_array_elements(progress->'items') x where x->>'id'=p_input->>'mission' and (x->>'current')::int>=(x->>'target')::int) then raise exception 'MISSIONS_INCOMPLETE';end if;
   insert into kickx_private.weekly_item_claims(user_id,week,mission) values(u,w,p_input->>'mission') on conflict do nothing;
   if found then amount:=1000;end if;
  elsif p_action='purchase' then$q$);
- execute d;
+  execute d;
+ end if;
 end $patch$;
 
 update kickx_private.shop_items set price=2500 where id='attendance-ticket';
 
-create table kickx_private.player_frames(
+-- 3) 선수별 테두리
+create table if not exists kickx_private.player_frames(
  user_id uuid not null references auth.users(id) on delete cascade,player_id text not null,
  item_id text not null references kickx_private.shop_items(id),updated_at timestamptz not null default clock_timestamp(),
  primary key(user_id,player_id));
 alter table kickx_private.player_frames enable row level security;
 revoke all on kickx_private.player_frames from public,anon,authenticated,service_role;
-
-create function public.kickx_player_frames() returns jsonb
+create or replace function public.kickx_player_frames() returns jsonb
 language sql stable security definer set search_path='' as $$
  select coalesce(jsonb_object_agg(f.player_id,f.item_id),'{}'::jsonb) from kickx_private.player_frames f where f.user_id=auth.uid() $$;
-
--- p_item null/empty clears the player's own frame. Only owned frames, only on players the member holds.
-create function public.kickx_set_player_frame(p_player text,p_item text) returns jsonb
+create or replace function public.kickx_set_player_frame(p_player text,p_item text) returns jsonb
 language plpgsql security definer set search_path='' as $$
 declare u uuid:=public.kickx_require_active_member();item text:=nullif(p_item,'');begin
  if p_player is null or length(p_player)>120 then raise exception 'INVALID_INPUT';end if;
@@ -82,11 +87,8 @@ end $$;
 revoke all on function public.kickx_player_frames(),public.kickx_set_player_frame(text,text) from public,anon;
 grant execute on function public.kickx_player_frames(),public.kickx_set_player_frame(text,text) to authenticated;
 
--- ---------- 20261122120000_player_trends.sql ----------
--- 30-day trend for list views (home, market list and cards), which do not carry full price history.
--- One value per Korean day (the last of that day), preceded by the last value before the window so a
--- player whose price moved rarely still draws a line. Read-only over the public price_history table.
-create function public.kickx_player_trends(p_players text[]) returns jsonb
+-- 4) 30일 추이 일괄 조회
+create or replace function public.kickx_player_trends(p_players text[]) returns jsonb
 language sql stable security invoker set search_path='' as $$
  with ids as(select distinct unnest(p_players[1:60]) id),
  daily as(select distinct on(h.player_id,(h.recorded_at at time zone 'Asia/Seoul')::date) h.player_id,h.recorded_at,h.value
@@ -102,52 +104,48 @@ language sql stable security invoker set search_path='' as $$
 $$;
 revoke all on function public.kickx_player_trends(text[]) from public;
 grant execute on function public.kickx_player_trends(text[]) to anon,authenticated,service_role;
-notify pgrst,'reload schema';
 
--- ---------- 20261122130000_initial_points_and_weekly_reset_time.sql ----------
--- 1) New members start with 1,000,000P (existing wallets are unchanged).
--- 2) The weekly mission week now turns over on Tuesday 09:00 KST instead of 00:00.
---    Before 09:00 on Tuesday the previous week stays open (its day range includes that Tuesday);
---    match-based missions use the 09:00 boundary as well.
+-- 5) 초기 지급 1,000,000P(새 회원부터), 주간 미션 화요일 09:00 초기화
 update public.kickx_policy set initial_points=1000000 where id=true;
-
-create function kickx_private.mission_now() returns timestamp language sql stable set search_path='' as $$
+create or replace function kickx_private.mission_now() returns timestamp language sql stable set search_path='' as $$
  select now() at time zone 'Asia/Seoul' $$;
-create function kickx_private.mission_week_now() returns date language sql stable set search_path='' as $$
+create or replace function kickx_private.mission_week_now() returns date language sql stable set search_path='' as $$
  select kickx_private.mission_week(kickx_private.mission_today()-case when extract(isodow from kickx_private.mission_today())=2
   and kickx_private.mission_now()::time<time '09:00' then 1 else 0 end) $$;
-
 do $patch$ declare d text;f text;begin
  foreach f in array array['public.kickx_engagement()','public.kickx_engagement_action(text,jsonb)'] loop
   d:=pg_get_functiondef(f::regprocedure);
-  if position('w date:=kickx_private.mission_week(d);' in d)=0 then raise exception '% shape changed',f;end if;
-  d:=replace(d,'w date:=kickx_private.mission_week(d);','w date:=kickx_private.mission_week_now();');
-  execute d;
+  if position('w date:=kickx_private.mission_week(d);' in d)>0 then
+   d:=replace(d,'w date:=kickx_private.mission_week(d);','w date:=kickx_private.mission_week_now();');execute d;
+  elsif position('kickx_private.mission_week_now()' in d)=0 then raise exception '% 모양이 예상과 다릅니다',f;end if;
  end loop;
  d:=pg_get_functiondef('kickx_private.weekly_progress(uuid,date)'::regprocedure);
- if position($q$f.starts_at>=(w::timestamp at time zone 'Asia/Seoul') and f.starts_at<((w+7)::timestamp at time zone 'Asia/Seoul')$q$ in d)=0
-  or position($q$'endsAt',((w+7)::timestamp at time zone 'Asia/Seoul')$q$ in d)=0 then raise exception 'weekly_progress shape changed';end if;
- d:=replace(d,$q$f.starts_at>=(w::timestamp at time zone 'Asia/Seoul') and f.starts_at<((w+7)::timestamp at time zone 'Asia/Seoul')$q$,
-  $q$f.starts_at>=((w::timestamp+interval '9 hours') at time zone 'Asia/Seoul') and f.starts_at<(((w+7)::timestamp+interval '9 hours') at time zone 'Asia/Seoul')$q$);
- d:=replace(d,$q$'endsAt',((w+7)::timestamp at time zone 'Asia/Seoul')$q$,$q$'endsAt',(((w+7)::timestamp+interval '9 hours') at time zone 'Asia/Seoul')$q$);
- -- Day-based counts include the closing Tuesday so activity before 09:00 still counts for the open week.
- d:=replace(d,'day<w+7','day<=w+7');
- execute d;
+ if position($q$interval '9 hours'$q$ in d)=0 then
+  if position($q$f.starts_at>=(w::timestamp at time zone 'Asia/Seoul') and f.starts_at<((w+7)::timestamp at time zone 'Asia/Seoul')$q$ in d)=0
+   or position($q$'endsAt',((w+7)::timestamp at time zone 'Asia/Seoul')$q$ in d)=0 then raise exception 'weekly_progress 모양이 예상과 다릅니다';end if;
+  d:=replace(d,$q$f.starts_at>=(w::timestamp at time zone 'Asia/Seoul') and f.starts_at<((w+7)::timestamp at time zone 'Asia/Seoul')$q$,
+   $q$f.starts_at>=((w::timestamp+interval '9 hours') at time zone 'Asia/Seoul') and f.starts_at<(((w+7)::timestamp+interval '9 hours') at time zone 'Asia/Seoul')$q$);
+  d:=replace(d,$q$'endsAt',((w+7)::timestamp at time zone 'Asia/Seoul')$q$,$q$'endsAt',(((w+7)::timestamp+interval '9 hours') at time zone 'Asia/Seoul')$q$);
+  d:=replace(d,'day<w+7','day<=w+7');
+  execute d;
+ end if;
 end $patch$;
 
+notify pgrst,'reload schema';
 commit;
 
--- 적용 확인 (각각 true가 나와야 함)
+-- 적용 확인 (모두 true여야 함)
 select exists(select 1 from pg_proc where proname='kickx_set_player_frame') as player_frames,
        exists(select 1 from pg_proc where proname='kickx_player_trends') as trends,
        exists(select 1 from pg_proc where proname='mission_week_now') as weekly_9am,
+       position('claim_weekly_item' in pg_get_functiondef('public.kickx_engagement_action(text,jsonb)'::regprocedure))>0 as weekly_item_claim,
+       position($q$'itemReward',1000$q$ in pg_get_functiondef('public.kickx_engagement()'::regprocedure))>0 as weekly_rewards,
        (select initial_points=1000000 from public.kickx_policy) as initial_1m,
        (select price=2500 from kickx_private.shop_items where id='attendance-ticket') as ticket_2500;
 
--- ===================== 2부: 치장 24종 추가 (가격 확정 후 실행) =====================
--- 가격은 제안값이다. 필요하면 아래 숫자를 바꾼 뒤 실행한다.
+-- ===================== 2부: 치장 24종 추가 (가격 확정 후 실행, 재실행 안전) =====================
+-- 가격은 제안값이다. 필요하면 숫자를 바꾼 뒤 실행한다.
 begin;
--- ---------- 20261121090000_cosmetic_catalog_expansion.sql ----------
 -- Cosmetic catalog expansion (design pass 2026-11-21): 8 nameplates, 8 player frames, 8 pitches.
 -- Catalog rows only. Prices are proposals for the policy owner to confirm before this is applied;
 -- existing items keep their prices. Artwork is original CSS/SVG in the app (no external assets).
