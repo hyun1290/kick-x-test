@@ -41,11 +41,13 @@ export function EngagementProvider({ children }: { children: ReactNode }) {
   void apiRequest('/api/kickx/engagement','POST',{action:'view',input:{kind,target}}).then(()=>{if(currentUser.current===userId)reloadEngagement();}).catch(()=>tracked.current.delete(key));
  },[userId,reloadEngagement,resource.data.day]);
  // Cross midnight/Tuesday without requiring a new browser session.
+ // The day turns over at 00:00 and the week at Tuesday 09:00 (KST); refresh at whichever comes first.
+ const nextReset=[resource.data.resetsAt,resource.data.weekly?.endsAt].map(v=>v?Date.parse(v):NaN).filter(v=>Number.isFinite(v)&&v>0).sort((a,b)=>a-b).find(v=>v>Date.now()-1000);
  useEffect(()=>{
-  if(!resource.data.resetsAt) return;
-  const timer=setTimeout(()=>{if(document.visibilityState==='visible')reloadEngagement();},Math.max(1000,Math.min(2147483647,Date.parse(resource.data.resetsAt)-Date.now()+1000)));
+  if(!nextReset) return;
+  const timer=setTimeout(()=>{if(document.visibilityState==='visible')reloadEngagement();},Math.max(1000,Math.min(2147483647,nextReset-Date.now()+1000)));
   return ()=>clearTimeout(timer);
- },[resource.data.resetsAt,reloadEngagement]);
+ },[nextReset,reloadEngagement]);
  const value = useMemo(()=>({state,ready:!!userId&&resource.status==='ready',error:resource.status==='error',busy,reload:resource.reload,act,track}),[state,resource.status,resource.reload,userId,busy,act,track]);
  return <Context.Provider value={value}>{children}</Context.Provider>;
 }
